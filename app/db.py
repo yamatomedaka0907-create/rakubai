@@ -312,6 +312,24 @@ def init_db() -> None:
         _ensure_column(conn, 'members', 'email_reminder_enabled', 'email_reminder_enabled INTEGER NOT NULL DEFAULT 0')
         _ensure_column(conn, 'members', 'updated_at', "updated_at TEXT DEFAULT CURRENT_TIMESTAMP")
 
+
+        conn.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS chat_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                shop_id TEXT NOT NULL,
+                customer_id INTEGER NOT NULL,
+                member_id INTEGER,
+                sender_type TEXT NOT NULL,
+                sender_name TEXT DEFAULT '',
+                message TEXT NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(customer_id) REFERENCES customers(id),
+                FOREIGN KEY(member_id) REFERENCES members(id)
+            )
+            '''
+        )
+
         conn.execute(
             '''
             CREATE TABLE IF NOT EXISTS homepage_templates (
@@ -389,6 +407,7 @@ def init_db() -> None:
         conn.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_shop_id ON subscriptions(shop_id)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_admin_users_shop_id ON admin_users(shop_id, login_id)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_members_shop_phone ON members(shop_id, phone_normalized)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_chat_messages_shop_customer_id ON chat_messages(shop_id, customer_id, id)')
 
         for shop_id, shop in SHOPS.items():
             conn.execute(
@@ -1631,6 +1650,78 @@ def update_reservation_status(shop_id: str, reservation_id: int, status: str) ->
             (status, shop_id, reservation_id),
         )
         conn.commit()
+
+
+def get_chat_messages(shop_id: str, customer_id: int, limit: int = 200) -> list[dict[str, Any]]:
+    safe_limit = max(1, min(int(limit or 200), 500))
+    with get_connection() as conn:
+        rows = conn.execute(
+            '''
+            SELECT id, shop_id, customer_id, member_id, sender_type, sender_name, message, created_at
+            FROM chat_messages
+            WHERE shop_id = ? AND customer_id = ?
+            ORDER BY id DESC
+            LIMIT ?
+            ''',
+            (shop_id, customer_id, safe_limit),
+        ).fetchall()
+    items = _rows_to_dicts(rows)
+    items.reverse()
+    return items
+
+
+def add_chat_message(
+    shop_id: str,
+    customer_id: int,
+    *,
+    sender_type: str,
+    message: str,
+    member_id: int | None = None,
+    sender_name: str = '',
+) -> dict[str, Any]:
+    normalized_sender = 'member' if sender_type == 'member' else 'staff'
+    text = str(message or '').strip()
+    if not text:
+        raise ValueError('メッセージを入力してください。')
+    with get_connection() as conn:
+        cursor = conn.execute(
+            '''
+            INSERT INTO chat_messages (shop_id, customer_id, member_id, sender_type, sender_name, message)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ''',
+            (shop_id, customer_id, member_id, normalized_sender, str(sender_name or '').strip(), text),
+        )
+        message_id = int(cursor.lastrowid)
+        conn.commit()
+        row = conn.execute(
+            '''
+            SELECT id, shop_id, customer_id, member_id, sender_type, sender_name, message, created_at
+            FROM chat_messages
+            WHERE id = ? AND shop_id = ? AND customer_id = ?
+            LIMIT 1
+            ''',
+            (message_id, shop_id, customer_id),
+        ).fetchone()
+    if row is None:
+        raise RuntimeError('チャットメッセージの保存に失敗しました。')
+    return dict(row)
+
+
+def count_monthly_chat_messages(shop_id: str, customer_id: int | None = None, month_value: str | None = None) -> int:
+    target_month = str(month_value or datetime.now().strftime('%Y-%m')).strip()
+    sql = '''
+        SELECT COUNT(*)
+        FROM chat_messages
+        WHERE shop_id = ?
+          AND strftime('%Y-%m', created_at, 'localtime') = ?
+    '''
+    params: list[Any] = [shop_id, target_month]
+    if customer_id is not None:
+        sql += ' AND customer_id = ?'
+        params.append(int(customer_id))
+    with get_connection() as conn:
+        row = conn.execute(sql, tuple(params)).fetchone()
+    return int(row[0] if row else 0)
 
 
 # plans / subscriptions

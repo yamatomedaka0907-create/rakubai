@@ -71,4 +71,76 @@
     {% else %}<p class="empty">写真はまだありません。</p>{% endif %}
   </div>
 </div>
+
+<div class="card" style="margin-top:18px;">
+  <div class="card-header"><h2>顧客チャット</h2><span class="badge">{% if chat_limit.monthly_limit is none %}無制限{% else %}残り {{ chat_limit.remaining }} 通{% endif %}</span></div>
+  <p class="section-note">LINE風チャットです。ページ表示中のみ5秒ごとに自動更新します。</p>
+  <div style="border:1px solid var(--line);border-radius:22px;overflow:hidden;background:#eaf7f2;">
+    <div style="padding:14px 16px;border-bottom:1px solid var(--line);background:#fff;display:flex;justify-content:space-between;gap:12px;align-items:center;">
+      <strong>{{ customer.name }} さんとのチャット</strong>
+      <span id="adminChatMeta" class="section-note">{% if chat_limit.monthly_limit is none %}無制限{% else %}{{ chat_limit.label }}{% endif %}</span>
+    </div>
+    <div id="adminChatMessages" style="padding:16px;display:grid;gap:10px;max-height:520px;overflow:auto;">
+      {% if chat_messages %}
+        {% for item in chat_messages %}
+          <div style="max-width:82%;padding:12px 14px;border-radius:18px;line-height:1.8;{% if item.sender_type == 'staff' %}justify-self:end;background:#8de055;color:#111827;{% else %}justify-self:start;background:#fff;border:1px solid var(--line);{% endif %}">
+            {{ item.message | replace('
+', '<br>') | safe }}
+            <div class="section-note" style="margin-top:6px;">{{ (item.sender_name or 'スタッフ') if item.sender_type == 'staff' else '会員' }} ・ {{ item.created_at[:16] if item.created_at else '' }}</div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty">まだメッセージはありません。</div>
+      {% endif %}
+    </div>
+    <form method="post" action="/admin/{{ shop_id }}/customers/{{ customer.id }}/chat" style="padding:16px;background:#fff;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr auto;gap:10px;">
+      <textarea name="message" rows="4" placeholder="メッセージを入力" style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:16px;resize:vertical;" {% if not chat_limit.can_send %}disabled{% endif %}></textarea>
+      <button type="submit" {% if not chat_limit.can_send %}disabled{% endif %}>送信</button>
+    </form>
+  </div>
+</div>
+<script>
+  (function () {
+    const messagesEl = document.getElementById('adminChatMessages');
+    const metaEl = document.getElementById('adminChatMeta');
+    if (!messagesEl) return;
+    let timer = null;
+    const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    const render = (payload) => {
+      const messages = Array.isArray(payload.messages) ? payload.messages : [];
+      if (metaEl && payload.chat_limit) {
+        metaEl.textContent = payload.chat_limit.monthly_limit == null
+          ? '無制限'
+          : `今月 ${payload.chat_limit.monthly_count} / ${payload.chat_limit.monthly_limit} 通`;
+      }
+      if (!messages.length) {
+        messagesEl.innerHTML = '<div class="empty">まだメッセージはありません。</div>';
+        return;
+      }
+      messagesEl.innerHTML = messages.map((item) => {
+        const isStaff = item.sender_type === 'staff';
+        const name = isStaff ? (item.sender_name || 'スタッフ') : '会員';
+        const message = escapeHtml(item.message).replace(/
+/g, '<br>');
+        const time = escapeHtml((item.created_at || '').slice(0, 16));
+        const style = isStaff
+          ? 'max-width:82%;padding:12px 14px;border-radius:18px;line-height:1.8;justify-self:end;background:#8de055;color:#111827;'
+          : 'max-width:82%;padding:12px 14px;border-radius:18px;line-height:1.8;justify-self:start;background:#fff;border:1px solid var(--line);';
+        return `<div style="${style}">${message}<div class="section-note" style="margin-top:6px;">${escapeHtml(name)} ・ ${time}</div></div>`;
+      }).join('');
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    };
+    const fetchMessages = async () => {
+      if (document.hidden) return;
+      const res = await fetch('/admin/{{ shop_id }}/customers/{{ customer.id }}/chat/messages', { headers: { 'X-Requested-With': 'fetch' } });
+      if (!res.ok) return;
+      render(await res.json());
+    };
+    const start = () => { if (!timer) timer = window.setInterval(fetchMessages, 5000); };
+    const stop = () => { if (timer) { window.clearInterval(timer); timer = null; } };
+    document.addEventListener('visibilitychange', () => { if (document.hidden) { stop(); } else { fetchMessages(); start(); } });
+    fetchMessages();
+    start();
+  })();
+</script>
 {% endblock %}

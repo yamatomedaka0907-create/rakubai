@@ -14,7 +14,7 @@ import re
 import unicodedata
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -57,6 +57,9 @@ from app.db import (
     authenticate_member,
     get_member_by_id,
     get_member_reservations,
+    get_chat_messages,
+    add_chat_message,
+    count_monthly_chat_messages,
 )
 from app.runtime_data import (
     get_platform_admin,
@@ -1523,6 +1526,8 @@ def admin_customer_detail_page(request: Request, shop_id: str, customer_id: int,
         raise HTTPException(status_code=404, detail="顧客が見つかりません")
     customer_notes = get_customer_notes(shop_id, customer_id)
     customer_photos = get_customer_photos(shop_id, customer_id)
+    chat_messages = get_chat_messages(shop_id, customer_id)
+    chat_limit = _get_chat_limit_context(subscription, shop_id, customer_id=customer_id)
     customer_photo_policy = _get_customer_photo_policy(subscription)
     max_photos = customer_photo_policy.get("max_photos")
     customer_photo_remaining = None if max_photos is None else max(int(max_photos) - len(customer_photos), 0)
@@ -1537,6 +1542,8 @@ def admin_customer_detail_page(request: Request, shop_id: str, customer_id: int,
             "customer": customer,
             "customer_notes": customer_notes,
             "customer_photos": customer_photos,
+            "chat_messages": chat_messages,
+            "chat_limit": chat_limit,
             "customer_photo_policy": customer_photo_policy,
             "customer_photo_remaining": customer_photo_remaining,
             "customers": customers,
@@ -1551,6 +1558,50 @@ def admin_customer_detail_page(request: Request, shop_id: str, customer_id: int,
             "active_page": "customers",
         },
     )
+
+
+@app.get("/admin/{shop_id}/customers/{customer_id}/chat/messages")
+def admin_customer_chat_messages_api(request: Request, shop_id: str, customer_id: int):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        raise HTTPException(status_code=401, detail="ログインしてください")
+    normalized_shop_id = (shop_id or '').strip().lower()
+    customer = get_customer_by_id(normalized_shop_id, customer_id)
+    if customer is None:
+        raise HTTPException(status_code=404, detail="顧客が見つかりません")
+    messages = get_chat_messages(normalized_shop_id, customer_id)
+    subscription = get_shop_subscription(normalized_shop_id) or {}
+    return JSONResponse({
+        "messages": _serialize_chat_messages(messages),
+        "chat_limit": _get_chat_limit_context(subscription, normalized_shop_id, customer_id=customer_id),
+    })
+
+
+@app.post("/admin/{shop_id}/customers/{customer_id}/chat")
+def admin_send_chat_message(request: Request, shop_id: str, customer_id: int, message: str = Form("")):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+    normalized_shop_id = (shop_id or '').strip().lower()
+    customer = get_customer_by_id(normalized_shop_id, customer_id)
+    if customer is None:
+        raise HTTPException(status_code=404, detail="顧客が見つかりません")
+    subscription = get_shop_subscription(normalized_shop_id) or {}
+    chat_limit = _get_chat_limit_context(subscription, normalized_shop_id, customer_id=customer_id)
+    if not chat_limit.get('can_send'):
+        return admin_customer_detail_page(request, normalized_shop_id, customer_id, error_message="現在のプランでは今月のチャット送信上限に達しています。")
+    text = str(message or '').strip()
+    if not text:
+        return admin_customer_detail_page(request, normalized_shop_id, customer_id, error_message="メッセージを入力してください。")
+    sender_name = str(request.session.get("store_logged_in_admin_name") or "スタッフ")
+    add_chat_message(
+        normalized_shop_id,
+        customer_id,
+        sender_type='staff',
+        message=text,
+        sender_name=sender_name,
+    )
+    return RedirectResponse(url=f"/admin/{normalized_shop_id}/customers/{customer_id}?saved=送信しました", status_code=303)
 
 
 @app.post("/admin/{shop_id}/customers/{customer_id}/update")
@@ -1938,6 +1989,44 @@ def shop_reserve(
     )
 
 
+def _normalize_plan_code_for_chat(subscription: dict | None) -> str:
+    code = str((subscription or {}).get('plan_code') or '').strip().lower()
+    if code in ('standard', 'basic'):
+        return 'standard'
+    if code in ('premium', 'pro'):
+        return 'premium'
+    return 'free'
+
+
+def _get_chat_limit_context(subscription: dict | None, shop_id: str, customer_id: int | None = None) -> dict[str, object]:
+    plan_code = _normalize_plan_code_for_chat(subscription)
+    monthly_count = count_monthly_chat_messages(shop_id, customer_id=customer_id)
+    monthly_limit = 100 if plan_code == 'free' else None
+    remaining = None if monthly_limit is None else max(monthly_limit - monthly_count, 0)
+    return {
+        'plan_code': plan_code,
+        'monthly_count': monthly_count,
+        'monthly_limit': monthly_limit,
+        'remaining': remaining,
+        'is_limited': monthly_limit is not None,
+        'can_send': monthly_limit is None or monthly_count < monthly_limit,
+        'label': ('今月 %s / %s 通' % (monthly_count, monthly_limit)) if monthly_limit is not None else '無制限',
+    }
+
+
+def _serialize_chat_messages(messages: list[dict]) -> list[dict[str, object]]:
+    serialized: list[dict[str, object]] = []
+    for item in messages:
+        serialized.append({
+            'id': int(item.get('id') or 0),
+            'sender_type': 'member' if str(item.get('sender_type') or '') == 'member' else 'staff',
+            'sender_name': str(item.get('sender_name') or ''),
+            'message': str(item.get('message') or ''),
+            'created_at': str(item.get('created_at') or ''),
+        })
+    return serialized
+
+
 def _member_default_next(shop_id: str) -> str:
     return f"/shop/{shop_id}"
 
@@ -2051,7 +2140,7 @@ def member_logout(request: Request, shop_id: str):
 
 
 @app.get("/member/{shop_id}/mypage", response_class=HTMLResponse)
-def member_dashboard_page(request: Request, shop_id: str):
+def member_dashboard_page(request: Request, shop_id: str, error_message: str = ""):
     shop = get_shop(shop_id)
     if not shop:
         raise HTTPException(status_code=404, detail="店舗が見つかりません")
@@ -2059,11 +2148,70 @@ def member_dashboard_page(request: Request, shop_id: str):
     if member is None:
         return RedirectResponse(url=f"/member/{shop_id}/login?next=/member/{shop_id}/mypage", status_code=303)
     reservations = get_member_reservations(shop_id, int(member['id']))
+    customer_id = int(member.get('customer_id') or 0)
+    chat_messages = get_chat_messages(shop_id, customer_id) if customer_id else []
+    subscription = get_shop_subscription(shop_id) or {}
+    chat_limit = _get_chat_limit_context(subscription, shop_id, customer_id=customer_id if customer_id else None)
     return templates.TemplateResponse(
         request=request,
         name="member/dashboard.html",
-        context={"request": request, "shop": shop, "shop_id": shop_id, "member": member, "reservations": reservations[:10]},
+        context={
+            "request": request,
+            "shop": shop,
+            "shop_id": shop_id,
+            "member": member,
+            "reservations": reservations[:10],
+            "reservation_count": len(reservations),
+            "member_photos": [],
+            "chat_messages": chat_messages,
+            "chat_limit": chat_limit,
+            "subscription": subscription,
+            "error_message": error_message,
+            "success_message": request.query_params.get("saved", ""),
+        },
     )
+
+
+@app.get("/member/{shop_id}/chat/messages")
+def member_chat_messages_api(request: Request, shop_id: str):
+    member = _get_logged_in_member(request, shop_id)
+    if member is None:
+        raise HTTPException(status_code=401, detail="ログインしてください")
+    customer_id = int(member.get('customer_id') or 0)
+    if not customer_id:
+        return JSONResponse({"messages": [], "chat_limit": _get_chat_limit_context(get_shop_subscription(shop_id) or {}, shop_id)})
+    messages = get_chat_messages(shop_id, customer_id)
+    subscription = get_shop_subscription(shop_id) or {}
+    return JSONResponse({
+        "messages": _serialize_chat_messages(messages),
+        "chat_limit": _get_chat_limit_context(subscription, shop_id, customer_id=customer_id),
+    })
+
+
+@app.post("/member/{shop_id}/chat")
+def member_send_chat_message(request: Request, shop_id: str, message: str = Form("")):
+    member = _get_logged_in_member(request, shop_id)
+    if member is None:
+        return RedirectResponse(url=f"/member/{shop_id}/login?next=/member/{shop_id}/mypage", status_code=303)
+    customer_id = int(member.get('customer_id') or 0)
+    if not customer_id:
+        return member_dashboard_page(request, shop_id, error_message="会員情報に顧客データが紐づいていません。")
+    subscription = get_shop_subscription(shop_id) or {}
+    chat_limit = _get_chat_limit_context(subscription, shop_id, customer_id=customer_id)
+    if not chat_limit.get('can_send'):
+        return member_dashboard_page(request, shop_id, error_message="現在のプランでは今月のチャット送信上限に達しています。")
+    text = str(message or '').strip()
+    if not text:
+        return member_dashboard_page(request, shop_id, error_message="メッセージを入力してください。")
+    add_chat_message(
+        shop_id,
+        customer_id,
+        sender_type='member',
+        message=text,
+        member_id=int(member['id']),
+        sender_name=str(member.get('name') or ''),
+    )
+    return RedirectResponse(url=f"/member/{shop_id}/mypage?saved=送信しました", status_code=303)
 
 
 @app.get("/site/{shop_id}", response_class=HTMLResponse)

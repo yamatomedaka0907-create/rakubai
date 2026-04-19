@@ -297,7 +297,7 @@
           <div>
             <p style="margin:0;color:var(--subtext);font-weight:700;">{{ shop.shop_name }}</p>
             <h1 class="profile-name">{{ member.name }} さん</h1>
-            <p class="lead">ログイン後の会員専用ページです。ここを土台にして、今後は店舗とのチャットや会員画像の閲覧機能を追加できる構成にしています。</p>
+            <p class="lead">ログイン後の会員専用ページです。予約確認と店舗チャットをこの画面から使えます。</p>
           </div>
           <div class="quick-stats">
             <div class="stat">
@@ -327,21 +327,21 @@
       </div>
 
       <div class="card">
-        <div class="badge">これから追加する機能</div>
-        <h2 class="title" style="font-size: 24px;">準備済みの表示エリア</h2>
-        <p class="subcopy">会員がログインしたあとに使う専用ページとして、先に必要な枠だけ実装しています。実際の送信処理や画像追加処理はまだつなげず、見える場所だけ用意しています。</p>
+        <div class="badge">会員メニュー</div>
+        <h2 class="title" style="font-size: 24px;">ご利用状況</h2>
+        <p class="subcopy">チャットはLINE風の画面で使えます。ページを開いている間だけ5秒ごとに自動更新されます。</p>
         <div class="feature-list" style="margin-top:18px;">
           <div class="feature">
-            <strong>チャットエリア</strong>
-            店舗とのやり取りができる見た目を先に配置しています。
+            <strong>チャット送信上限</strong>
+            {% if chat_limit.monthly_limit is none %}{{ chat_limit.label }}{% else %}{{ chat_limit.label }} / 残り {{ chat_limit.remaining }} 通{% endif %}
           </div>
           <div class="feature">
-            <strong>会員画像エリア</strong>
-            今後、施術写真や保存画像を一覧表示できるようにしています。
+            <strong>予約確認</strong>
+            予約一覧を見ながら、そのまま店舗へ相談できます。
           </div>
           <div class="feature">
-            <strong>予約確認エリア</strong>
-            ログイン後すぐに予約状況を見やすく確認できます。
+            <strong>自動更新</strong>
+            画面を開いている間だけ最新メッセージを反映します。
           </div>
         </div>
       </div>
@@ -379,29 +379,34 @@
           <div>
             <div class="badge">チャット</div>
             <h2 class="title" style="font-size: 26px;">店舗とのやり取り</h2>
-            <p class="subcopy">送信処理はまだ未接続ですが、ログイン後ページとして使う想定のチャット枠を配置しています。</p>
+            <p class="subcopy">LINE風の画面でスタッフへ相談できます。5秒ごとに自動更新します。</p>
           </div>
-          <span class="status">準備中</span>
+          <span class="status">{% if chat_limit.monthly_limit is none %}無制限{% else %}残り {{ chat_limit.remaining }} 通{% endif %}</span>
         </div>
+        {% if success_message %}<div style="margin-bottom:12px;padding:12px 14px;border-radius:16px;background:#ecfeff;color:#155e75;border:1px solid #a5f3fc;">{{ success_message }}</div>{% endif %}
+        {% if error_message %}<div style="margin-bottom:12px;padding:12px 14px;border-radius:16px;background:#fff1f2;color:#9f1239;border:1px solid #fecdd3;">{{ error_message }}</div>{% endif %}
         <div class="chat-shell">
           <div class="chat-head">
             <strong>{{ shop.shop_name }} スタッフチャット</strong>
-            <span style="color:var(--subtext);font-size:13px;">この画面をベースに今後接続</span>
+            <span id="memberChatMeta" style="color:var(--subtext);font-size:13px;">{% if chat_limit.monthly_limit is none %}無制限{% else %}{{ chat_limit.label }}{% endif %}</span>
           </div>
-          <div class="messages">
-            <div class="bubble staff">
-              こんにちは。ログイン後ページのチャット欄はこちらに表示されます。ご相談内容や来店前の確認事項を今後ここでやり取りできます。
-              <div class="time">スタッフ・サンプル表示</div>
-            </div>
-            <div class="bubble member">
-              会員ページからそのまま相談できるイメージが分かるようになっています。
-              <div class="time">会員・サンプル表示</div>
-            </div>
+          <div class="messages" id="memberChatMessages">
+            {% if chat_messages %}
+              {% for item in chat_messages %}
+                <div class="bubble {{ item.sender_type }}">
+                  {{ item.message | replace('
+', '<br>') | safe }}
+                  <div class="time">{{ 'あなた' if item.sender_type == 'member' else (item.sender_name or 'スタッフ') }} ・ {{ item.created_at[:16] if item.created_at else '' }}</div>
+                </div>
+              {% endfor %}
+            {% else %}
+              <div class="empty" id="memberChatEmpty">まだメッセージはありません。来店前の相談や確認事項をここから送れます。</div>
+            {% endif %}
           </div>
-          <div class="composer">
-            <textarea placeholder="ここにメッセージを入力します（送信機能はまだ未接続です）"></textarea>
-            <button class="btn" type="button">送信準備中</button>
-          </div>
+          <form class="composer" method="post" action="/member/{{ shop_id }}/chat">
+            <textarea name="message" placeholder="メッセージを入力してください" {% if not chat_limit.can_send %}disabled{% endif %}></textarea>
+            <button class="btn" type="submit" {% if not chat_limit.can_send %}disabled{% endif %}>送信</button>
+          </form>
         </div>
       </div>
     </section>
@@ -459,5 +464,45 @@
       </div>
     </section>
   </div>
+  <script>
+    (function () {
+      const messagesEl = document.getElementById('memberChatMessages');
+      const metaEl = document.getElementById('memberChatMeta');
+      if (!messagesEl) return;
+      let timer = null;
+      const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+      const render = (payload) => {
+        const messages = Array.isArray(payload.messages) ? payload.messages : [];
+        if (metaEl && payload.chat_limit) {
+          metaEl.textContent = payload.chat_limit.monthly_limit == null
+            ? '無制限'
+            : `今月 ${payload.chat_limit.monthly_count} / ${payload.chat_limit.monthly_limit} 通`;
+        }
+        if (!messages.length) {
+          messagesEl.innerHTML = '<div class="empty">まだメッセージはありません。来店前の相談や確認事項をここから送れます。</div>';
+          return;
+        }
+        messagesEl.innerHTML = messages.map((item) => {
+          const name = item.sender_type === 'member' ? 'あなた' : (item.sender_name || 'スタッフ');
+          const message = escapeHtml(item.message).replace(/
+/g, '<br>');
+          const time = escapeHtml((item.created_at || '').slice(0, 16));
+          return `<div class="bubble ${item.sender_type === 'member' ? 'member' : 'staff'}">${message}<div class="time">${escapeHtml(name)} ・ ${time}</div></div>`;
+        }).join('');
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      };
+      const fetchMessages = async () => {
+        if (document.hidden) return;
+        const res = await fetch('/member/{{ shop_id }}/chat/messages', { headers: { 'X-Requested-With': 'fetch' } });
+        if (!res.ok) return;
+        render(await res.json());
+      };
+      const start = () => { if (!timer) timer = window.setInterval(fetchMessages, 5000); };
+      const stop = () => { if (timer) { window.clearInterval(timer); timer = null; } };
+      document.addEventListener('visibilitychange', () => { if (document.hidden) { stop(); } else { fetchMessages(); start(); } });
+      fetchMessages();
+      start();
+    })();
+  </script>
 </body>
 </html>
