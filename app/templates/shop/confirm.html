@@ -57,12 +57,14 @@
     <nav class="top-nav">
       <a href="/shop/{{ shop_id }}">店舗トップへ戻る</a>
       <a href="/shop/{{ shop_id }}#reserve-form">予約内容を修正する</a>
+      <a href="/member/{{ shop_id }}/login?next=/shop/{{ shop_id }}">会員ログイン</a>
     </nav>
 
     <div class="card">
       <div class="badge">予約内容の確認</div>
       <h1>{{ shop.shop_name }} の予約内容を確認してください</h1>
       <p class="lead">まだ予約は確定していません。内容を確認して問題なければ、下のボタンから予約を確定してください。</p>
+      <p class="lead" style="margin-top:-8px; font-size:14px;">会員の方はログインすると、次回予約や今後のチャット導線を使いやすくできます。</p>
 
       <div class="detail-list">
         <div class="detail-item"><div class="label">お名前</div><div class="value">{{ reservation_preview.customer_name }}</div></div>

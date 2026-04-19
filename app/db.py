@@ -19,66 +19,52 @@ DEFAULT_PLANS = [
         'name': 'フリー',
         'monthly_price': 0,
         'show_ads': 1,
-        'max_staff': 3,
-        'max_customers': 50,
+        'max_staff': 2,
+        'max_customers': 100,
         'max_reservations_per_month': 50,
-        'max_photos_per_customer': 1,
         'can_use_line': 1,
-        'can_use_chat': 1,
-        'max_chat_messages_per_month': 100,
-        'can_use_multi_store': 0,
-        'priority_support': 0,
-        'homepage_included': 1,
         'can_use_reports': 0,
-        'is_line_feature_live': 0,
-        'is_chat_feature_live': 0,
-        'is_multi_store_feature_live': 0,
         'is_active': 1,
         'sort_order': 10,
     },
     {
-        'code': 'standard',
-        'name': 'スタンダード',
-        'monthly_price': 1650,
+        'code': 'basic',
+        'name': 'ベーシック',
+        'monthly_price': 4980,
         'show_ads': 0,
-        'max_staff': 10,
-        'max_customers': 300,
-        'max_reservations_per_month': None,
-        'max_photos_per_customer': 10,
+        'max_staff': 5,
+        'max_customers': 500,
+        'max_reservations_per_month': 300,
         'can_use_line': 1,
-        'can_use_chat': 1,
-        'max_chat_messages_per_month': None,
-        'can_use_multi_store': 0,
-        'priority_support': 0,
-        'homepage_included': 1,
         'can_use_reports': 1,
-        'is_line_feature_live': 0,
-        'is_chat_feature_live': 0,
-        'is_multi_store_feature_live': 0,
         'is_active': 1,
         'sort_order': 20,
     },
     {
-        'code': 'premium',
-        'name': 'プレミアム',
-        'monthly_price': 3300,
+        'code': 'standard',
+        'name': 'スタンダード',
+        'monthly_price': 9800,
         'show_ads': 0,
-        'max_staff': 50,
-        'max_customers': None,
-        'max_reservations_per_month': None,
-        'max_photos_per_customer': 50,
+        'max_staff': 15,
+        'max_customers': 3000,
+        'max_reservations_per_month': 2000,
         'can_use_line': 1,
-        'can_use_chat': 1,
-        'max_chat_messages_per_month': None,
-        'can_use_multi_store': 1,
-        'priority_support': 1,
-        'homepage_included': 1,
         'can_use_reports': 1,
-        'is_line_feature_live': 0,
-        'is_chat_feature_live': 0,
-        'is_multi_store_feature_live': 0,
         'is_active': 1,
         'sort_order': 30,
+    },
+    {
+        'code': 'pro',
+        'name': 'プロ',
+        'monthly_price': 19800,
+        'show_ads': 0,
+        'max_staff': 999,
+        'max_customers': 999999,
+        'max_reservations_per_month': 999999,
+        'can_use_line': 1,
+        'can_use_reports': 1,
+        'is_active': 1,
+        'sort_order': 40,
     },
 ]
 
@@ -108,8 +94,24 @@ def get_connection() -> sqlite3.Connection:
 def _ensure_column(conn: sqlite3.Connection, table_name: str, column_name: str, ddl: str) -> None:
     rows = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
     existing = {row['name'] for row in rows}
-    if column_name not in existing:
-        conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {ddl}")
+    if column_name in existing:
+        return
+
+    normalized_ddl = ' '.join(str(ddl).split())
+    upper_ddl = normalized_ddl.upper()
+
+    if 'DEFAULT CURRENT_TIMESTAMP' in upper_ddl:
+        fallback_ddl = normalized_ddl.replace('DEFAULT CURRENT_TIMESTAMP', "DEFAULT ''")
+        fallback_ddl = fallback_ddl.replace('default CURRENT_TIMESTAMP', "DEFAULT ''")
+        fallback_ddl = fallback_ddl.replace('Default CURRENT_TIMESTAMP', "DEFAULT ''")
+        conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {fallback_ddl}")
+        conn.execute(
+            f"UPDATE {table_name} SET {column_name} = CURRENT_TIMESTAMP "
+            f"WHERE {column_name} IS NULL OR {column_name} = ''"
+        )
+        return
+
+    conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {normalized_ddl}")
 
 
 def _rows_to_dicts(rows: list[sqlite3.Row]) -> list[dict[str, Any]]:
@@ -232,17 +234,8 @@ def init_db() -> None:
                 max_staff INTEGER,
                 max_customers INTEGER,
                 max_reservations_per_month INTEGER,
-                max_photos_per_customer INTEGER,
                 can_use_line INTEGER NOT NULL DEFAULT 1,
-                can_use_chat INTEGER NOT NULL DEFAULT 0,
-                max_chat_messages_per_month INTEGER,
-                can_use_multi_store INTEGER NOT NULL DEFAULT 0,
-                priority_support INTEGER NOT NULL DEFAULT 0,
-                homepage_included INTEGER NOT NULL DEFAULT 1,
                 can_use_reports INTEGER NOT NULL DEFAULT 1,
-                is_line_feature_live INTEGER NOT NULL DEFAULT 0,
-                is_chat_feature_live INTEGER NOT NULL DEFAULT 0,
-                is_multi_store_feature_live INTEGER NOT NULL DEFAULT 0,
                 is_active INTEGER NOT NULL DEFAULT 1,
                 sort_order INTEGER NOT NULL DEFAULT 100
             )
@@ -291,6 +284,33 @@ def init_db() -> None:
             )
             '''
         )
+
+
+        conn.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS members (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                shop_id TEXT NOT NULL,
+                customer_id INTEGER,
+                name TEXT NOT NULL,
+                phone TEXT NOT NULL,
+                phone_normalized TEXT NOT NULL,
+                email TEXT DEFAULT '',
+                email_reminder_enabled INTEGER NOT NULL DEFAULT 0,
+                password_hash TEXT NOT NULL,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(shop_id, phone_normalized),
+                FOREIGN KEY(customer_id) REFERENCES customers(id)
+            )
+            '''
+        )
+
+        _ensure_column(conn, 'members', 'customer_id', 'customer_id INTEGER')
+        _ensure_column(conn, 'members', 'email', "email TEXT DEFAULT ''")
+        _ensure_column(conn, 'members', 'email_reminder_enabled', 'email_reminder_enabled INTEGER NOT NULL DEFAULT 0')
+        _ensure_column(conn, 'members', 'updated_at', "updated_at TEXT DEFAULT CURRENT_TIMESTAMP")
 
         conn.execute(
             '''
@@ -368,21 +388,7 @@ def init_db() -> None:
         conn.execute('CREATE INDEX IF NOT EXISTS idx_reservations_shop_date ON reservations(shop_id, reservation_date, start_time)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_shop_id ON subscriptions(shop_id)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_admin_users_shop_id ON admin_users(shop_id, login_id)')
-
-        def ensure_column(table: str, column: str, ddl: str):
-            cols = {row['name'] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
-            if column not in cols:
-                conn.execute(f"ALTER TABLE {table} ADD COLUMN {ddl}")
-
-        ensure_column('plans', 'max_photos_per_customer', 'max_photos_per_customer INTEGER')
-        ensure_column('plans', 'can_use_chat', 'can_use_chat INTEGER NOT NULL DEFAULT 0')
-        ensure_column('plans', 'max_chat_messages_per_month', 'max_chat_messages_per_month INTEGER')
-        ensure_column('plans', 'can_use_multi_store', 'can_use_multi_store INTEGER NOT NULL DEFAULT 0')
-        ensure_column('plans', 'priority_support', 'priority_support INTEGER NOT NULL DEFAULT 0')
-        ensure_column('plans', 'homepage_included', 'homepage_included INTEGER NOT NULL DEFAULT 1')
-        ensure_column('plans', 'is_line_feature_live', 'is_line_feature_live INTEGER NOT NULL DEFAULT 0')
-        ensure_column('plans', 'is_chat_feature_live', 'is_chat_feature_live INTEGER NOT NULL DEFAULT 0')
-        ensure_column('plans', 'is_multi_store_feature_live', 'is_multi_store_feature_live INTEGER NOT NULL DEFAULT 0')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_members_shop_phone ON members(shop_id, phone_normalized)')
 
         for shop_id, shop in SHOPS.items():
             conn.execute(
@@ -417,12 +423,9 @@ def init_db() -> None:
                 '''
                 INSERT INTO plans (
                     code, name, monthly_price, show_ads, max_staff, max_customers,
-                    max_reservations_per_month, max_photos_per_customer, can_use_line, can_use_chat,
-                    max_chat_messages_per_month, can_use_multi_store, priority_support, homepage_included,
-                    can_use_reports, is_line_feature_live, is_chat_feature_live, is_multi_store_feature_live,
-                    is_active, sort_order
+                    max_reservations_per_month, can_use_line, can_use_reports, is_active, sort_order
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(code) DO UPDATE SET
                     name = excluded.name,
                     monthly_price = excluded.monthly_price,
@@ -430,17 +433,8 @@ def init_db() -> None:
                     max_staff = excluded.max_staff,
                     max_customers = excluded.max_customers,
                     max_reservations_per_month = excluded.max_reservations_per_month,
-                    max_photos_per_customer = excluded.max_photos_per_customer,
                     can_use_line = excluded.can_use_line,
-                    can_use_chat = excluded.can_use_chat,
-                    max_chat_messages_per_month = excluded.max_chat_messages_per_month,
-                    can_use_multi_store = excluded.can_use_multi_store,
-                    priority_support = excluded.priority_support,
-                    homepage_included = excluded.homepage_included,
                     can_use_reports = excluded.can_use_reports,
-                    is_line_feature_live = excluded.is_line_feature_live,
-                    is_chat_feature_live = excluded.is_chat_feature_live,
-                    is_multi_store_feature_live = excluded.is_multi_store_feature_live,
                     is_active = excluded.is_active,
                     sort_order = excluded.sort_order
                 ''',
@@ -452,43 +446,24 @@ def init_db() -> None:
                     plan['max_staff'],
                     plan['max_customers'],
                     plan['max_reservations_per_month'],
-                    plan['max_photos_per_customer'],
                     plan['can_use_line'],
-                    plan['can_use_chat'],
-                    plan['max_chat_messages_per_month'],
-                    plan['can_use_multi_store'],
-                    plan['priority_support'],
-                    plan['homepage_included'],
                     plan['can_use_reports'],
-                    plan['is_line_feature_live'],
-                    plan['is_chat_feature_live'],
-                    plan['is_multi_store_feature_live'],
                     plan['is_active'],
                     plan['sort_order'],
                 ),
             )
 
 
+        def ensure_column(table: str, column: str, ddl: str):
+            cols = {row['name'] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+            if column not in cols:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {ddl}")
+
         ensure_column('shops', 'reply_to_email', "reply_to_email TEXT DEFAULT ''")
         ensure_column('shops', 'admin_ui_mode', "admin_ui_mode TEXT NOT NULL DEFAULT 'web'")
         ensure_column('customers', 'email', "email TEXT DEFAULT ''")
         ensure_column('reservations', 'customer_email', "customer_email TEXT DEFAULT ''")
         ensure_column('reservations', 'receive_email', "receive_email INTEGER NOT NULL DEFAULT 0")
-        ensure_column('plans', 'max_photos_per_customer', 'max_photos_per_customer INTEGER')
-        ensure_column('plans', 'can_use_chat', 'can_use_chat INTEGER NOT NULL DEFAULT 0')
-        ensure_column('plans', 'max_chat_messages_per_month', 'max_chat_messages_per_month INTEGER')
-        ensure_column('plans', 'can_use_multi_store', 'can_use_multi_store INTEGER NOT NULL DEFAULT 0')
-        ensure_column('plans', 'priority_support', 'priority_support INTEGER NOT NULL DEFAULT 0')
-        ensure_column('plans', 'homepage_included', 'homepage_included INTEGER NOT NULL DEFAULT 1')
-        ensure_column('plans', 'is_line_feature_live', 'is_line_feature_live INTEGER NOT NULL DEFAULT 0')
-        ensure_column('plans', 'is_chat_feature_live', 'is_chat_feature_live INTEGER NOT NULL DEFAULT 0')
-        ensure_column('plans', 'is_multi_store_feature_live', 'is_multi_store_feature_live INTEGER NOT NULL DEFAULT 0')
-
-        standard_plan_id = conn.execute("SELECT id FROM plans WHERE code = 'standard' LIMIT 1").fetchone()['id']
-        premium_plan_id = conn.execute("SELECT id FROM plans WHERE code = 'premium' LIMIT 1").fetchone()['id']
-        conn.execute("UPDATE subscriptions SET plan_id = ? WHERE plan_id IN (SELECT id FROM plans WHERE code = 'basic')", (standard_plan_id,))
-        conn.execute("UPDATE subscriptions SET plan_id = ? WHERE plan_id IN (SELECT id FROM plans WHERE code = 'pro')", (premium_plan_id,))
-        conn.execute("UPDATE plans SET is_active = 0 WHERE code IN ('basic', 'pro')")
 
         free_plan_id = conn.execute("SELECT id FROM plans WHERE code = 'free' LIMIT 1").fetchone()['id']
         existing_shop_rows = conn.execute('SELECT shop_id FROM shops').fetchall()
@@ -1280,6 +1255,19 @@ def get_customers(shop_id: str) -> list[dict[str, Any]]:
     return _rows_to_dicts(rows)
 
 
+def get_member_customer_ids(shop_id: str) -> set[int]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT customer_id
+            FROM members
+            WHERE shop_id = ? AND is_active = 1 AND customer_id IS NOT NULL
+            """,
+            (shop_id,),
+        ).fetchall()
+    return {int(row[0]) for row in rows if row[0] is not None}
+
+
 def get_customer_by_id(shop_id: str, customer_id: int) -> dict[str, Any] | None:
     with get_connection() as conn:
         row = conn.execute(
@@ -1651,9 +1639,7 @@ def get_plans(active_only: bool = False) -> list[dict[str, Any]]:
     query = '''
         SELECT
             id, code, name, monthly_price, show_ads, max_staff, max_customers,
-            max_reservations_per_month, max_photos_per_customer, can_use_line, can_use_chat,
-            max_chat_messages_per_month, can_use_multi_store, priority_support, homepage_included,
-            can_use_reports, is_line_feature_live, is_chat_feature_live, is_multi_store_feature_live, is_active, sort_order
+            max_reservations_per_month, can_use_line, can_use_reports, is_active, sort_order
         FROM plans
     '''
     if active_only:
@@ -1698,17 +1684,8 @@ def get_shop_subscription(shop_id: str) -> dict[str, Any] | None:
                 p.max_staff,
                 p.max_customers,
                 p.max_reservations_per_month,
-                p.max_photos_per_customer,
                 p.can_use_line,
-                p.can_use_chat,
-                p.max_chat_messages_per_month,
-                p.can_use_multi_store,
-                p.priority_support,
-                p.homepage_included,
                 p.can_use_reports,
-                p.is_line_feature_live,
-                p.is_chat_feature_live,
-                p.is_multi_store_feature_live,
                 p.is_active
             FROM subscriptions s
             JOIN plans p ON p.id = s.plan_id
@@ -2122,3 +2099,147 @@ def update_system_mail_settings(*, from_email: str, from_name: str = '予約シ�
     set_system_setting('mail_smtp_port', str(smtp_port).strip() or '587')
     set_system_setting('mail_smtp_username', smtp_username.strip())
     set_system_setting('mail_smtp_password', smtp_password.strip())
+
+
+
+def normalize_member_phone(phone: str) -> str:
+    value = ''.join(ch for ch in str(phone or '').strip() if ch.isdigit())
+    if value.startswith('81') and len(value) >= 11:
+        value = '0' + value[2:]
+    return value
+
+
+def get_member_by_phone(shop_id: str, phone: str) -> dict[str, Any] | None:
+    normalized_phone = normalize_member_phone(phone)
+    if not normalized_phone:
+        return None
+    with get_connection() as conn:
+        row = conn.execute(
+            '''
+            SELECT id, shop_id, customer_id, name, phone, phone_normalized, email,
+                   email_reminder_enabled, password_hash, is_active, created_at, updated_at
+            FROM members
+            WHERE shop_id = ? AND phone_normalized = ?
+            LIMIT 1
+            ''',
+            (shop_id, normalized_phone),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def get_member_by_id(shop_id: str, member_id: int) -> dict[str, Any] | None:
+    with get_connection() as conn:
+        row = conn.execute(
+            '''
+            SELECT id, shop_id, customer_id, name, phone, phone_normalized, email,
+                   email_reminder_enabled, password_hash, is_active, created_at, updated_at
+            FROM members
+            WHERE shop_id = ? AND id = ?
+            LIMIT 1
+            ''',
+            (shop_id, member_id),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def create_member(shop_id: str, name: str, phone: str, password: str, email: str = '') -> dict[str, Any]:
+    normalized_phone = normalize_member_phone(phone)
+    normalized_email = (email or '').strip().lower()
+    if not name.strip():
+        raise ValueError('お名前を入力してください。')
+    if not normalized_phone:
+        raise ValueError('電話番号を入力してください。')
+    if len(password or '') < 4:
+        raise ValueError('パスワードは4文字以上で入力してください。')
+
+    existing = get_member_by_phone(shop_id, normalized_phone)
+    if existing is not None:
+        raise ValueError('この電話番号はすでに会員登録されています。')
+
+    customer = find_customer(shop_id, name.strip(), normalized_phone, normalized_email)
+    if customer is None:
+        customer = create_customer(shop_id, name.strip(), normalized_phone, normalized_email)
+    else:
+        customer = update_customer_contact(shop_id, int(customer['id']), name.strip(), normalized_phone, normalized_email) or customer
+
+    with get_connection() as conn:
+        cursor = conn.execute(
+            '''
+            INSERT INTO members (
+                shop_id, customer_id, name, phone, phone_normalized, email,
+                email_reminder_enabled, password_hash, is_active, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
+            ''',
+            (
+                shop_id,
+                int(customer['id']) if customer else None,
+                name.strip(),
+                normalized_phone,
+                normalized_phone,
+                normalized_email,
+                1 if normalized_email else 0,
+                hash_password(password),
+            ),
+        )
+        member_id = cursor.lastrowid
+        conn.commit()
+    member = get_member_by_id(shop_id, int(member_id))
+    if member is None:
+        raise RuntimeError('会員登録に失敗しました。')
+    return member
+
+
+def authenticate_member(shop_id: str, phone: str, password: str) -> dict[str, Any] | None:
+    member = get_member_by_phone(shop_id, phone)
+    if member is None or not int(member.get('is_active') or 0):
+        return None
+    if not verify_password(password, str(member.get('password_hash') or '')):
+        return None
+    if not member.get('customer_id'):
+        customer = find_customer(shop_id, str(member.get('name') or ''), str(member.get('phone') or ''), str(member.get('email') or ''))
+        if customer is None:
+            customer = create_customer(shop_id, str(member.get('name') or ''), str(member.get('phone') or ''), str(member.get('email') or ''))
+        with get_connection() as conn:
+            conn.execute(
+                'UPDATE members SET customer_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND shop_id = ?',
+                (int(customer['id']), int(member['id']), shop_id),
+            )
+            conn.commit()
+        member = get_member_by_id(shop_id, int(member['id'])) or member
+    return member
+
+
+def get_member_reservations(shop_id: str, member_id: int) -> list[dict[str, Any]]:
+    member = get_member_by_id(shop_id, member_id)
+    if member is None or not member.get('customer_id'):
+        return []
+    with get_connection() as conn:
+        rows = conn.execute(
+            '''
+            SELECT
+                id,
+                shop_id,
+                customer_id,
+                customer_name,
+                customer_email,
+                receive_email,
+                staff_id,
+                staff_name,
+                menu_id,
+                menu_name,
+                duration,
+                price,
+                reservation_date,
+                start_time,
+                end_time,
+                status,
+                source,
+                created_at
+            FROM reservations
+            WHERE shop_id = ? AND customer_id = ?
+            ORDER BY reservation_date DESC, start_time DESC, id DESC
+            ''',
+            (shop_id, int(member['customer_id'])),
+        ).fetchall()
+    return _rows_to_dicts(rows)

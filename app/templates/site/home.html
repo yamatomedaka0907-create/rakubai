@@ -57,6 +57,7 @@ body{padding-top:72px}.editable{outline:1px dashed transparent;outline-offset:4p
       <a href="#top">トップ</a>
       {% for section in sections if section.section_type != 'hero' %}<a href="#section-{{ section.id }}">{{ section.title or section.section_type }}</a>{% endfor %}
       <a href="#reserve-calendar">予約カレンダー</a>
+      <a href="/member/{{ shop_id }}/login?next=/site/{{ shop_id }}">会員ログイン</a>
       <a href="{{ homepage.reserve_button_url or '/shop/' ~ shop_id }}" {% if edit_mode %}data-homepage-link="reserve_button"{% endif %}>{{ homepage.reserve_button_label or '予約する' }}</a>
     </nav>
   </div>
@@ -70,7 +71,7 @@ body{padding-top:72px}.editable{outline:1px dashed transparent;outline-offset:4p
       <div class="eyebrow">{{ shop.shop_name }}</div>
       <h1 class="hero-title {% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-homepage-field="hero_title"{% endif %}>{{ homepage.hero_title or shop.shop_name }}</h1>
       <p class="hero-subtitle {% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-homepage-field="hero_subtitle"{% endif %}>{{ homepage.hero_subtitle or shop.catch_copy }}</p>
-      <div class="cta {% if homepage.hero_align == 'center' %}center{% endif %}"><a class="btn" href="{{ homepage.reserve_button_url or '/shop/' ~ shop_id }}" {% if edit_mode %}data-homepage-link="reserve_button"{% endif %}>{{ homepage.reserve_button_label or '予約する' }}</a><a class="btn alt" href="#section-{{ sections[1].id if has_top_hero and sections|length > 1 else (sections[0].id if sections else 'info') }}">詳しく見る</a></div>
+      <div class="cta {% if homepage.hero_align == 'center' %}center{% endif %}"><a class="btn" href="{{ homepage.reserve_button_url or '/shop/' ~ shop_id }}" {% if edit_mode %}data-homepage-link="reserve_button"{% endif %}>{{ homepage.reserve_button_label or '予約する' }}</a><a class="btn alt" href="/member/{{ shop_id }}/login?next=/site/{{ shop_id }}">会員ログイン</a></div>
     </div>
     {% if homepage.hero_align != 'center' %}
     <div class="hero-card"><strong>店舗情報</strong><div style="margin-top:10px;line-height:1.9;white-space:pre-line;" class="{% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-homepage-field="access_info"{% endif %}>{{ homepage.access_info }}</div></div>

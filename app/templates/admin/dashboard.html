@@ -15,6 +15,16 @@
   .monthly-calendar-card.dashboard-mobile-calendar .calendar-meta,
   .monthly-calendar-card.dashboard-mobile-calendar .holiday-label{font-size:8px;line-height:1.15;margin-top:1px;}
 }
+
+.plan-actual-note{margin-top:0;color:#6b7280;line-height:1.7;}
+.plan-summary-chip{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#fff7ed;color:#c2410c;font-size:13px;font-weight:700;}
+.plan-comparison-table{min-width:760px;}
+.plan-comparison-table th,.plan-comparison-table td{white-space:normal;vertical-align:top;}
+.plan-comparison-table thead th{background:#f8fafc;}
+.plan-comparison-table .is-current-col{background:#fff7ed;}
+.plan-current-badge{display:inline-block;margin-left:8px;padding:4px 8px;border-radius:999px;background:#f97316;color:#fff;font-size:11px;font-weight:700;}
+.plan-status-ok{display:inline-block;padding:4px 8px;border-radius:999px;background:#ecfdf5;color:#047857;font-size:12px;font-weight:700;}
+.plan-select-note{margin-top:10px;color:#6b7280;line-height:1.7;}
 </style>
 <div class="hero">
       <div class="hero-top">
@@ -50,13 +60,14 @@
         <div style="margin-top:14px;"><a href="/admin/register/{{ shop_id }}" class="primary-link">新規ユーザー登録</a></div>
       </div>
       <div class="card">
-        <div class="card-header"><h2>契約プランの土台</h2><span class="badge">後から有料化対応</span></div>
-        <p class="section-note" style="margin-top:0;">今は決済連携なしで、店舗ごとの契約プランだけ切り替えられるようにしています。後から無料/有料プラン追加、広告ON/OFF、機能制限の拡張に使えます。</p>
-        <form method="post" action="/admin/{{ shop_id }}/subscription">
+        <div class="card-header"><h2>契約プランの土台</h2><span class="badge">実際の3プラン表示</span></div>
+        <p class="plan-actual-note">公開中の料金ページに合わせて、管理トップでも <strong>フリー / スタンダード / プレミアム</strong> の3つだけ表示しています。</p>
+        <div class="plan-summary-chip">現在の表示プラン: {{ current_plan_detail.name }} / 月額 {{ current_plan_detail.price_display }}</div>
+        <form method="post" action="/admin/{{ shop_id }}/subscription" style="margin-top:14px;">
           <label>現在のプラン
             <select name="plan_id">
-              {% for plan in available_plans %}
-              <option value="{{ plan.id }}" {% if subscription.plan_id == plan.id %}selected{% endif %}>{{ plan.name }} / ¥{{ plan.monthly_price }} / code: {{ plan.code }}</option>
+              {% for plan in plan_select_items %}
+              <option value="{{ plan.id }}" {% if plan.selected %}selected{% endif %} {% if plan.disabled %}disabled{% endif %}>{{ plan.name }} / {{ plan.price_display }}</option>
               {% endfor %}
             </select>
           </label>
@@ -69,17 +80,55 @@
           </label>
           <button type="submit">プラン設定を保存する</button>
         </form>
-        <div class="section-note">現在は3プラン構成です。LINE連携・チャット機能・複数店舗管理は将来実装前提で、契約プラン上は先行して反映しています。</div>
+        <div class="plan-select-note">旧コードの契約が残っている場合でも、管理トップの見え方は実際の3プラン基準にそろえています。</div>
       </div>
 
       <div class="card">
-        <div class="card-header"><h2>プラン別機能一覧</h2><span class="badge">未実装機能は導入予定</span></div>
-        <div class="table-wrap"><table><thead><tr><th>機能</th><th>内容</th></tr></thead><tbody>{% for item in subscription_feature_items %}<tr><td>{{ item.label }}</td><td>{{ item.value }}</td></tr>{% endfor %}</tbody></table></div>
+        <div class="card-header"><h2>プラン別機能一覧</h2><span class="badge">3プラン比較</span></div>
+        <div class="table-wrap">
+          <table class="plan-comparison-table">
+            <thead>
+              <tr>
+                <th>項目</th>
+                {% for plan_code in comparison_plan_codes %}
+                <th class="{% if plan_code == current_plan_display_code %}is-current-col{% endif %}">
+                  {% if plan_code == 'free' %}フリー{% elif plan_code == 'standard' %}スタンダード{% else %}プレミアム{% endif %}
+                  {% if plan_code == current_plan_display_code %}<span class="plan-current-badge">現在表示中</span>{% endif %}
+                </th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in comparison_rows %}
+              <tr>
+                <th>{{ row.label }}</th>
+                {% for plan_code in comparison_plan_codes %}
+                <td class="{% if plan_code == current_plan_display_code %}is-current-col{% endif %}">{{ row.cells[plan_code] }}</td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div class="card">
-        <div class="card-header"><h2>プラン上限の見え方</h2><span class="badge">将来の制限制御用</span></div>
-        <div class="table-wrap"><table><thead><tr><th>項目</th><th>現在値</th><th>プラン上限</th></tr></thead><tbody>{% for row in plan_usage_rows %}<tr><td>{{ row.label }}</td><td>{{ row.current }}</td><td>{{ row.limit }}</td></tr>{% endfor %}</tbody></table></div>
+        <div class="card-header"><h2>プラン上限の見え方</h2><span class="badge">{{ current_plan_detail.name }}基準</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>項目</th><th>現在値</th><th>プラン上限</th><th>状態</th></tr></thead>
+            <tbody>
+              {% for row in plan_usage_rows %}
+              <tr>
+                <td>{{ row.label }}</td>
+                <td>{{ row.current }}</td>
+                <td>{{ row.limit }}</td>
+                <td><span class="plan-status-ok">{{ current_plan_detail.name }}で表示中</span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 

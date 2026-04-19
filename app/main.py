@@ -43,6 +43,7 @@ from app.db import (
     delete_customer_photo,
     get_reservations,
     get_customers,
+    get_member_customer_ids,
     update_reservation_status,
     authenticate_admin_user,
     get_admin_users,
@@ -52,6 +53,10 @@ from app.db import (
     get_shop_homepage_settings,
     get_shop_homepage_sections,
     get_shop_homepage_by_public_path,
+    create_member,
+    authenticate_member,
+    get_member_by_id,
+    get_member_reservations,
 )
 from app.runtime_data import (
     get_platform_admin,
@@ -180,76 +185,104 @@ PLAN_COMPARISON_ROWS = [
 ]
 
 
+ADMIN_PLAN_CODE_ALIASES = {
+    "free": ("free",),
+    "standard": ("standard", "basic"),
+    "premium": ("premium", "pro"),
+}
+
+
+def _format_plan_limit(limit_value: object, unit: str = "") -> str:
+    if limit_value in (None, "", 0):
+        return "無制限"
+    try:
+        numeric = int(limit_value)
+    except (TypeError, ValueError):
+        return f"{limit_value}{unit}" if unit else str(limit_value)
+    if numeric >= 999999:
+        return "無制限"
+    return f"{numeric}{unit}" if unit else str(numeric)
+
+
+def _resolve_admin_plan_id_map(available_plans: list[dict]) -> dict[str, int | None]:
+    plan_by_code = {str(plan.get("code") or ""): int(plan.get("id") or 0) for plan in available_plans if plan.get("id")}
+    resolved: dict[str, int | None] = {}
+    for display_code, aliases in ADMIN_PLAN_CODE_ALIASES.items():
+        resolved[display_code] = next((plan_by_code.get(alias) for alias in aliases if plan_by_code.get(alias)), None)
+    return resolved
+
+
+def _resolve_current_display_plan_code(subscription: dict | None) -> str:
+    plan_code = str((subscription or {}).get("plan_code") or "").strip().lower()
+    if plan_code in PLAN_DETAILS:
+        return plan_code
+    for display_code, aliases in ADMIN_PLAN_CODE_ALIASES.items():
+        if plan_code in aliases:
+            return display_code
+    return "free"
+
+
+def _build_admin_plan_context(
+    subscription: dict | None,
+    available_plans: list[dict],
+    customers: list[dict],
+    reservations: list[dict],
+    staff_list: list[dict],
+) -> dict[str, object]:
+    current_display_code = _resolve_current_display_plan_code(subscription)
+    current_plan_detail = PLAN_DETAILS.get(current_display_code, PLAN_DETAILS["free"])
+    plan_id_map = _resolve_admin_plan_id_map(available_plans)
+
+    plan_select_items: list[dict[str, object]] = []
+    for display_code in ("free", "standard", "premium"):
+        detail = PLAN_DETAILS[display_code]
+        plan_id = plan_id_map.get(display_code)
+        plan_select_items.append({
+            "id": plan_id,
+            "code": display_code,
+            "name": detail["name"],
+            "price_display": detail["price_display"],
+            "selected": display_code == current_display_code,
+            "disabled": plan_id is None,
+        })
+
+    comparison_plan_codes = ["free", "standard", "premium"]
+
+    current_month = date.today().strftime("%Y-%m")
+    current_month_reservations = sum(
+        1
+        for item in reservations
+        if str(item.get("reservation_date") or "").startswith(current_month) and str(item.get("status") or "") != "キャンセル"
+    )
+
+    current_plan_usage_rows = [
+        {"label": "予約受付", "current": f"当月{current_month_reservations}件", "limit": PLAN_COMPARISON_ROWS[1]["cells"][current_display_code]},
+        {"label": "顧客管理", "current": f"{len(customers)}人", "limit": PLAN_COMPARISON_ROWS[2]["cells"][current_display_code]},
+        {"label": "登録スタッフ数", "current": f"{len(staff_list)}人", "limit": PLAN_COMPARISON_ROWS[4]["cells"][current_display_code]},
+        {"label": "LINE連携", "current": "対応", "limit": PLAN_COMPARISON_ROWS[5]["cells"][current_display_code]},
+        {"label": "ホームページ作成", "current": "利用可", "limit": PLAN_COMPARISON_ROWS[6]["cells"][current_display_code]},
+        {"label": "チャット機能", "current": "利用可", "limit": PLAN_COMPARISON_ROWS[7]["cells"][current_display_code]},
+        {"label": "複数店舗管理", "current": "—", "limit": PLAN_COMPARISON_ROWS[8]["cells"][current_display_code]},
+        {"label": "優先対応", "current": "—", "limit": PLAN_COMPARISON_ROWS[9]["cells"][current_display_code]},
+    ]
+
+    return {
+        "current_plan_detail": current_plan_detail,
+        "current_plan_display_code": current_display_code,
+        "plan_select_items": plan_select_items,
+        "comparison_plan_codes": comparison_plan_codes,
+        "comparison_rows": PLAN_COMPARISON_ROWS,
+        "plan_usage_rows": current_plan_usage_rows,
+    }
+
+
 
 WEEKDAY_MAP = {"月曜日": 0, "火曜日": 1, "水曜日": 2, "木曜日": 3, "金曜日": 4, "土曜日": 5, "日曜日": 6}
 
 
-def _is_unlimited(value: object) -> bool:
-    return value in (None, 0, "", "0")
-
-
-def _format_limit_value(value: object, suffix: str = "") -> str:
-    if _is_unlimited(value):
-        return "無制限"
-    return f"{int(value)}{suffix}"
-
-
-def _format_plan_price(value: object) -> str:
-    try:
-        amount = int(value or 0)
-    except (TypeError, ValueError):
-        amount = 0
-    return f"¥{amount:,}"
-
-
 def _get_customer_photo_policy(subscription: dict | None) -> dict:
     label = str((subscription or {}).get("plan_name") or "現在のプラン")
-    max_photos = (subscription or {}).get("max_photos_per_customer")
-    return {"enabled": True, "label": label, "max_photos": None if _is_unlimited(max_photos) else int(max_photos)}
-
-
-def _get_reservation_count_for_current_month(shop_id: str) -> int:
-    today = date.today()
-    prefix = today.strftime("%Y-%m")
-    return sum(1 for item in get_reservations(shop_id) if str(item.get("reservation_date") or "").startswith(prefix))
-
-
-def _build_subscription_feature_items(subscription: dict | None) -> list[dict[str, str]]:
-    plan = subscription or {}
-
-    def status_label(access_key: str, live_key: str) -> str:
-        if not plan.get(access_key):
-            return "—"
-        return "対応" if plan.get(live_key) else "導入予定"
-
-    chat_limit = plan.get("max_chat_messages_per_month")
-    if not plan.get("can_use_chat"):
-        chat_text = "—"
-    elif _is_unlimited(chat_limit):
-        chat_text = "無制限（導入予定）"
-    else:
-        chat_text = f"月{int(chat_limit)}通まで（導入予定）"
-
-    return [
-        {"label": "予約受付", "value": _format_limit_value(plan.get("max_reservations_per_month"), "件 / 月")},
-        {"label": "顧客管理", "value": _format_limit_value(plan.get("max_customers"), "人")},
-        {"label": "顧客写真", "value": _format_limit_value(plan.get("max_photos_per_customer"), "枚 / 人")},
-        {"label": "登録スタッフ数", "value": _format_limit_value(plan.get("max_staff"), "人")},
-        {"label": "LINE連携", "value": status_label("can_use_line", "is_line_feature_live")},
-        {"label": "ホームページ作成", "value": "無料" if plan.get("homepage_included", 1) else "—"},
-        {"label": "チャット機能", "value": chat_text},
-        {"label": "複数店舗管理", "value": status_label("can_use_multi_store", "is_multi_store_feature_live")},
-        {"label": "優先対応", "value": "対応" if plan.get("priority_support") else "—"},
-    ]
-
-
-def _build_plan_usage_rows(subscription: dict | None, reservations: list[dict], customers: list[dict], staff_list: list[dict]) -> list[dict[str, str]]:
-    current_month_reservations = _get_reservation_count_for_current_month(str((subscription or {}).get("shop_id") or "")) if subscription else 0
-    return [
-        {"label": "スタッフ数", "current": str(len(staff_list or [])), "limit": _format_limit_value((subscription or {}).get("max_staff"), "人")},
-        {"label": "顧客数", "current": str(len(customers or [])), "limit": _format_limit_value((subscription or {}).get("max_customers"), "人")},
-        {"label": "今月の予約受付数", "current": str(current_month_reservations), "limit": _format_limit_value((subscription or {}).get("max_reservations_per_month"), "件")},
-    ]
+    return {"enabled": True, "label": label, "max_photos": None}
 
 
 def _save_customer_photo_file(shop_id: str, customer_id: int, upload: UploadFile) -> str:
@@ -879,7 +912,7 @@ def platform_shop_edit_page(request: Request, shop_id: str):
         name="platform/shop_edit.html",
         context={
             "shop": shop,
-            "available_plans": get_plans(active_only=True),
+            "available_plans": get_plans(),
             "message": request.query_params.get("saved", ""),
             "error_message": "",
             "current_admin_name": request.session.get("platform_admin_name", PLATFORM_ADMIN.get("name", "運営管理者")),
@@ -1102,7 +1135,6 @@ def admin_settings_page(request: Request, shop_id: str):
             "active_page": "settings",
             "success_message": success_message,
             "message": success_message,
-            "subscription_feature_items": _build_subscription_feature_items(subscription),
         },
     )
 
@@ -1253,6 +1285,13 @@ def admin_page(request: Request, shop_id: str, error_message: str = ""):
         selected_date=selected_date_obj,
         week_start=week_start,
     )
+    plan_context = _build_admin_plan_context(
+        subscription=subscription,
+        available_plans=available_plans,
+        customers=customers,
+        reservations=reservations,
+        staff_list=shop.get("staff_list", []),
+    )
     template_name = "admin/tool/dashboard.html" if shop.get("admin_ui_mode") == "tool" else "admin/dashboard.html"
 
     return templates.TemplateResponse(
@@ -1277,6 +1316,7 @@ def admin_page(request: Request, shop_id: str, error_message: str = ""):
             "admin_users": admin_users,
             "subscription": subscription,
             "available_plans": available_plans,
+            **plan_context,
             "current_admin_name": current_admin_name,
             "calendar_days": calendar_days,
             "calendar_month_label": calendar_month_label,
@@ -1292,8 +1332,6 @@ def admin_page(request: Request, shop_id: str, error_message: str = ""):
             "week_start": week_start.isoformat(),
             "prev_week_start": (week_start - timedelta(days=7)).isoformat(),
             "next_week_start": (week_start + timedelta(days=7)).isoformat(),
-            "subscription_feature_items": _build_subscription_feature_items(subscription),
-            "plan_usage_rows": _build_plan_usage_rows(subscription, reservations, customers, shop.get("staff_list", [])),
             "active_page": "dashboard",
         },
     )
@@ -1425,8 +1463,14 @@ def admin_customers_page(request: Request, shop_id: str, error_message: str = ""
     keyword = (request.query_params.get("q") or "").strip()
     sort_order = (request.query_params.get("sort") or "new").strip()
     visit_counts = _build_customer_visit_counts(reservations)
+    member_customer_ids = get_member_customer_ids(shop_id)
     customer_items = [
-        {**customer, "visit_count": visit_counts.get(int(customer.get("id") or 0), 0)}
+        {
+            **customer,
+            "visit_count": visit_counts.get(int(customer.get("id") or 0), 0),
+            "is_member": int(customer.get("id") or 0) in member_customer_ids,
+            "membership_label": "会員" if int(customer.get("id") or 0) in member_customer_ids else "非会員",
+        }
         for customer in customers
     ]
     if keyword:
@@ -1438,6 +1482,8 @@ def admin_customers_page(request: Request, shop_id: str, error_message: str = ""
             or lowered in str(item.get("email") or "").lower()
         ]
     customer_items, sort_order = _sort_customer_items(customer_items, sort_order)
+    member_customer_items = [item for item in customer_items if item.get("is_member")]
+    non_member_customer_items = [item for item in customer_items if not item.get("is_member")]
     template_name = "admin/tool/customers.html" if shop.get("admin_ui_mode") == "tool" else "admin/customers.html"
     return templates.TemplateResponse(
         request=request,
@@ -1448,6 +1494,8 @@ def admin_customers_page(request: Request, shop_id: str, error_message: str = ""
             "shop_id": shop_id,
             "customers": customers,
             "customer_items": customer_items,
+            "member_customer_items": member_customer_items,
+            "non_member_customer_items": non_member_customer_items,
             "keyword": keyword,
             "sort_order": sort_order,
             "today": date.today().isoformat(),
@@ -1662,7 +1710,7 @@ def admin_update_subscription(
     if normalized_status not in {"active", "trial", "canceled"}:
         return admin_page(request, shop_id, error_message="契約状態の指定が正しくありません。")
     update_shop_subscription((shop_id or "").strip().lower(), plan_id, normalized_status)
-    return RedirectResponse(f"/admin/{(shop_id or '').strip().lower()}/settings?saved=プラン設定を更新しました", status_code=303)
+    return RedirectResponse(f"/admin/{(shop_id or '').strip().lower()}", status_code=303)
 
 
 @app.post("/admin/{shop_id}/customers")
@@ -1681,10 +1729,6 @@ def admin_create_customer(
     email = (email or "").strip().lower()
     if not name:
         return admin_customers_page(request, shop_id, error_message="顧客名を入力してください。")
-    subscription = get_shop_subscription(shop_id) or {}
-    max_customers = subscription.get("max_customers")
-    if not _is_unlimited(max_customers) and len(get_customers(shop_id)) >= int(max_customers):
-        return admin_customers_page(request, shop_id, error_message="現在のプランでは顧客登録数の上限に達しています。")
     create_customer(shop_id, name, phone, email)
     return RedirectResponse(f"/admin/{shop_id}/customers?saved=顧客を追加しました", status_code=303)
 
@@ -1706,12 +1750,6 @@ def admin_create_reservation(
     shop = get_shop(shop_id)
     if not shop:
         raise HTTPException(status_code=404, detail="見つかりません")
-
-    subscription = get_shop_subscription(shop_id) or {}
-    reservation_limit = subscription.get("max_reservations_per_month")
-    current_month_reservations = _get_reservation_count_for_current_month(shop_id)
-    if not _is_unlimited(reservation_limit) and current_month_reservations >= int(reservation_limit):
-        return admin_page(request, shop_id, error_message="現在のプランでは今月の予約受付上限に達しています。")
 
     customers = get_customers(shop_id)
     customer = next((c for c in customers if int(c.get("id") or 0) == int(customer_id)), None)
@@ -1867,29 +1905,7 @@ def shop_reserve(
             context=ctx,
             status_code=400,
         )
-    subscription = get_shop_subscription(shop_id) or {}
-    reservation_limit = subscription.get("max_reservations_per_month")
-    current_month_reservations = _get_reservation_count_for_current_month(shop_id)
-    if not _is_unlimited(reservation_limit) and current_month_reservations >= int(reservation_limit):
-        ctx = build_shop_booking_context(shop_id, request, "現在のプランでは今月の予約受付上限に達しています。")
-        return templates.TemplateResponse(
-            request=request,
-            name="shop/index.html",
-            context=ctx,
-            status_code=400,
-        )
-    existing_customer = find_customer(shop_id, customer_name, phone, email)
-    if existing_customer is None:
-        max_customers = subscription.get("max_customers")
-        if not _is_unlimited(max_customers) and len(get_customers(shop_id)) >= int(max_customers):
-            ctx = build_shop_booking_context(shop_id, request, "現在のプランでは顧客登録数の上限に達しています。")
-            return templates.TemplateResponse(
-                request=request,
-                name="shop/index.html",
-                context=ctx,
-                status_code=400,
-            )
-    customer = existing_customer or create_customer(shop_id, customer_name, phone, email)
+    customer = find_customer(shop_id, customer_name, phone, email) or create_customer(shop_id, customer_name, phone, email)
     updated_customer = update_customer_contact(shop_id, int(customer['id']), customer_name, phone, email)
     if updated_customer is not None:
         customer = updated_customer
@@ -1919,6 +1935,134 @@ def shop_reserve(
         request=request,
         name="shop/complete.html",
         context={"shop": shop, "shop_id": shop_id, "customer": customer, "reservation": reservation},
+    )
+
+
+def _member_default_next(shop_id: str) -> str:
+    return f"/shop/{shop_id}"
+
+
+def _member_redirect_target(shop_id: str, next_url: str | None) -> str:
+    target = str(next_url or '').strip()
+    if target.startswith('/'):
+        return target
+    return _member_default_next(shop_id)
+
+
+def _get_logged_in_member(request: Request, shop_id: str) -> dict | None:
+    member_id = request.session.get('member_logged_in_id')
+    member_shop_id = str(request.session.get('member_logged_in_shop_id') or '')
+    if not member_id or member_shop_id != shop_id:
+        return None
+    try:
+        return get_member_by_id(shop_id, int(member_id))
+    except (TypeError, ValueError):
+        return None
+
+
+def _login_member_session(request: Request, shop_id: str, member: dict) -> None:
+    request.session['member_logged_in_id'] = int(member['id'])
+    request.session['member_logged_in_shop_id'] = shop_id
+    request.session['member_logged_in_name'] = str(member.get('name') or '')
+
+
+@app.get("/member/{shop_id}/login", response_class=HTMLResponse)
+def member_login_page(request: Request, shop_id: str, next: str | None = None, error: str | None = None):
+    shop = get_shop(shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+    member = _get_logged_in_member(request, shop_id)
+    if member is not None:
+        return RedirectResponse(url=f"/member/{shop_id}/mypage", status_code=303)
+    return templates.TemplateResponse(
+        request=request,
+        name="member/login.html",
+        context={
+            "request": request,
+            "shop": shop,
+            "shop_id": shop_id,
+            "next_url": _member_redirect_target(shop_id, next),
+            "error": error or "",
+        },
+    )
+
+
+@app.post("/member/{shop_id}/login")
+def member_login_submit(request: Request, shop_id: str, phone: str = Form(...), password: str = Form(...), next_url: str = Form("")):
+    shop = get_shop(shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+    member = authenticate_member(shop_id, phone, password)
+    if member is None:
+        from urllib.parse import quote
+        target = quote(_member_redirect_target(shop_id, next_url), safe='')
+        return RedirectResponse(url=f"/member/{shop_id}/login?next={target}&error=電話番号またはパスワードが違います", status_code=303)
+    _login_member_session(request, shop_id, member)
+    return RedirectResponse(url=_member_redirect_target(shop_id, next_url or f"/member/{shop_id}/mypage"), status_code=303)
+
+
+@app.get("/member/{shop_id}/register", response_class=HTMLResponse)
+def member_register_page(request: Request, shop_id: str, next: str | None = None, error: str | None = None):
+    shop = get_shop(shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+    return templates.TemplateResponse(
+        request=request,
+        name="member/register.html",
+        context={
+            "request": request,
+            "shop": shop,
+            "shop_id": shop_id,
+            "next_url": _member_redirect_target(shop_id, next),
+            "error": error or "",
+        },
+    )
+
+
+@app.post("/member/{shop_id}/register")
+def member_register_submit(
+    request: Request,
+    shop_id: str,
+    name: str = Form(...),
+    phone: str = Form(...),
+    password: str = Form(...),
+    email: str = Form(''),
+    next_url: str = Form(''),
+):
+    shop = get_shop(shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+    try:
+        member = create_member(shop_id, name, phone, password, email)
+    except ValueError as exc:
+        from urllib.parse import quote
+        target = quote(_member_redirect_target(shop_id, next_url), safe='')
+        return RedirectResponse(url=f"/member/{shop_id}/register?next={target}&error={quote(str(exc), safe='')}", status_code=303)
+    _login_member_session(request, shop_id, member)
+    return RedirectResponse(url=_member_redirect_target(shop_id, next_url or f"/member/{shop_id}/mypage"), status_code=303)
+
+
+@app.get("/member/{shop_id}/logout")
+def member_logout(request: Request, shop_id: str):
+    request.session.pop('member_logged_in_id', None)
+    request.session.pop('member_logged_in_shop_id', None)
+    request.session.pop('member_logged_in_name', None)
+    return RedirectResponse(url=f"/member/{shop_id}/login", status_code=303)
+
+
+@app.get("/member/{shop_id}/mypage", response_class=HTMLResponse)
+def member_dashboard_page(request: Request, shop_id: str):
+    shop = get_shop(shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+    member = _get_logged_in_member(request, shop_id)
+    if member is None:
+        return RedirectResponse(url=f"/member/{shop_id}/login?next=/member/{shop_id}/mypage", status_code=303)
+    reservations = get_member_reservations(shop_id, int(member['id']))
+    return templates.TemplateResponse(
+        request=request,
+        name="member/dashboard.html",
+        context={"request": request, "shop": shop, "shop_id": shop_id, "member": member, "reservations": reservations[:10]},
     )
 
 

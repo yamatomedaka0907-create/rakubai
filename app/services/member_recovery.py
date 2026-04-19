@@ -1,0 +1,1 @@
+token generation/validation same as shop logic

@@ -1,0 +1,5 @@
+<!-- 予約ページにログイン導線 -->
+<div class="member-auth-links">
+  <a href="/member/{{ shop_id }}/login?next={{ request.url.path }}">ログイン</a>
+  <a href="/member/{{ shop_id }}/register?next={{ request.url.path }}">会員登録</a>
+</div>

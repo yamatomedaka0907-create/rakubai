@@ -1,9 +1,44 @@
 {% extends "admin/base.html" %}
 {% block content %}
-<div class="hero"><div class="hero-top"><div><h1>顧客管理</h1><p>顧客登録と顧客一覧をこのページにまとめています。</p></div></div></div>
-<div class="card" style="margin-top:18px;">
-  <div class="card-header"><h2>顧客一覧</h2><span class="badge">{{ customer_items|length }}件</span></div>
-  <form method="get" action="/admin/{{ shop_id }}/customers" style="display:grid;grid-template-columns:2fr 1fr auto auto;gap:12px;align-items:end;margin-bottom:16px;">
+<style>
+.customer-sections { display:grid; gap:20px; }
+.customer-section-card { display:grid; gap:14px; }
+.customer-section-head { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.customer-type-badge { display:inline-flex; align-items:center; justify-content:center; min-width:64px; padding:6px 12px; border-radius:999px; font-size:12px; font-weight:800; }
+.customer-type-badge.is-member { background:rgba(59,130,246,0.14); color:#1d4ed8; }
+.customer-type-badge.is-guest { background:#eef2f7; color:#475569; }
+.customer-summary { display:flex; gap:12px; flex-wrap:wrap; margin-top:12px; }
+.customer-summary .badge { min-height:36px; display:inline-flex; align-items:center; }
+.customer-search-grid { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(180px,0.8fr) auto; gap:12px; align-items:end; }
+.customer-actions { display:flex; gap:10px; flex-wrap:wrap; }
+.customer-table td:first-child, .customer-table th:first-child { width:72px; }
+.customer-table td:last-child, .customer-table th:last-child { width:110px; }
+@media (max-width: 900px) {
+  .customer-search-grid { grid-template-columns:1fr; }
+  .customer-section-head { align-items:flex-start; flex-direction:column; }
+}
+</style>
+
+<div class="hero">
+  <div class="hero-top">
+    <div>
+      <h1>顧客管理</h1>
+      <p>顧客情報を一覧で確認しながら、会員と非会員を分けて管理できます。</p>
+      <div class="customer-summary">
+        <span class="badge">合計 {{ customer_items|length }} 人</span>
+        <span class="badge">会員 {{ member_customer_items|length }} 人</span>
+        <span class="badge">非会員 {{ non_member_customer_items|length }} 人</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if success_message %}<div class="card" style="margin-bottom:18px;border-color:#bbf7d0;background:#f0fdf4;"><div class="card-header"><h2>完了</h2><span class="badge">保存済み</span></div><p class="section-note">{{ success_message }}</p></div>{% endif %}
+{% if error_message %}<div class="card" style="margin-bottom:18px;border-color:#fecaca;background:#fff1f2;"><div class="card-header"><h2>エラー</h2><span class="badge">確認</span></div><p class="section-note">{{ error_message }}</p></div>{% endif %}
+
+<div class="card" style="margin-bottom:18px;">
+  <div class="card-header"><h2>検索・並び替え</h2><span class="badge">一覧調整</span></div>
+  <form method="get" action="/admin/{{ shop_id }}/customers" class="customer-search-grid">
     <label>キーワード<input type="text" name="q" value="{{ keyword }}" placeholder="名前・電話番号・メールアドレスで検索"></label>
     <label>並び替え
       <select name="sort">
@@ -12,26 +47,86 @@
         <option value="visits" {% if sort_order == 'visits' %}selected{% endif %}>来店回数多い順</option>
       </select>
     </label>
-    <button type="submit">適用する</button>
-    <a href="/admin/{{ shop_id }}/customers">リセット</a>
+    <div class="customer-actions">
+      <button type="submit">適用する</button>
+      <a href="/admin/{{ shop_id }}/customers" class="secondary-link">リセット</a>
+    </div>
   </form>
-  {% if customer_items %}
-  <div class="table-wrap"><table><thead><tr><th>ID</th><th>名前</th><th>電話番号</th><th>メールアドレス</th><th>来店回数</th><th>登録日時</th><th>操作</th></tr></thead><tbody>{% for customer in customer_items %}<tr><td>{{ customer.id }}</td><td><a href="/admin/{{ shop_id }}/customers/{{ customer.id }}">{{ customer.name }}</a></td><td>{{ customer.phone or '-' }}</td><td>{{ customer.email or '-' }}</td><td>{{ customer.visit_count }}回</td><td>{{ customer.created_at }}</td><td><a href="/admin/{{ shop_id }}/customers/{{ customer.id }}">編集</a></td></tr>{% endfor %}</tbody></table></div>
-  {% else %}<p class="empty">まだ顧客が登録されていません。</p>{% endif %}
 </div>
-<div class="grid">
-  <div class="card">
-    <div class="card-header"><h2>顧客登録</h2><span class="badge">新規</span></div>
-    <form method="post" action="/admin/{{ shop_id }}/customers">
-      <label>顧客名<input type="text" name="name" placeholder="例：山田 花子" required></label>
-      <label>電話番号<input type="text" name="phone" placeholder="例：090-1234-5678"></label>
-      <label>メールアドレス<input type="email" name="email" placeholder="例：sample@example.com"></label>
-      <button type="submit">顧客を登録する</button>
-    </form>
+
+<div class="customer-sections">
+  <div class="card customer-section-card">
+    <div class="card-header customer-section-head">
+      <div>
+        <h2>会員顧客</h2>
+        <p class="section-note">会員登録済みの顧客です。</p>
+      </div>
+      <span class="customer-type-badge is-member">{{ member_customer_items|length }} 人</span>
+    </div>
+    {% if member_customer_items %}
+    <div class="table-scroll">
+      <table class="customer-table">
+        <thead><tr><th>ID</th><th>名前</th><th>区分</th><th>電話番号</th><th>メールアドレス</th><th>来店回数</th><th>登録日</th><th>操作</th></tr></thead>
+        <tbody>
+          {% for customer in member_customer_items %}
+          <tr>
+            <td>{{ customer.id }}</td>
+            <td><a href="/admin/{{ shop_id }}/customers/{{ customer.id }}">{{ customer.name }}</a></td>
+            <td><span class="customer-type-badge is-member">会員</span></td>
+            <td>{{ customer.phone or '-' }}</td>
+            <td>{{ customer.email or '-' }}</td>
+            <td>{{ customer.visit_count }}回</td>
+            <td>{{ customer.created_at[:10] if customer.created_at else '-' }}</td>
+            <td><a href="/admin/{{ shop_id }}/customers/{{ customer.id }}" class="secondary-link">詳細</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<p class="section-note">会員の顧客はいません。</p>{% endif %}
   </div>
+
+  <div class="card customer-section-card">
+    <div class="card-header customer-section-head">
+      <div>
+        <h2>非会員顧客</h2>
+        <p class="section-note">予約や手動登録のみで作成された顧客です。</p>
+      </div>
+      <span class="customer-type-badge is-guest">{{ non_member_customer_items|length }} 人</span>
+    </div>
+    {% if non_member_customer_items %}
+    <div class="table-scroll">
+      <table class="customer-table">
+        <thead><tr><th>ID</th><th>名前</th><th>区分</th><th>電話番号</th><th>メールアドレス</th><th>来店回数</th><th>登録日</th><th>操作</th></tr></thead>
+        <tbody>
+          {% for customer in non_member_customer_items %}
+          <tr>
+            <td>{{ customer.id }}</td>
+            <td><a href="/admin/{{ shop_id }}/customers/{{ customer.id }}">{{ customer.name }}</a></td>
+            <td><span class="customer-type-badge is-guest">非会員</span></td>
+            <td>{{ customer.phone or '-' }}</td>
+            <td>{{ customer.email or '-' }}</td>
+            <td>{{ customer.visit_count }}回</td>
+            <td>{{ customer.created_at[:10] if customer.created_at else '-' }}</td>
+            <td><a href="/admin/{{ shop_id }}/customers/{{ customer.id }}" class="secondary-link">詳細</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<p class="section-note">非会員の顧客はいません。</p>{% endif %}
+  </div>
+</div>
+
+<div class="grid" style="margin-top:18px;">
   <div class="card">
-    <div class="card-header"><h2>顧客サマリー</h2><span class="badge">{{ customers|length }}件</span></div>
-    <p class="section-note">登録した顧客は予約作成時の選択肢に反映されます。</p>
+    <div class="card-header"><h2>新規顧客登録</h2><span class="badge">手動追加</span></div>
+    <form method="post" action="/admin/{{ shop_id }}/customers">
+      <label>顧客名<input type="text" name="name" required></label>
+      <label>電話番号<input type="text" name="phone"></label>
+      <label>メールアドレス<input type="email" name="email"></label>
+      <button type="submit">顧客を追加する</button>
+    </form>
   </div>
 </div>
 {% endblock %}

@@ -1,0 +1,15 @@
+<!-- 既存のHTMLは消さず、このフォームだけ追加してください -->
+
+<form method="post" action="/member/{{ shop_id }}/login" class="member-login-form">
+  <div>
+    <label>電話番号</label>
+    <input type="text" name="phone" required>
+  </div>
+
+  <div>
+    <label>パスワード</label>
+    <input type="password" name="password" required>
+  </div>
+
+  <button type="submit">ログイン</button>
+</form>

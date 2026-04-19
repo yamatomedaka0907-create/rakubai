@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ shop.shop_name }} | 会員ページ</title>
+  <style>
+    :root {
+      --primary: {{ shop.primary_color }};
+      --primary-dark: {{ shop.primary_dark }};
+      --bg-soft: {{ shop.accent_bg }};
+      --line: #d8efec;
+      --text: #1f2937;
+      --subtext: #6b7280;
+      --surface: #ffffff;
+      --shadow: 0 16px 40px rgba(15, 23, 42, .08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top right, rgba(255,255,255,.96), rgba(255,255,255,.65) 28%, transparent 55%),
+        linear-gradient(180deg, #ffffff 0%, var(--bg-soft) 100%);
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 24px; }
+    .top-nav { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+    .top-nav a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 16px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.92);
+      border: 1px solid var(--line);
+      text-decoration: none;
+      font-weight: 700;
+      color: var(--primary-dark);
+      box-shadow: 0 8px 24px rgba(15, 23, 42, .04);
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+    .card {
+      background: rgba(255,255,255,.92);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      padding: 24px;
+      backdrop-filter: blur(8px);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(46,196,182,.14);
+      color: var(--primary-dark);
+      font-weight: 800;
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+    .title { margin: 0; color: var(--primary-dark); }
+    .lead { margin: 10px 0 0; color: var(--subtext); line-height: 1.8; }
+    .hero-main { display: grid; gap: 18px; }
+    .profile-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .profile-name { font-size: clamp(28px, 4vw, 38px); font-weight: 800; margin: 0; }
+    .quick-stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      width: min(100%, 340px);
+    }
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: #fcfffe;
+      padding: 16px;
+    }
+    .stat-label { font-size: 12px; font-weight: 700; color: var(--subtext); margin-bottom: 8px; }
+    .stat-value { font-size: 24px; font-weight: 800; color: var(--primary-dark); }
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .meta-item {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      background: #fcfffe;
+      min-height: 100%;
+    }
+    .meta-label { font-size: 12px; font-weight: 700; color: var(--subtext); margin-bottom: 8px; }
+    .meta-value { font-size: 15px; font-weight: 700; word-break: break-word; }
+    .section-grid {
+      display: grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap: 18px;
+    }
+    .section-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    .subcopy { color: var(--subtext); line-height: 1.8; margin: 8px 0 0; }
+    .reservation-list, .chat-list, .gallery-grid, .feature-list { display: grid; gap: 12px; }
+    .reservation {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 16px;
+      background: #fcfffe;
+    }
+    .res-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: rgba(46,196,182,.12);
+      color: var(--primary-dark);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .row-note { color: var(--subtext); line-height: 1.7; }
+    .empty {
+      border: 1px dashed var(--line);
+      border-radius: 20px;
+      padding: 20px;
+      background: rgba(252,255,254,.9);
+      color: var(--subtext);
+      line-height: 1.8;
+    }
+    .chat-shell {
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(247,255,254,.96));
+    }
+    .chat-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,.9);
+    }
+    .messages { display: grid; gap: 12px; padding: 18px; }
+    .bubble {
+      max-width: 85%;
+      padding: 14px 16px;
+      border-radius: 20px;
+      line-height: 1.8;
+      font-size: 14px;
+    }
+    .bubble.staff {
+      background: rgba(46,196,182,.14);
+      justify-self: start;
+    }
+    .bubble.member {
+      background: #ffffff;
+      border: 1px solid var(--line);
+      justify-self: end;
+    }
+    .time { font-size: 12px; color: var(--subtext); margin-top: 6px; }
+    .composer {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      padding: 0 18px 18px;
+    }
+    .composer textarea {
+      width: 100%;
+      min-height: 110px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      resize: vertical;
+      font: inherit;
+      background: #ffffff;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      padding: 0 18px;
+      border-radius: 14px;
+      text-decoration: none;
+      font-weight: 800;
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      white-space: nowrap;
+    }
+    .btn.sub {
+      background: #ffffff;
+      color: var(--primary-dark);
+      border: 1px solid var(--line);
+    }
+    .feature {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      background: #fcfffe;
+    }
+    .feature strong { display: block; margin-bottom: 8px; color: var(--primary-dark); }
+    .gallery-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .photo-card {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      overflow: hidden;
+      background: #ffffff;
+    }
+    .photo-card img {
+      display: block;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      background: #eef7f5;
+    }
+    .photo-meta { padding: 12px 14px; color: var(--subtext); font-size: 13px; }
+    .placeholder-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .placeholder {
+      min-height: 150px;
+      border: 1px dashed var(--line);
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(46,196,182,.08), rgba(255,255,255,.95));
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 18px;
+      color: var(--subtext);
+      line-height: 1.8;
+    }
+    @media (max-width: 960px) {
+      .hero, .section-grid { grid-template-columns: 1fr; }
+      .meta { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .wrap { padding: 16px; }
+      .card { padding: 20px; border-radius: 22px; }
+      .top-nav a, .btn { width: 100%; }
+      .quick-stats,
+      .gallery-grid,
+      .placeholder-grid,
+      .composer {
+        grid-template-columns: 1fr;
+        width: 100%;
+      }
+      .bubble { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav class="top-nav">
+      <a href="/shop/{{ shop_id }}">予約ページへ</a>
+      <a href="/shop/{{ shop_id }}#reserve-form">新しく予約する</a>
+      <a href="/member/{{ shop_id }}/logout">ログアウト</a>
+    </nav>
+
+    <section class="hero">
+      <div class="card hero-main">
+        <div class="badge">会員ページ</div>
+        <div class="profile-row">
+          <div>
+            <p style="margin:0;color:var(--subtext);font-weight:700;">{{ shop.shop_name }}</p>
+            <h1 class="profile-name">{{ member.name }} さん</h1>
+            <p class="lead">ログイン後の会員専用ページです。ここを土台にして、今後は店舗とのチャットや会員画像の閲覧機能を追加できる構成にしています。</p>
+          </div>
+          <div class="quick-stats">
+            <div class="stat">
+              <div class="stat-label">累計予約</div>
+              <div class="stat-value">{{ reservation_count }}</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">表示中の画像</div>
+              <div class="stat-value">{{ member_photos|length }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="meta">
+          <div class="meta-item">
+            <div class="meta-label">ログインID</div>
+            <div class="meta-value">{{ member.phone }}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">メールアドレス</div>
+            <div class="meta-value">{{ member.email or '未登録' }}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">ご案内状態</div>
+            <div class="meta-value">{% if member.email %}メール案内に対応{% else %}メール未登録{% endif %}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="badge">これから追加する機能</div>
+        <h2 class="title" style="font-size: 24px;">準備済みの表示エリア</h2>
+        <p class="subcopy">会員がログインしたあとに使う専用ページとして、先に必要な枠だけ実装しています。実際の送信処理や画像追加処理はまだつなげず、見える場所だけ用意しています。</p>
+        <div class="feature-list" style="margin-top:18px;">
+          <div class="feature">
+            <strong>チャットエリア</strong>
+            店舗とのやり取りができる見た目を先に配置しています。
+          </div>
+          <div class="feature">
+            <strong>会員画像エリア</strong>
+            今後、施術写真や保存画像を一覧表示できるようにしています。
+          </div>
+          <div class="feature">
+            <strong>予約確認エリア</strong>
+            ログイン後すぐに予約状況を見やすく確認できます。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-grid">
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <div class="badge">予約確認</div>
+            <h2 class="title" style="font-size: 26px;">予約一覧</h2>
+            <p class="subcopy">会員にひもづく予約を表示しています。今後もこのページを会員のホーム画面として使えるようにしています。</p>
+          </div>
+          <a class="btn sub" href="/shop/{{ shop_id }}#reserve-form">予約を追加する</a>
+        </div>
+        <div class="reservation-list">
+          {% if reservations %}
+            {% for item in reservations %}
+              <div class="reservation">
+                <div class="res-top">
+                  <strong>{{ item.reservation_date }} {{ item.start_time }}〜{{ item.end_time }}</strong>
+                  <span class="status">{{ item.status }}</span>
+                </div>
+                <div class="row-note">担当: {{ item.staff_name }} / メニュー: {{ item.menu_name }}</div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty">まだ会員にひもづく予約はありません。予約ページから新しい予約を入れると、この会員ページに表示されます。</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <div class="badge">チャット</div>
+            <h2 class="title" style="font-size: 26px;">店舗とのやり取り</h2>
+            <p class="subcopy">送信処理はまだ未接続ですが、ログイン後ページとして使う想定のチャット枠を配置しています。</p>
+          </div>
+          <span class="status">準備中</span>
+        </div>
+        <div class="chat-shell">
+          <div class="chat-head">
+            <strong>{{ shop.shop_name }} スタッフチャット</strong>
+            <span style="color:var(--subtext);font-size:13px;">この画面をベースに今後接続</span>
+          </div>
+          <div class="messages">
+            <div class="bubble staff">
+              こんにちは。ログイン後ページのチャット欄はこちらに表示されます。ご相談内容や来店前の確認事項を今後ここでやり取りできます。
+              <div class="time">スタッフ・サンプル表示</div>
+            </div>
+            <div class="bubble member">
+              会員ページからそのまま相談できるイメージが分かるようになっています。
+              <div class="time">会員・サンプル表示</div>
+            </div>
+          </div>
+          <div class="composer">
+            <textarea placeholder="ここにメッセージを入力します（送信機能はまだ未接続です）"></textarea>
+            <button class="btn" type="button">送信準備中</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section style="margin-top: 18px;" class="section-grid">
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <div class="badge">会員画像</div>
+            <h2 class="title" style="font-size: 26px;">画像一覧エリア</h2>
+            <p class="subcopy">将来、会員にひもづく画像を見られる場所として使う欄です。すでに登録済みの画像がある場合は一覧で見えるようにしています。</p>
+          </div>
+          <span class="status">{{ member_photos|length }}件</span>
+        </div>
+
+        {% if member_photos %}
+          <div class="gallery-grid">
+            {% for photo in member_photos %}
+              <div class="photo-card">
+                <img src="{{ photo.image_url }}" alt="会員画像 {{ loop.index }}">
+                <div class="photo-meta">登録画像 {{ loop.index }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="placeholder-grid">
+            <div class="placeholder">今後ここに会員画像が表示されます</div>
+            <div class="placeholder">施術前後や保存画像の確認欄として使えます</div>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <div class="badge">ご案内</div>
+            <h2 class="title" style="font-size: 26px;">このページでできること</h2>
+            <p class="subcopy">今回はログイン後の専用ページだけを実装しています。他の既存画面や機能には手を入れず、このページの見た目と導線だけを整えています。</p>
+          </div>
+        </div>
+        <div class="feature-list">
+          <div class="feature">
+            <strong>ログイン後に会員ページへ到着</strong>
+            会員登録後・会員ログイン後は、この専用ページに入る動きにしています。
+          </div>
+          <div class="feature">
+            <strong>予約状況の確認</strong>
+            予約一覧を見ながら、そのまま次の予約導線へ移動できます。
+          </div>
+          <div class="feature">
+            <strong>将来拡張しやすい構成</strong>
+            チャットと画像表示の枠を分けているので、次回以降の接続がしやすい形です。
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

@@ -1,0 +1,1 @@
+member auth routes with id/password recovery aligned to shop logic

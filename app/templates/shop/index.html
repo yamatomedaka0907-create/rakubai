@@ -125,6 +125,7 @@
       <a href="/shop/{{ shop_id }}">トップ</a>
       <a href="#menus">メニュー</a>
       <a href="#reserve-form">Web予約</a>
+      <a href="/member/{{ shop_id }}/login?next=/shop/{{ shop_id }}#reserve-form">会員ログイン</a>
     </nav>
 
     <section class="hero">
@@ -138,6 +139,7 @@
           <a href="#reserve-form" class="btn-link btn-primary">このまま予約する</a>
           <a href="#menus" class="btn-link btn-secondary">メニューを見る</a>
           <a href="#reserve-form" class="btn-link btn-secondary">空き時間を見る</a>
+          <a href="/member/{{ shop_id }}/register?next=/shop/{{ shop_id }}#reserve-form" class="btn-link btn-secondary">会員登録はこちら</a>
         </div>
       </div>
       <div class="hero-card">
@@ -252,6 +254,15 @@
         <div class="panel" id="customer-info">
           <h3 class="step-title">2. お客様情報を入力して確認へ進む</h3>
           <p class="step-note">週間空き状況の ◎ を押すと、時間を選んだ状態のままここへ進みます。</p>
+
+          <div class="summary-box">
+            <strong>会員登録すると便利です。</strong>
+            <div style="margin-top:8px; line-height:1.8; color:var(--subtext);">会員登録をすると、次回予約がスムーズになり、今後チャット機能も使える会員ページへ進めます。登録しなくても予約できます。</div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+              <a href="/member/{{ shop_id }}/register?next=/shop/{{ shop_id }}#reserve-form" class="btn-link btn-primary">会員登録する</a>
+              <a href="/member/{{ shop_id }}/login?next=/shop/{{ shop_id }}#reserve-form" class="btn-link btn-secondary">会員ログイン</a>
+            </div>
+          </div>
 
           {% if selected_date %}
           <div class="summary-box">

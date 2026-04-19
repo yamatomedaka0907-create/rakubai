@@ -75,9 +75,13 @@
         <div class="detail-item"><div class="label">担当スタッフ</div><div class="value">{{ reservation.staff_name }}</div></div>
       </div>
 
+      <div class="detail-item"><div class="label">会員ページ</div><div class="value">会員登録すると、次回予約がスムーズになり、店舗とのやり取り用ページを使えるようになります。</div></div>
+      </div>
+
       <div class="actions">
         <a class="btn btn-primary" href="/shop/{{ shop_id }}">店舗ページへ戻る</a>
-        <a class="btn btn-secondary" href="/shop/{{ shop_id }}#menus">メニューをもう一度見る</a>
+        <a class="btn btn-secondary" href="/member/{{ shop_id }}/register?next=/member/{{ shop_id }}/mypage">会員登録する</a>
+        <a class="btn btn-secondary" href="/member/{{ shop_id }}/login?next=/member/{{ shop_id }}/mypage">会員ログイン</a>
       </div>
     </div>
   </div>
