@@ -436,3 +436,16 @@ a { text-decoration: none; color: inherit; }
     margin-bottom: 8px;
   }
 }
+
+
+/* === mobile plan order fix === */
+@media (max-width: 1024px) {
+  .price-grid {
+    display: flex;
+    flex-direction: column;
+  }
+  .price-card { order: 0; }
+  .price-card:nth-child(1) { order: 1; }
+  .price-card:nth-child(2) { order: 2; }
+  .price-card:nth-child(3) { order: 3; }
+}
