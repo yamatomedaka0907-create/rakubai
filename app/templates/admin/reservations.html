@@ -1,6 +1,6 @@
 {% extends "admin/base.html" %}
 {% block content %}
-<div class="hero"><div class="hero-top"><div><h1>予約管理</h1><p>予約登録、予約一覧、日別スケジュール確認に加えて、特定時間の予約受付停止もここで管理できます。</p></div><div class="hero-actions"><a href="/admin/{{ shop_id }}/customers">顧客管理へ</a><a href="/admin/{{ shop_id }}/settings">店舗情報へ</a></div></div></div>
+<div class="hero"><div class="hero-top"><div><h1>予約管理</h1><p>予約登録、予約一覧、日別スケジュール確認に加えて、特定時間の予約受付停止もここで管理できます。</p></div></div></div>
 {% if error_message %}<div class="error-box">{{ error_message }}</div>{% endif %}
 
 <div class="card weekly-card">

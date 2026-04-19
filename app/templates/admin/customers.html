@@ -1,12 +1,31 @@
 {% extends "admin/base.html" %}
 {% block content %}
-<div class="hero"><div class="hero-top"><div><h1>顧客管理</h1><p>顧客登録と顧客一覧をこのページにまとめています。</p></div><div class="hero-actions"><a href="/admin/{{ shop_id }}/reservations">予約管理へ</a><a href="/admin/{{ shop_id }}/settings">店舗情報へ</a></div></div></div>
+<div class="hero"><div class="hero-top"><div><h1>顧客管理</h1><p>顧客登録と顧客一覧をこのページにまとめています。</p></div></div></div>
+<div class="card" style="margin-top:18px;">
+  <div class="card-header"><h2>顧客一覧</h2><span class="badge">{{ customer_items|length }}件</span></div>
+  <form method="get" action="/admin/{{ shop_id }}/customers" style="display:grid;grid-template-columns:2fr 1fr auto auto;gap:12px;align-items:end;margin-bottom:16px;">
+    <label>キーワード<input type="text" name="q" value="{{ keyword }}" placeholder="名前・電話番号・メールアドレスで検索"></label>
+    <label>並び替え
+      <select name="sort">
+        <option value="new" {% if sort_order == 'new' %}selected{% endif %}>新しい順</option>
+        <option value="name" {% if sort_order == 'name' %}selected{% endif %}>あいうえお順</option>
+        <option value="visits" {% if sort_order == 'visits' %}selected{% endif %}>来店回数多い順</option>
+      </select>
+    </label>
+    <button type="submit">適用する</button>
+    <a href="/admin/{{ shop_id }}/customers">リセット</a>
+  </form>
+  {% if customer_items %}
+  <div class="table-wrap"><table><thead><tr><th>ID</th><th>名前</th><th>電話番号</th><th>メールアドレス</th><th>来店回数</th><th>登録日時</th><th>操作</th></tr></thead><tbody>{% for customer in customer_items %}<tr><td>{{ customer.id }}</td><td><a href="/admin/{{ shop_id }}/customers/{{ customer.id }}">{{ customer.name }}</a></td><td>{{ customer.phone or '-' }}</td><td>{{ customer.email or '-' }}</td><td>{{ customer.visit_count }}回</td><td>{{ customer.created_at }}</td><td><a href="/admin/{{ shop_id }}/customers/{{ customer.id }}">編集</a></td></tr>{% endfor %}</tbody></table></div>
+  {% else %}<p class="empty">まだ顧客が登録されていません。</p>{% endif %}
+</div>
 <div class="grid">
   <div class="card">
     <div class="card-header"><h2>顧客登録</h2><span class="badge">新規</span></div>
     <form method="post" action="/admin/{{ shop_id }}/customers">
       <label>顧客名<input type="text" name="name" placeholder="例：山田 花子" required></label>
       <label>電話番号<input type="text" name="phone" placeholder="例：090-1234-5678"></label>
+      <label>メールアドレス<input type="email" name="email" placeholder="例：sample@example.com"></label>
       <button type="submit">顧客を登録する</button>
     </form>
   </div>
@@ -14,11 +33,5 @@
     <div class="card-header"><h2>顧客サマリー</h2><span class="badge">{{ customers|length }}件</span></div>
     <p class="section-note">登録した顧客は予約作成時の選択肢に反映されます。</p>
   </div>
-</div>
-<div class="card" style="margin-top:18px;">
-  <div class="card-header"><h2>顧客一覧</h2><span class="badge">{{ customers|length }}件</span></div>
-  {% if customers %}
-  <div class="table-wrap"><table><thead><tr><th>ID</th><th>名前</th><th>電話番号</th><th>登録日時</th><th>操作</th></tr></thead><tbody>{% for customer in customers %}<tr><td>{{ customer.id }}</td><td><a href="/admin/{{ shop_id }}/customers/{{ customer.id }}">{{ customer.name }}</a></td><td>{{ customer.phone }}</td><td>{{ customer.created_at }}</td><td><a href="/admin/{{ shop_id }}/customers/{{ customer.id }}">編集</a></td></tr>{% endfor %}</tbody></table></div>
-  {% else %}<p class="empty">まだ顧客が登録されていません。</p>{% endif %}
 </div>
 {% endblock %}

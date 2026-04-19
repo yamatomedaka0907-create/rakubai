@@ -6,6 +6,54 @@
   {% if success_message %}<div class="tool-alert is-success">{{ success_message }}</div>{% endif %}
   {% if error_message %}<div class="tool-alert is-danger">{{ error_message }}</div>{% endif %}
 
+  <section class="tool-panel">
+    <div class="tool-panel-head">
+      <h2>顧客一覧</h2>
+      <div class="tool-note">{{ customer_items|length }} 人</div>
+    </div>
+    <div class="tool-panel-body">
+      <form method="get" action="/admin/{{ shop_id }}/customers" class="tool-form-grid" style="margin-bottom: 16px; align-items: end;">
+        <div class="tool-field">
+          <label class="tool-label">キーワード</label>
+          <input class="tool-input" type="text" name="q" value="{{ keyword }}" placeholder="名前・電話番号・メールアドレスで検索">
+        </div>
+        <div class="tool-field">
+          <label class="tool-label">並び替え</label>
+          <select class="tool-input" name="sort">
+            <option value="new" {% if sort_order == 'new' %}selected{% endif %}>新しい順</option>
+            <option value="name" {% if sort_order == 'name' %}selected{% endif %}>あいうえお順</option>
+            <option value="visits" {% if sort_order == 'visits' %}selected{% endif %}>来店回数多い順</option>
+          </select>
+        </div>
+        <div class="tool-actions">
+          <button class="tool-btn is-primary" type="submit">適用する</button>
+          <a class="tool-btn" href="/admin/{{ shop_id }}/customers">リセット</a>
+        </div>
+      </form>
+
+      {% if customer_items %}
+      <div class="tool-table-wrap">
+        <table class="tool-table is-dense">
+          <thead><tr><th>ID</th><th>名前</th><th>電話番号</th><th>メールアドレス</th><th>来店回数</th><th>登録日</th><th>操作</th></tr></thead>
+          <tbody>
+            {% for customer in customer_items %}
+            <tr>
+              <td>{{ customer.id }}</td>
+              <td><a class="tool-text-link" href="/admin/{{ shop_id }}/customers/{{ customer.id }}">{{ customer.name }}</a></td>
+              <td>{{ customer.phone or '-' }}</td>
+              <td>{{ customer.email or '-' }}</td>
+              <td>{{ customer.visit_count }}回</td>
+              <td>{{ customer.created_at[:10] if customer.created_at else '-' }}</td>
+              <td><a class="tool-btn" href="/admin/{{ shop_id }}/customers/{{ customer.id }}">編集</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}<div class="tool-empty">顧客データはまだありません。</div>{% endif %}
+    </div>
+  </section>
+
   <section class="tool-grid cols-2-compact">
     <div class="tool-panel">
       <div class="tool-panel-head"><h2>新規顧客登録</h2><div class="tool-note">必要最低限をすぐ登録</div></div>
@@ -26,37 +74,10 @@
       <div class="tool-panel-body">
         <form method="get" action="/admin/{{ shop_id }}/customers">
           <div class="tool-field full"><label class="tool-label">キーワード</label><input class="tool-input" type="text" name="q" value="{{ keyword }}"></div>
+          <input type="hidden" name="sort" value="{{ sort_order }}">
           <div class="tool-actions with-top-gap"><button class="tool-btn is-primary" type="submit">検索する</button><a class="tool-btn" href="/admin/{{ shop_id }}/customers">リセット</a></div>
         </form>
       </div>
-    </div>
-  </section>
-
-  <section class="tool-panel">
-    <div class="tool-panel-head">
-      <h2>顧客一覧</h2>
-      <div class="tool-note">{{ customer_items|length }} 人</div>
-    </div>
-    <div class="tool-panel-body">
-      {% if customer_items %}
-      <div class="tool-table-wrap">
-        <table class="tool-table is-dense">
-          <thead><tr><th>ID</th><th>名前</th><th>電話番号</th><th>メールアドレス</th><th>登録日</th><th>操作</th></tr></thead>
-          <tbody>
-            {% for customer in customer_items %}
-            <tr>
-              <td>{{ customer.id }}</td>
-              <td><a class="tool-text-link" href="/admin/{{ shop_id }}/customers/{{ customer.id }}">{{ customer.name }}</a></td>
-              <td>{{ customer.phone or '-' }}</td>
-              <td>{{ customer.email or '-' }}</td>
-              <td>{{ customer.created_at[:10] if customer.created_at else '-' }}</td>
-              <td><a class="tool-btn" href="/admin/{{ shop_id }}/customers/{{ customer.id }}">編集</a></td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% else %}<div class="tool-empty">顧客データはまだありません。</div>{% endif %}
     </div>
   </section>
 </div>

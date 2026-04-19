@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ plan.name }} | らくばい</title>
+  <meta name="description" content="{{ plan.name }}プランの詳細ページ">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/top_lp/style.css">
+  <style>
+    .plan-detail-main { background: #fffdf8; }
+    .detail-section { padding: 72px 20px; }
+    .detail-inner { max-width: 1100px; margin: 0 auto; }
+    .detail-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 32px; align-items: stretch; }
+    .detail-card, .detail-side-card, .comparison-card, .other-plans-card { background: #fff; border-radius: 24px; box-shadow: 0 14px 34px rgba(38, 31, 24, 0.08); }
+    .detail-card { padding: 36px; }
+    .detail-side-card { padding: 28px; }
+    .detail-label { display: inline-block; margin-bottom: 14px; padding: 7px 14px; border-radius: 999px; background: #fff2e7; color: #d16a2f; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; }
+    .detail-title { margin: 0 0 12px; font-size: clamp(30px, 4vw, 46px); line-height: 1.2; color: #2f241d; }
+    .detail-lead { margin: 0 0 18px; font-size: 18px; font-weight: 700; color: #a04d1c; }
+    .detail-copy { margin: 0; color: #55473d; line-height: 1.9; }
+    .detail-price { margin-top: 28px; display: flex; align-items: end; gap: 10px; color: #2f241d; }
+    .detail-price-label { font-size: 14px; font-weight: 700; color: #8e7f73; }
+    .detail-price-value { font-size: clamp(32px, 4vw, 44px); font-weight: 800; line-height: 1; }
+    .detail-target { margin-top: 10px; color: #7b695b; font-weight: 700; }
+    .detail-buttons { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 30px; }
+    .detail-button { display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 24px; border-radius: 999px; font-weight: 700; text-decoration: none; }
+    .detail-button-primary { background: linear-gradient(135deg, #f39a55, #f47d31); color: #fff; }
+    .detail-button-secondary { border: 1px solid #ddcbbb; color: #6e5c4f; background: #fff; }
+    .detail-side-title { margin: 0 0 18px; font-size: 22px; color: #2f241d; }
+    .detail-side-list { margin: 0; padding-left: 1.2em; color: #55473d; line-height: 1.9; }
+    .section-heading { margin: 0 0 14px; font-size: clamp(26px, 3vw, 36px); color: #2f241d; }
+    .section-copy { margin: 0 0 28px; color: #67574b; line-height: 1.8; }
+    .feature-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; list-style: none; margin: 0; padding: 0; }
+    .feature-list li { padding: 18px 20px; border-radius: 18px; background: #fff; box-shadow: 0 10px 24px rgba(38, 31, 24, 0.06); color: #43362d; font-weight: 500; }
+    .comparison-card { overflow: hidden; }
+    .comparison-scroll { overflow-x: auto; }
+    .comparison-table { width: 100%; min-width: 760px; border-collapse: collapse; background: #fff; }
+    .comparison-table th, .comparison-table td { padding: 18px 16px; border-bottom: 1px solid #f0e5dc; text-align: left; vertical-align: middle; }
+    .comparison-table thead th { background: #fff7f0; color: #4e3d31; font-size: 15px; }
+    .comparison-table tbody th { width: 22%; color: #6b5a4f; font-weight: 700; background: #fffdfa; }
+    .comparison-table td { color: #41342c; }
+    .is-current-column { background: #fff5ec; }
+    .current-chip { display: inline-block; margin-left: 8px; padding: 4px 8px; border-radius: 999px; background: #f47d31; color: #fff; font-size: 11px; font-weight: 700; vertical-align: middle; }
+    .other-plans-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+    .other-plans-card { padding: 24px; }
+    .other-plan-name { margin: 0 0 8px; font-size: 22px; color: #2f241d; }
+    .other-plan-tagline { margin: 0 0 14px; color: #8a7567; font-weight: 700; }
+    .other-plan-copy { margin: 0 0 18px; color: #5d4d41; line-height: 1.8; }
+    .other-plan-link { color: #d86d2d; text-decoration: none; font-weight: 700; }
+    @media (max-width: 900px) {
+      .detail-grid, .feature-list, .other-plans-grid { grid-template-columns: 1fr; }
+      .detail-card, .detail-side-card, .other-plans-card { padding: 24px; }
+      .detail-section { padding: 56px 16px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="header-logo" aria-label="TOPページへ戻る">
+        <img src="/static/top_lp/logo.png" alt="らくばいロゴ">
+      </a>
+      <nav class="pc-nav" aria-label="グローバルナビゲーション">
+        <a href="/">ホーム</a>
+        <a href="/#system">システム紹介</a>
+        <a href="/#price">料金</a>
+        <a href="/signup" class="nav-cta">無料ではじめる</a>
+        <a href="/store-login">店舗ログイン</a>
+        <a href="/#contact">お問合せ</a>
+      </nav>
+      <button class="menu-toggle" id="menuToggle" aria-label="メニューを開く" aria-expanded="false" aria-controls="mobileMenu">☰ MENU</button>
+    </div>
+    <nav class="mobile-nav" id="mobileMenu" aria-label="モバイルメニュー">
+      <a href="/">ホーム</a>
+      <a href="/#system">システム紹介</a>
+      <a href="/#price">料金</a>
+      <a href="/signup">無料ではじめる</a>
+      <a href="/store-login">店舗ログイン</a>
+      <a href="/#contact">お問合せ</a>
+    </nav>
+  </header>
+
+  <main class="plan-detail-main">
+    <section class="detail-section">
+      <div class="detail-inner">
+        <div class="detail-grid">
+          <article class="detail-card">
+            {% if plan.badge %}<p class="detail-label">{{ plan.badge }}</p>{% endif %}
+            <h1 class="detail-title">{{ plan.name }}プラン</h1>
+            <p class="detail-lead">{{ plan.summary_title }}</p>
+            <p class="detail-copy">{{ plan.description }}</p>
+            <div class="detail-price">
+              <span class="detail-price-label">月額</span>
+              <span class="detail-price-value">{{ plan.price_display }}</span>
+            </div>
+            <p class="detail-target">{{ plan.target }}</p>
+            <div class="detail-buttons">
+              {% if plan.cta_href and plan.cta_label %}
+              <a href="{{ plan.cta_href }}" class="detail-button detail-button-primary">{{ plan.cta_label }}</a>
+              {% endif %}
+              <a href="/#price" class="detail-button detail-button-secondary">料金表に戻る</a>
+            </div>
+          </article>
+
+          <aside class="detail-side-card">
+            <h2 class="detail-side-title">こんな店舗におすすめ</h2>
+            <ul class="detail-side-list">
+              {% for item in plan.best_for %}
+              <li>{{ item }}</li>
+              {% endfor %}
+            </ul>
+            <h2 class="detail-side-title" style="margin-top: 28px;">プランの特徴</h2>
+            <p class="detail-copy">{{ plan.summary_text }}</p>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="detail-section" style="padding-top: 0;">
+      <div class="detail-inner">
+        <h2 class="section-heading">{{ plan.name }}プランでできること</h2>
+        <p class="section-copy">導入しやすさだけでなく、日々の運用に必要な内容をまとめて使える構成です。現在ご覧のプランで利用できる主な内容を一覧で確認できます。</p>
+        <ul class="feature-list">
+          {% for feature in plan.features %}
+          <li>{{ feature }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+
+    <section class="detail-section" style="background: #fff7f0;">
+      <div class="detail-inner">
+        <h2 class="section-heading">3プラン比較</h2>
+        <p class="section-copy">すべての詳細ページで、フリー・スタンダード・プレミアムの違いを比較できるようにしています。ご自身の運用規模に合うプランを確認できます。</p>
+        <div class="comparison-card">
+          <div class="comparison-scroll">
+            <table class="comparison-table" aria-label="プラン比較表">
+              <thead>
+                <tr>
+                  <th>項目</th>
+                  {% for plan_code, plan_item in plans.items() %}
+                  <th class="{% if plan_code == plan.code %}is-current-column{% endif %}">
+                    {{ plan_item.name }}
+                    {% if plan_code == plan.code %}<span class="current-chip">現在表示中</span>{% endif %}
+                  </th>
+                  {% endfor %}
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in comparison_rows %}
+                <tr>
+                  <th scope="row">{{ row.label }}</th>
+                  {% for plan_code, plan_item in plans.items() %}
+                  <td class="{% if plan_code == plan.code %}is-current-column{% endif %}">{{ row["cells"][plan_code] }}</td>
+                  {% endfor %}
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="detail-section">
+      <div class="detail-inner">
+        <h2 class="section-heading">他のプランも見る</h2>
+        <p class="section-copy">現在のプラン以外の内容もそのまま比較しながら確認できます。必要な機能や運用規模に応じて選びやすいよう、各プランの特徴も簡潔にまとめています。</p>
+        <div class="other-plans-grid">
+          {% for plan_code, plan_item in plans.items() %}
+          <article class="other-plans-card">
+            <h3 class="other-plan-name">{{ plan_item.name }}</h3>
+            <p class="other-plan-tagline">{{ plan_item.tagline }}</p>
+            <p class="other-plan-copy">{{ plan_item.summary_text }}</p>
+            {% if plan_code == plan.code %}
+            <span class="other-plan-link">このページを表示中</span>
+            {% else %}
+            <a href="/plans/{{ plan_code }}" class="other-plan-link">{{ plan_item.name }}の詳細を見る</a>
+            {% endif %}
+          </article>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const menuToggle = document.getElementById('menuToggle');
+    const mobileMenu = document.getElementById('mobileMenu');
+    if (menuToggle && mobileMenu) {
+      menuToggle.addEventListener('click', function () {
+        mobileMenu.classList.toggle('open');
+        const isOpen = mobileMenu.classList.contains('open');
+        menuToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      });
+    }
+  </script>
+</body>
+</html>

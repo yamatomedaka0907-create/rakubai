@@ -1,6 +1,6 @@
 {% extends "admin/base.html" %}
 {% block content %}
-<div class="hero"><div class="hero-top"><div><h1>店舗情報編集</h1><p>予約ページに表示する店舗情報をここで変更します。</p></div><div class="hero-actions"><a href="/shop/{{ shop_id }}" target="_blank" class="primary-link">予約サイトを確認</a><a href="/admin/{{ shop_id }}">管理トップへ</a></div></div></div>
+<div class="hero"><div class="hero-top"><div><h1>店舗情報編集</h1><p>予約ページに表示する店舗情報をここで変更します。</p></div></div></div>
 <div class="card">
   <div class="card-header"><h2>ショップ設定</h2><span class="badge">公開ページに反映</span></div>
   <form method="post" action="/admin/{{ shop_id }}/settings" id="shop-settings-form">

@@ -58,7 +58,7 @@
             <option value="#faf5ff" style="background:#faf5ff;color:#111827;">薄パープル</option>
           </select>
         </label>
-        <label class="full">現在プラン<select name="plan_id">{% for plan in available_plans %}<option value="{{ plan.id }}" {% if plan.id == shop.plan_id %}selected{% endif %}>{{ plan.name }} ({{ plan.code }})</option>{% endfor %}</select></label>
+        <label class="full">現在プラン<select name="plan_id">{% for plan in available_plans %}<option value="{{ plan.id }}" {% if plan.id == shop.plan_id %}selected{% endif %}>{{ plan.name }} ({{ plan.code }})</option>{% endfor %}</select></label><div class="meta full">ベーシック / プロは廃止し、フリー / スタンダード / プレミアムの3プランに統一しています。</div>
       </div>
       <button type="submit">店舗情報を保存する</button>
     </form>

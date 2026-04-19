@@ -53,8 +53,15 @@
               <div class="tool-field full"><label class="tool-label">現在のプラン</label><select class="tool-select" name="plan_id">{% for plan in available_plans %}<option value="{{ plan.id }}" {% if subscription and subscription.plan_id == plan.id %}selected{% endif %}>{{ plan.name }} / ¥{{ plan.monthly_price }}</option>{% endfor %}</select></div>
               <div class="tool-field full"><label class="tool-label">契約状態</label><select class="tool-select" name="status"><option value="active" {% if subscription and subscription.status == 'active' %}selected{% endif %}>active</option><option value="trial" {% if subscription and subscription.status == 'trial' %}selected{% endif %}>trial</option><option value="canceled" {% if subscription and subscription.status == 'canceled' %}selected{% endif %}>canceled</option></select></div>
             </div>
+            <div class="tool-note" style="margin-top:12px;">現在は3プラン構成です。LINE連携・チャット機能・複数店舗管理は未実装ですが、将来導入予定の前提でプランに反映しています。</div>
             <div class="tool-actions with-top-gap"><button class="tool-btn is-primary" type="submit">プランを更新</button></div>
           </form>
+          <div class="tool-table-wrap" style="margin-top:18px;">
+            <table class="tool-table is-dense">
+              <thead><tr><th>機能</th><th>内容</th></tr></thead>
+              <tbody>{% for item in subscription_feature_items %}<tr><td>{{ item.label }}</td><td>{{ item.value }}</td></tr>{% endfor %}</tbody>
+            </table>
+          </div>
         </div>
       </section>
 

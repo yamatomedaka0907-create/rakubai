@@ -1,6 +1,6 @@
 {% extends "admin/base.html" %}
 {% block content %}
-<div class="hero"><div class="hero-top"><div><h1>顧客編集</h1><p>顧客の基本情報を編集できます。</p></div><div class="hero-actions"><a href="/admin/{{ shop_id }}/customers">顧客一覧へ戻る</a><a href="/admin/{{ shop_id }}/settings">店舗情報へ</a></div></div></div>
+<div class="hero"><div class="hero-top"><div><h1>顧客編集</h1><p>顧客の基本情報を編集できます。</p></div></div></div>
 {% if success_message %}<div class="card" style="margin-bottom:18px;border-color:#bbf7d0;background:#f0fdf4;"><div class="card-header"><h2>完了</h2><span class="badge">保存済み</span></div><p class="section-note">{{ success_message }}</p></div>{% endif %}
 {% if error_message %}<div class="card" style="margin-bottom:18px;border-color:#fecaca;background:#fff1f2;"><div class="card-header"><h2>エラー</h2><span class="badge">確認</span></div><p class="section-note">{{ error_message }}</p></div>{% endif %}
 <div class="grid">

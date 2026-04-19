@@ -1,18 +1,27 @@
 {% extends "admin/base.html" %}
 {% block content %}
+<style>
+@media (max-width:720px){
+  .monthly-calendar-card.dashboard-mobile-calendar .card-header > div{width:100%;}
+  .monthly-calendar-card.dashboard-mobile-calendar .calendar-nav{width:100%;justify-content:space-between;gap:6px;}
+  .monthly-calendar-card.dashboard-mobile-calendar .calendar-nav a{min-height:34px;padding:0 8px;font-size:12px;}
+  .monthly-calendar-card.dashboard-mobile-calendar .calendar-nav .month-label{min-width:0;flex:1 1 auto;font-size:13px;}
+  .monthly-calendar-card.dashboard-mobile-calendar .calendar-weekdays,
+  .monthly-calendar-card.dashboard-mobile-calendar .calendar-grid{gap:3px;}
+  .monthly-calendar-card.dashboard-mobile-calendar .calendar-day{padding:4px;border-radius:10px;aspect-ratio:1 / 1;min-height:auto;}
+  .monthly-calendar-card.dashboard-mobile-calendar .calendar-day-top{margin-bottom:2px;gap:2px;align-items:flex-start;flex-direction:column;}
+  .monthly-calendar-card.dashboard-mobile-calendar .calendar-day-number{font-size:12px;line-height:1;}
+  .monthly-calendar-card.dashboard-mobile-calendar .calendar-count{min-width:18px;height:18px;padding:0 4px;font-size:9px;}
+  .monthly-calendar-card.dashboard-mobile-calendar .calendar-meta,
+  .monthly-calendar-card.dashboard-mobile-calendar .holiday-label{font-size:8px;line-height:1.15;margin-top:1px;}
+}
+</style>
 <div class="hero">
       <div class="hero-top">
         <div>
           <h1>{{ shop.shop_name }} 管理画面</h1>
           <p>{{ shop.description }}</p>
           <p style="margin-top:10px;"><strong>現在のプラン:</strong> {{ subscription.plan_name }} / ステータス: {{ subscription.status }}</p>
-        </div>
-        <div class="hero-actions"><a href="/admin/{{ shop_id }}/settings">店舗設定</a>
-          <a href="/shop/{{ shop_id }}" target="_blank" class="primary-link">自分の予約サイトを見る</a>
-          <a href="/admin/login/{{ shop_id }}">ログイン画面へ</a>
-          <form method="post" action="/admin/logout/{{ shop_id }}">
-            <button type="submit">ログアウト</button>
-          </form>
         </div>
       </div>
     </div>
@@ -60,15 +69,17 @@
           </label>
           <button type="submit">プラン設定を保存する</button>
         </form>
-        <div class="section-note">広告表示: {% if subscription.show_ads %}あり{% else %}なし{% endif %} / LINE: {% if subscription.can_use_line %}利用可{% else %}停止{% endif %} / レポート: {% if subscription.can_use_reports %}利用可{% else %}停止{% endif %}</div>
+        <div class="section-note">現在は3プラン構成です。LINE連携・チャット機能・複数店舗管理は将来実装前提で、契約プラン上は先行して反映しています。</div>
       </div>
+
+      <div class="card">
+        <div class="card-header"><h2>プラン別機能一覧</h2><span class="badge">未実装機能は導入予定</span></div>
+        <div class="table-wrap"><table><thead><tr><th>機能</th><th>内容</th></tr></thead><tbody>{% for item in subscription_feature_items %}<tr><td>{{ item.label }}</td><td>{{ item.value }}</td></tr>{% endfor %}</tbody></table></div>
+      </div>
+
       <div class="card">
         <div class="card-header"><h2>プラン上限の見え方</h2><span class="badge">将来の制限制御用</span></div>
-        <div class="table-wrap"><table><thead><tr><th>項目</th><th>現在値</th><th>プラン上限</th></tr></thead><tbody>
-          <tr><td>スタッフ数</td><td>{{ staff_list|length }}</td><td>{{ subscription.max_staff }}</td></tr>
-          <tr><td>顧客数</td><td>{{ customers|length }}</td><td>{{ subscription.max_customers }}</td></tr>
-          <tr><td>予約件数</td><td>{{ reservations|length }}</td><td>{{ subscription.max_reservations_per_month }}</td></tr>
-        </tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th>項目</th><th>現在値</th><th>プラン上限</th></tr></thead><tbody>{% for row in plan_usage_rows %}<tr><td>{{ row.label }}</td><td>{{ row.current }}</td><td>{{ row.limit }}</td></tr>{% endfor %}</tbody></table></div>
       </div>
     </div>
 
@@ -158,7 +169,7 @@
       {% endif %}
     </div>
 
-    <div class="card monthly-calendar-card">
+    <div class="card monthly-calendar-card dashboard-mobile-calendar">
       <div class="card-header">
         <h2>月間カレンダー</h2>
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">

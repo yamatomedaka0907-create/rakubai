@@ -11,6 +11,7 @@ from email.utils import formataddr
 from pathlib import Path
 import secrets
 import re
+import unicodedata
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -73,12 +74,182 @@ templates = Jinja2Templates(directory="app/templates")
 PLATFORM_ADMIN = get_platform_admin()
 
 
+PLAN_DETAILS = {
+    "free": {
+        "code": "free",
+        "name": "フリー",
+        "tagline": "まず試したい方向け",
+        "description": "初めて予約システムを導入する店舗や、まずは小さく始めたい個人店に向いた無料プランです。予約受付・顧客管理・LINE連携など、運用の土台になる機能をしっかり備えています。",
+        "price_text": "初期費用0円・月額0円で、必要な基本機能から始められるプランです。",
+        "price_display": "0円",
+        "target": "まず試したい方向け",
+        "badge": "はじめて導入に",
+        "summary_title": "まずは無料で導入したい店舗に",
+        "summary_text": "予約管理を紙やLINEだけで回していて、まずは業務を整理したい店舗におすすめです。必要な基本機能をおさえながら、コストをかけずに運用をスタートできます。",
+        "best_for": [
+            "これから予約システムを使い始めたい",
+            "小規模でまず試験導入したい",
+            "費用をかけずに基本運用を整えたい",
+        ],
+        "features": [
+            "初期費用0円",
+            "予約受付月間50人まで",
+            "顧客管理50人まで",
+            "顧客1人につき写真1枚まで保存可能",
+            "登録スタッフ3人まで",
+            "LINE連携",
+            "ホームページ作成無料",
+            "チャット機能（月間メッセージ100通まで）",
+        ],
+        "cta_href": "/signup",
+        "cta_label": "無料ではじめる",
+    },
+    "standard": {
+        "code": "standard",
+        "name": "スタンダード",
+        "tagline": "しっかり運用したい方向け",
+        "description": "予約数やチャット数を気にせず、日々の予約受付と顧客管理をしっかり回したい店舗向けのプランです。成長中の店舗や、安定して集客・運用していきたい店舗にちょうどよい内容です。",
+        "price_text": "日常運用に必要な機能をバランスよく備えた人気プランです。",
+        "price_display": "1,650円(税込)",
+        "target": "しっかり運用したい方向け",
+        "badge": "おすすめ",
+        "summary_title": "運用のしやすさと拡張性のバランスが良い",
+        "summary_text": "予約受付を無制限で使え、顧客情報や写真も十分に管理できます。個人店から少人数サロン、スタッフ数が増えてきた店舗まで、幅広く使いやすい中心プランです。",
+        "best_for": [
+            "予約件数を気にせず運用したい",
+            "顧客情報や写真をしっかり残したい",
+            "スタッフが増えてきて管理を整えたい",
+        ],
+        "features": [
+            "初期費用0円",
+            "予約受付無制限",
+            "顧客管理300人まで",
+            "顧客1人につき写真10枚まで保存可能",
+            "登録スタッフ10人まで",
+            "LINE連携",
+            "ホームページ作成無料",
+            "チャット機能（無制限）",
+        ],
+        "cta_href": "/signup",
+        "cta_label": "無料ではじめる",
+    },
+    "premium": {
+        "code": "premium",
+        "name": "プレミアム",
+        "tagline": "複数店舗・本格運用向け",
+        "description": "複数店舗の運営や、本格的な顧客管理・スタッフ管理まで見据えた上位プランです。運用規模が大きい店舗でも、余裕を持って使える構成にしています。",
+        "price_text": "複数店舗管理や優先対応まで含めた上位プランです。",
+        "price_display": "3,300円(税込)",
+        "target": "複数店舗・本格運用向け",
+        "badge": "上位プラン",
+        "summary_title": "本格運用や多店舗展開に対応",
+        "summary_text": "顧客数・写真保存・スタッフ数に大きな余裕があり、複数店舗管理にも対応します。事業拡大中の店舗や、運用負荷を下げながら安定稼働したい店舗に向いています。",
+        "best_for": [
+            "複数店舗をまとめて管理したい",
+            "大人数のスタッフ運用に対応したい",
+            "サポート体制も重視したい",
+        ],
+        "features": [
+            "初期費用0円",
+            "予約受付無制限",
+            "顧客管理無制限",
+            "顧客1人につき写真50枚まで保存可能",
+            "登録スタッフ50人まで",
+            "LINE連携",
+            "ホームページ作成無料",
+            "チャット機能（無制限）",
+            "複数店舗管理",
+            "優先対応",
+        ],
+        "cta_href": "/#contact",
+        "cta_label": "お問合せ",
+    },
+}
+
+PLAN_COMPARISON_ROWS = [
+    {"label": "初期費用", "cells": {"free": "0円", "standard": "0円", "premium": "0円"}},
+    {"label": "予約受付", "cells": {"free": "月間50人まで", "standard": "無制限", "premium": "無制限"}},
+    {"label": "顧客管理", "cells": {"free": "50人まで", "standard": "300人まで", "premium": "無制限"}},
+    {"label": "顧客1人あたりの写真保存", "cells": {"free": "1枚まで", "standard": "10枚まで", "premium": "50枚まで"}},
+    {"label": "登録スタッフ数", "cells": {"free": "3人まで", "standard": "10人まで", "premium": "50人まで"}},
+    {"label": "LINE連携", "cells": {"free": "対応", "standard": "対応", "premium": "対応"}},
+    {"label": "ホームページ作成", "cells": {"free": "無料", "standard": "無料", "premium": "無料"}},
+    {"label": "チャット機能", "cells": {"free": "月間メッセージ100通まで", "standard": "無制限", "premium": "無制限"}},
+    {"label": "複数店舗管理", "cells": {"free": "—", "standard": "—", "premium": "対応"}},
+    {"label": "優先対応", "cells": {"free": "—", "standard": "—", "premium": "対応"}},
+]
+
+
+
 WEEKDAY_MAP = {"月曜日": 0, "火曜日": 1, "水曜日": 2, "木曜日": 3, "金曜日": 4, "土曜日": 5, "日曜日": 6}
+
+
+def _is_unlimited(value: object) -> bool:
+    return value in (None, 0, "", "0")
+
+
+def _format_limit_value(value: object, suffix: str = "") -> str:
+    if _is_unlimited(value):
+        return "無制限"
+    return f"{int(value)}{suffix}"
+
+
+def _format_plan_price(value: object) -> str:
+    try:
+        amount = int(value or 0)
+    except (TypeError, ValueError):
+        amount = 0
+    return f"¥{amount:,}"
 
 
 def _get_customer_photo_policy(subscription: dict | None) -> dict:
     label = str((subscription or {}).get("plan_name") or "現在のプラン")
-    return {"enabled": True, "label": label, "max_photos": None}
+    max_photos = (subscription or {}).get("max_photos_per_customer")
+    return {"enabled": True, "label": label, "max_photos": None if _is_unlimited(max_photos) else int(max_photos)}
+
+
+def _get_reservation_count_for_current_month(shop_id: str) -> int:
+    today = date.today()
+    prefix = today.strftime("%Y-%m")
+    return sum(1 for item in get_reservations(shop_id) if str(item.get("reservation_date") or "").startswith(prefix))
+
+
+def _build_subscription_feature_items(subscription: dict | None) -> list[dict[str, str]]:
+    plan = subscription or {}
+
+    def status_label(access_key: str, live_key: str) -> str:
+        if not plan.get(access_key):
+            return "—"
+        return "対応" if plan.get(live_key) else "導入予定"
+
+    chat_limit = plan.get("max_chat_messages_per_month")
+    if not plan.get("can_use_chat"):
+        chat_text = "—"
+    elif _is_unlimited(chat_limit):
+        chat_text = "無制限（導入予定）"
+    else:
+        chat_text = f"月{int(chat_limit)}通まで（導入予定）"
+
+    return [
+        {"label": "予約受付", "value": _format_limit_value(plan.get("max_reservations_per_month"), "件 / 月")},
+        {"label": "顧客管理", "value": _format_limit_value(plan.get("max_customers"), "人")},
+        {"label": "顧客写真", "value": _format_limit_value(plan.get("max_photos_per_customer"), "枚 / 人")},
+        {"label": "登録スタッフ数", "value": _format_limit_value(plan.get("max_staff"), "人")},
+        {"label": "LINE連携", "value": status_label("can_use_line", "is_line_feature_live")},
+        {"label": "ホームページ作成", "value": "無料" if plan.get("homepage_included", 1) else "—"},
+        {"label": "チャット機能", "value": chat_text},
+        {"label": "複数店舗管理", "value": status_label("can_use_multi_store", "is_multi_store_feature_live")},
+        {"label": "優先対応", "value": "対応" if plan.get("priority_support") else "—"},
+    ]
+
+
+def _build_plan_usage_rows(subscription: dict | None, reservations: list[dict], customers: list[dict], staff_list: list[dict]) -> list[dict[str, str]]:
+    current_month_reservations = _get_reservation_count_for_current_month(str((subscription or {}).get("shop_id") or "")) if subscription else 0
+    return [
+        {"label": "スタッフ数", "current": str(len(staff_list or [])), "limit": _format_limit_value((subscription or {}).get("max_staff"), "人")},
+        {"label": "顧客数", "current": str(len(customers or [])), "limit": _format_limit_value((subscription or {}).get("max_customers"), "人")},
+        {"label": "今月の予約受付数", "current": str(current_month_reservations), "limit": _format_limit_value((subscription or {}).get("max_reservations_per_month"), "件")},
+    ]
 
 
 def _save_customer_photo_file(shop_id: str, customer_id: int, upload: UploadFile) -> str:
@@ -114,6 +285,54 @@ def _safe_parse_date(value: str | None, fallback: date | None = None) -> date:
         except ValueError:
             pass
     return fallback or date.today()
+
+
+def _to_hiragana(value: str) -> str:
+    result: list[str] = []
+    for char in unicodedata.normalize("NFKC", value or ""):
+        code = ord(char)
+        if 0x30A1 <= code <= 0x30F6:
+            result.append(chr(code - 0x60))
+        else:
+            result.append(char)
+    return "".join(result)
+
+
+def _customer_name_sort_key(value: str) -> tuple[str, str]:
+    normalized = unicodedata.normalize("NFKC", value or "").strip().lower()
+    reading = _to_hiragana(normalized)
+    return (reading, normalized)
+
+
+def _build_customer_visit_counts(reservations: list[dict]) -> dict[int, int]:
+    visit_counts: dict[int, int] = {}
+    for reservation in reservations:
+        customer_id = reservation.get("customer_id")
+        try:
+            customer_id = int(customer_id)
+        except (TypeError, ValueError):
+            continue
+        visit_counts[customer_id] = visit_counts.get(customer_id, 0) + 1
+    return visit_counts
+
+
+def _sort_customer_items(customer_items: list[dict], sort_order: str) -> tuple[list[dict], str]:
+    normalized_sort = sort_order if sort_order in {"new", "name", "visits"} else "new"
+
+    if normalized_sort == "name":
+        sorted_items = sorted(
+            customer_items,
+            key=lambda item: (_customer_name_sort_key(str(item.get("name") or "")), -int(item.get("id") or 0)),
+        )
+    elif normalized_sort == "visits":
+        sorted_items = sorted(
+            customer_items,
+            key=lambda item: (-int(item.get("visit_count") or 0), _customer_name_sort_key(str(item.get("name") or "")), -int(item.get("id") or 0)),
+        )
+    else:
+        sorted_items = sorted(customer_items, key=lambda item: int(item.get("id") or 0), reverse=True)
+
+    return sorted_items, normalized_sort
 
 
 def _build_time_slots() -> list[str]:
@@ -479,6 +698,18 @@ def top_page(request: Request):
     )
 
 
+@app.get("/plans/{plan_code}", response_class=HTMLResponse)
+def plan_detail_page(request: Request, plan_code: str):
+    plan = PLAN_DETAILS.get(plan_code)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    return templates.TemplateResponse(
+        request=request,
+        name="plan_detail.html",
+        context={"request": request, "plan": plan, "plans": PLAN_DETAILS, "comparison_rows": PLAN_COMPARISON_ROWS},
+    )
+
+
 @app.get("/store-login", response_class=HTMLResponse)
 def store_login_page(request: Request):
     initial_shop_id = str(request.query_params.get("shop_id") or "").strip()
@@ -648,7 +879,7 @@ def platform_shop_edit_page(request: Request, shop_id: str):
         name="platform/shop_edit.html",
         context={
             "shop": shop,
-            "available_plans": get_plans(),
+            "available_plans": get_plans(active_only=True),
             "message": request.query_params.get("saved", ""),
             "error_message": "",
             "current_admin_name": request.session.get("platform_admin_name", PLATFORM_ADMIN.get("name", "運営管理者")),
@@ -871,6 +1102,7 @@ def admin_settings_page(request: Request, shop_id: str):
             "active_page": "settings",
             "success_message": success_message,
             "message": success_message,
+            "subscription_feature_items": _build_subscription_feature_items(subscription),
         },
     )
 
@@ -1060,6 +1292,8 @@ def admin_page(request: Request, shop_id: str, error_message: str = ""):
             "week_start": week_start.isoformat(),
             "prev_week_start": (week_start - timedelta(days=7)).isoformat(),
             "next_week_start": (week_start + timedelta(days=7)).isoformat(),
+            "subscription_feature_items": _build_subscription_feature_items(subscription),
+            "plan_usage_rows": _build_plan_usage_rows(subscription, reservations, customers, shop.get("staff_list", [])),
             "active_page": "dashboard",
         },
     )
@@ -1189,15 +1423,21 @@ def admin_customers_page(request: Request, shop_id: str, error_message: str = ""
 
     shop_id, shop, reservations, customers, admin_users, subscription, available_plans, current_admin_name = _build_admin_common_context(request, shop_id)
     keyword = (request.query_params.get("q") or "").strip()
-    customer_items = customers
+    sort_order = (request.query_params.get("sort") or "new").strip()
+    visit_counts = _build_customer_visit_counts(reservations)
+    customer_items = [
+        {**customer, "visit_count": visit_counts.get(int(customer.get("id") or 0), 0)}
+        for customer in customers
+    ]
     if keyword:
         lowered = keyword.lower()
         customer_items = [
-            item for item in customers
+            item for item in customer_items
             if lowered in str(item.get("name") or "").lower()
             or lowered in str(item.get("phone") or "").lower()
             or lowered in str(item.get("email") or "").lower()
         ]
+    customer_items, sort_order = _sort_customer_items(customer_items, sort_order)
     template_name = "admin/tool/customers.html" if shop.get("admin_ui_mode") == "tool" else "admin/customers.html"
     return templates.TemplateResponse(
         request=request,
@@ -1209,6 +1449,7 @@ def admin_customers_page(request: Request, shop_id: str, error_message: str = ""
             "customers": customers,
             "customer_items": customer_items,
             "keyword": keyword,
+            "sort_order": sort_order,
             "today": date.today().isoformat(),
             "reservations": reservations,
             "admin_users": admin_users,
@@ -1421,7 +1662,7 @@ def admin_update_subscription(
     if normalized_status not in {"active", "trial", "canceled"}:
         return admin_page(request, shop_id, error_message="契約状態の指定が正しくありません。")
     update_shop_subscription((shop_id or "").strip().lower(), plan_id, normalized_status)
-    return RedirectResponse(f"/admin/{(shop_id or '').strip().lower()}", status_code=303)
+    return RedirectResponse(f"/admin/{(shop_id or '').strip().lower()}/settings?saved=プラン設定を更新しました", status_code=303)
 
 
 @app.post("/admin/{shop_id}/customers")
@@ -1440,6 +1681,10 @@ def admin_create_customer(
     email = (email or "").strip().lower()
     if not name:
         return admin_customers_page(request, shop_id, error_message="顧客名を入力してください。")
+    subscription = get_shop_subscription(shop_id) or {}
+    max_customers = subscription.get("max_customers")
+    if not _is_unlimited(max_customers) and len(get_customers(shop_id)) >= int(max_customers):
+        return admin_customers_page(request, shop_id, error_message="現在のプランでは顧客登録数の上限に達しています。")
     create_customer(shop_id, name, phone, email)
     return RedirectResponse(f"/admin/{shop_id}/customers?saved=顧客を追加しました", status_code=303)
 
@@ -1461,6 +1706,12 @@ def admin_create_reservation(
     shop = get_shop(shop_id)
     if not shop:
         raise HTTPException(status_code=404, detail="見つかりません")
+
+    subscription = get_shop_subscription(shop_id) or {}
+    reservation_limit = subscription.get("max_reservations_per_month")
+    current_month_reservations = _get_reservation_count_for_current_month(shop_id)
+    if not _is_unlimited(reservation_limit) and current_month_reservations >= int(reservation_limit):
+        return admin_page(request, shop_id, error_message="現在のプランでは今月の予約受付上限に達しています。")
 
     customers = get_customers(shop_id)
     customer = next((c for c in customers if int(c.get("id") or 0) == int(customer_id)), None)
@@ -1616,7 +1867,29 @@ def shop_reserve(
             context=ctx,
             status_code=400,
         )
-    customer = find_customer(shop_id, customer_name, phone, email) or create_customer(shop_id, customer_name, phone, email)
+    subscription = get_shop_subscription(shop_id) or {}
+    reservation_limit = subscription.get("max_reservations_per_month")
+    current_month_reservations = _get_reservation_count_for_current_month(shop_id)
+    if not _is_unlimited(reservation_limit) and current_month_reservations >= int(reservation_limit):
+        ctx = build_shop_booking_context(shop_id, request, "現在のプランでは今月の予約受付上限に達しています。")
+        return templates.TemplateResponse(
+            request=request,
+            name="shop/index.html",
+            context=ctx,
+            status_code=400,
+        )
+    existing_customer = find_customer(shop_id, customer_name, phone, email)
+    if existing_customer is None:
+        max_customers = subscription.get("max_customers")
+        if not _is_unlimited(max_customers) and len(get_customers(shop_id)) >= int(max_customers):
+            ctx = build_shop_booking_context(shop_id, request, "現在のプランでは顧客登録数の上限に達しています。")
+            return templates.TemplateResponse(
+                request=request,
+                name="shop/index.html",
+                context=ctx,
+                status_code=400,
+            )
+    customer = existing_customer or create_customer(shop_id, customer_name, phone, email)
     updated_customer = update_customer_contact(shop_id, int(customer['id']), customer_name, phone, email)
     if updated_customer is not None:
         customer = updated_customer

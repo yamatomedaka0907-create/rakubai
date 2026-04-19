@@ -19,52 +19,66 @@ DEFAULT_PLANS = [
         'name': 'フリー',
         'monthly_price': 0,
         'show_ads': 1,
-        'max_staff': 2,
-        'max_customers': 100,
+        'max_staff': 3,
+        'max_customers': 50,
         'max_reservations_per_month': 50,
+        'max_photos_per_customer': 1,
         'can_use_line': 1,
+        'can_use_chat': 1,
+        'max_chat_messages_per_month': 100,
+        'can_use_multi_store': 0,
+        'priority_support': 0,
+        'homepage_included': 1,
         'can_use_reports': 0,
+        'is_line_feature_live': 0,
+        'is_chat_feature_live': 0,
+        'is_multi_store_feature_live': 0,
         'is_active': 1,
         'sort_order': 10,
     },
     {
-        'code': 'basic',
-        'name': 'ベーシック',
-        'monthly_price': 4980,
+        'code': 'standard',
+        'name': 'スタンダード',
+        'monthly_price': 1650,
         'show_ads': 0,
-        'max_staff': 5,
-        'max_customers': 500,
-        'max_reservations_per_month': 300,
+        'max_staff': 10,
+        'max_customers': 300,
+        'max_reservations_per_month': None,
+        'max_photos_per_customer': 10,
         'can_use_line': 1,
+        'can_use_chat': 1,
+        'max_chat_messages_per_month': None,
+        'can_use_multi_store': 0,
+        'priority_support': 0,
+        'homepage_included': 1,
         'can_use_reports': 1,
+        'is_line_feature_live': 0,
+        'is_chat_feature_live': 0,
+        'is_multi_store_feature_live': 0,
         'is_active': 1,
         'sort_order': 20,
     },
     {
-        'code': 'standard',
-        'name': 'スタンダード',
-        'monthly_price': 9800,
+        'code': 'premium',
+        'name': 'プレミアム',
+        'monthly_price': 3300,
         'show_ads': 0,
-        'max_staff': 15,
-        'max_customers': 3000,
-        'max_reservations_per_month': 2000,
+        'max_staff': 50,
+        'max_customers': None,
+        'max_reservations_per_month': None,
+        'max_photos_per_customer': 50,
         'can_use_line': 1,
+        'can_use_chat': 1,
+        'max_chat_messages_per_month': None,
+        'can_use_multi_store': 1,
+        'priority_support': 1,
+        'homepage_included': 1,
         'can_use_reports': 1,
+        'is_line_feature_live': 0,
+        'is_chat_feature_live': 0,
+        'is_multi_store_feature_live': 0,
         'is_active': 1,
         'sort_order': 30,
-    },
-    {
-        'code': 'pro',
-        'name': 'プロ',
-        'monthly_price': 19800,
-        'show_ads': 0,
-        'max_staff': 999,
-        'max_customers': 999999,
-        'max_reservations_per_month': 999999,
-        'can_use_line': 1,
-        'can_use_reports': 1,
-        'is_active': 1,
-        'sort_order': 40,
     },
 ]
 
@@ -218,8 +232,17 @@ def init_db() -> None:
                 max_staff INTEGER,
                 max_customers INTEGER,
                 max_reservations_per_month INTEGER,
+                max_photos_per_customer INTEGER,
                 can_use_line INTEGER NOT NULL DEFAULT 1,
+                can_use_chat INTEGER NOT NULL DEFAULT 0,
+                max_chat_messages_per_month INTEGER,
+                can_use_multi_store INTEGER NOT NULL DEFAULT 0,
+                priority_support INTEGER NOT NULL DEFAULT 0,
+                homepage_included INTEGER NOT NULL DEFAULT 1,
                 can_use_reports INTEGER NOT NULL DEFAULT 1,
+                is_line_feature_live INTEGER NOT NULL DEFAULT 0,
+                is_chat_feature_live INTEGER NOT NULL DEFAULT 0,
+                is_multi_store_feature_live INTEGER NOT NULL DEFAULT 0,
                 is_active INTEGER NOT NULL DEFAULT 1,
                 sort_order INTEGER NOT NULL DEFAULT 100
             )
@@ -346,6 +369,21 @@ def init_db() -> None:
         conn.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_shop_id ON subscriptions(shop_id)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_admin_users_shop_id ON admin_users(shop_id, login_id)')
 
+        def ensure_column(table: str, column: str, ddl: str):
+            cols = {row['name'] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+            if column not in cols:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {ddl}")
+
+        ensure_column('plans', 'max_photos_per_customer', 'max_photos_per_customer INTEGER')
+        ensure_column('plans', 'can_use_chat', 'can_use_chat INTEGER NOT NULL DEFAULT 0')
+        ensure_column('plans', 'max_chat_messages_per_month', 'max_chat_messages_per_month INTEGER')
+        ensure_column('plans', 'can_use_multi_store', 'can_use_multi_store INTEGER NOT NULL DEFAULT 0')
+        ensure_column('plans', 'priority_support', 'priority_support INTEGER NOT NULL DEFAULT 0')
+        ensure_column('plans', 'homepage_included', 'homepage_included INTEGER NOT NULL DEFAULT 1')
+        ensure_column('plans', 'is_line_feature_live', 'is_line_feature_live INTEGER NOT NULL DEFAULT 0')
+        ensure_column('plans', 'is_chat_feature_live', 'is_chat_feature_live INTEGER NOT NULL DEFAULT 0')
+        ensure_column('plans', 'is_multi_store_feature_live', 'is_multi_store_feature_live INTEGER NOT NULL DEFAULT 0')
+
         for shop_id, shop in SHOPS.items():
             conn.execute(
                 '''
@@ -379,9 +417,12 @@ def init_db() -> None:
                 '''
                 INSERT INTO plans (
                     code, name, monthly_price, show_ads, max_staff, max_customers,
-                    max_reservations_per_month, can_use_line, can_use_reports, is_active, sort_order
+                    max_reservations_per_month, max_photos_per_customer, can_use_line, can_use_chat,
+                    max_chat_messages_per_month, can_use_multi_store, priority_support, homepage_included,
+                    can_use_reports, is_line_feature_live, is_chat_feature_live, is_multi_store_feature_live,
+                    is_active, sort_order
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(code) DO UPDATE SET
                     name = excluded.name,
                     monthly_price = excluded.monthly_price,
@@ -389,8 +430,17 @@ def init_db() -> None:
                     max_staff = excluded.max_staff,
                     max_customers = excluded.max_customers,
                     max_reservations_per_month = excluded.max_reservations_per_month,
+                    max_photos_per_customer = excluded.max_photos_per_customer,
                     can_use_line = excluded.can_use_line,
+                    can_use_chat = excluded.can_use_chat,
+                    max_chat_messages_per_month = excluded.max_chat_messages_per_month,
+                    can_use_multi_store = excluded.can_use_multi_store,
+                    priority_support = excluded.priority_support,
+                    homepage_included = excluded.homepage_included,
                     can_use_reports = excluded.can_use_reports,
+                    is_line_feature_live = excluded.is_line_feature_live,
+                    is_chat_feature_live = excluded.is_chat_feature_live,
+                    is_multi_store_feature_live = excluded.is_multi_store_feature_live,
                     is_active = excluded.is_active,
                     sort_order = excluded.sort_order
                 ''',
@@ -402,24 +452,43 @@ def init_db() -> None:
                     plan['max_staff'],
                     plan['max_customers'],
                     plan['max_reservations_per_month'],
+                    plan['max_photos_per_customer'],
                     plan['can_use_line'],
+                    plan['can_use_chat'],
+                    plan['max_chat_messages_per_month'],
+                    plan['can_use_multi_store'],
+                    plan['priority_support'],
+                    plan['homepage_included'],
                     plan['can_use_reports'],
+                    plan['is_line_feature_live'],
+                    plan['is_chat_feature_live'],
+                    plan['is_multi_store_feature_live'],
                     plan['is_active'],
                     plan['sort_order'],
                 ),
             )
 
 
-        def ensure_column(table: str, column: str, ddl: str):
-            cols = {row['name'] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
-            if column not in cols:
-                conn.execute(f"ALTER TABLE {table} ADD COLUMN {ddl}")
-
         ensure_column('shops', 'reply_to_email', "reply_to_email TEXT DEFAULT ''")
         ensure_column('shops', 'admin_ui_mode', "admin_ui_mode TEXT NOT NULL DEFAULT 'web'")
         ensure_column('customers', 'email', "email TEXT DEFAULT ''")
         ensure_column('reservations', 'customer_email', "customer_email TEXT DEFAULT ''")
         ensure_column('reservations', 'receive_email', "receive_email INTEGER NOT NULL DEFAULT 0")
+        ensure_column('plans', 'max_photos_per_customer', 'max_photos_per_customer INTEGER')
+        ensure_column('plans', 'can_use_chat', 'can_use_chat INTEGER NOT NULL DEFAULT 0')
+        ensure_column('plans', 'max_chat_messages_per_month', 'max_chat_messages_per_month INTEGER')
+        ensure_column('plans', 'can_use_multi_store', 'can_use_multi_store INTEGER NOT NULL DEFAULT 0')
+        ensure_column('plans', 'priority_support', 'priority_support INTEGER NOT NULL DEFAULT 0')
+        ensure_column('plans', 'homepage_included', 'homepage_included INTEGER NOT NULL DEFAULT 1')
+        ensure_column('plans', 'is_line_feature_live', 'is_line_feature_live INTEGER NOT NULL DEFAULT 0')
+        ensure_column('plans', 'is_chat_feature_live', 'is_chat_feature_live INTEGER NOT NULL DEFAULT 0')
+        ensure_column('plans', 'is_multi_store_feature_live', 'is_multi_store_feature_live INTEGER NOT NULL DEFAULT 0')
+
+        standard_plan_id = conn.execute("SELECT id FROM plans WHERE code = 'standard' LIMIT 1").fetchone()['id']
+        premium_plan_id = conn.execute("SELECT id FROM plans WHERE code = 'premium' LIMIT 1").fetchone()['id']
+        conn.execute("UPDATE subscriptions SET plan_id = ? WHERE plan_id IN (SELECT id FROM plans WHERE code = 'basic')", (standard_plan_id,))
+        conn.execute("UPDATE subscriptions SET plan_id = ? WHERE plan_id IN (SELECT id FROM plans WHERE code = 'pro')", (premium_plan_id,))
+        conn.execute("UPDATE plans SET is_active = 0 WHERE code IN ('basic', 'pro')")
 
         free_plan_id = conn.execute("SELECT id FROM plans WHERE code = 'free' LIMIT 1").fetchone()['id']
         existing_shop_rows = conn.execute('SELECT shop_id FROM shops').fetchall()
@@ -1582,7 +1651,9 @@ def get_plans(active_only: bool = False) -> list[dict[str, Any]]:
     query = '''
         SELECT
             id, code, name, monthly_price, show_ads, max_staff, max_customers,
-            max_reservations_per_month, can_use_line, can_use_reports, is_active, sort_order
+            max_reservations_per_month, max_photos_per_customer, can_use_line, can_use_chat,
+            max_chat_messages_per_month, can_use_multi_store, priority_support, homepage_included,
+            can_use_reports, is_line_feature_live, is_chat_feature_live, is_multi_store_feature_live, is_active, sort_order
         FROM plans
     '''
     if active_only:
@@ -1627,8 +1698,17 @@ def get_shop_subscription(shop_id: str) -> dict[str, Any] | None:
                 p.max_staff,
                 p.max_customers,
                 p.max_reservations_per_month,
+                p.max_photos_per_customer,
                 p.can_use_line,
+                p.can_use_chat,
+                p.max_chat_messages_per_month,
+                p.can_use_multi_store,
+                p.priority_support,
+                p.homepage_included,
                 p.can_use_reports,
+                p.is_line_feature_live,
+                p.is_chat_feature_live,
+                p.is_multi_store_feature_live,
                 p.is_active
             FROM subscriptions s
             JOIN plans p ON p.id = s.plan_id
