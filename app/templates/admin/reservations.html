@@ -14,6 +14,44 @@
     {% if selected_day_schedule %}<div class="timeline">{% for reservation in selected_day_schedule %}<div class="timeline-item"><div class="timeline-top"><div class="timeline-time">{{ reservation.start_time }} - {{ reservation.end_time }}</div>{% if reservation.status == "キャンセル" %}<span class="status status-cancelled">キャンセル</span>{% elif reservation.status == "来店済み" %}<span class="status status-done">来店済み</span>{% else %}<span class="status status-reserved">予約済み</span>{% endif %}</div><div class="timeline-main"><div><strong>顧客:</strong> {{ reservation.customer_name }}</div><div><strong>スタッフ:</strong> <a href="/admin/{{ shop_id }}/staff/{{ reservation.staff_id }}?month={{ calendar_month_value }}&date={{ reservation.reservation_date }}">{{ reservation.staff_name }}</a></div><div><strong>メニュー:</strong> {{ reservation.menu_name }} / {{ reservation.duration }}分 / ¥{{ reservation.price }}</div></div></div>{% endfor %}</div>{% else %}<p class="empty">この日の予約はまだありません。</p>{% endif %}
   </div>
 </div>
+<div class="card weekly-card">
+  <div class="card-header">
+    <h2>週間予約状況</h2>
+    <span class="badge">◎ 空き / × 予約あり / 休 定休日</span>
+  </div>
+  <div class="availability-wrap">
+    <table class="availability-table">
+      <thead>
+        <tr>
+          <th class="time-col">時間</th>
+          {% for day in week_days %}
+          <th class="{% if day.is_today %}is-today{% endif %}">
+            <div class="day-head">
+              <strong>{{ day.label }}</strong>
+              <span>{{ day.weekday }}</span>
+            </div>
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in weekly_rows %}
+        <tr>
+          <th class="time-col">{{ row.time }}</th>
+          {% for cell in row.cells %}
+          <td class="symbol-cell {{ cell.cell_class }} {% if week_days[loop.index0].is_today %}is-today{% endif %}">{{ cell.symbol }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="availability-legend">
+    <span>◎ 空きあり</span><span>× 予約あり</span><span>休 定休日</span>
+  </div>
+  <p class="section-note">下にスクロールしても日付行が固定され、横スクロールしても時間列が見えるようにしています。</p>
+</div>
+
 <div class="grid" style="margin-top:18px;">
   <div class="card">
     <div class="card-header"><h2>予約登録</h2><span class="badge">新規</span></div>

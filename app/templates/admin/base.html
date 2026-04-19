@@ -140,7 +140,7 @@
     .topbar {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: flex-start;
       gap: 16px;
       padding: 18px 22px;
       margin-bottom: 18px;
@@ -157,6 +157,13 @@
       gap: 10px;
       flex-wrap: wrap;
       justify-content: flex-end;
+      margin-left: auto;
+    }
+    .topbar-left {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+      flex: 1 1 auto;
     }
     .chip {
       display: inline-flex;
@@ -332,6 +339,85 @@
     .staff-link-sub { font-size:13px; color:var(--subtext); }
     .nav-card p { margin:10px 0 0; color:var(--subtext); line-height:1.7; }
 
+    .desktop-calendar-only { display:block; }
+    .mobile-calendar-only { display:none; }
+    .weekly-card { margin-top: 18px; }
+    .weekly-card .section-note { margin-top: 12px; }
+    .availability-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #ffffff;
+      max-height: min(70vh, 780px);
+    }
+    .availability-table {
+      width: 100%;
+      min-width: 720px;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: fixed;
+    }
+    .availability-table th,
+    .availability-table td {
+      min-width: 84px;
+      padding: 10px 8px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      text-align: center;
+      vertical-align: middle;
+      background: #fff;
+    }
+    .availability-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      background: #f8fbfd;
+    }
+    .availability-table .time-col {
+      position: sticky;
+      left: 0;
+      z-index: 3;
+      min-width: 92px;
+      background: #f8fbfd;
+      color: var(--text);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .availability-table thead .time-col { z-index: 5; }
+    .availability-table .day-head {
+      display: grid;
+      gap: 4px;
+      justify-items: center;
+      font-size: 12px;
+      line-height: 1.2;
+    }
+    .availability-table .day-head strong { font-size: 14px; color: var(--text); }
+    .availability-table .day-head span { color: var(--subtext); }
+    .availability-table td.symbol-cell { font-size: 20px; font-weight: 900; }
+    .availability-table td.is-open { color: #166534; background: #f0fdf4; }
+    .availability-table td.is-booked { color: #b91c1c; background: #fef2f2; }
+    .availability-table td.is-holiday { color: #92400e; background: #fff7ed; }
+    .availability-table th.is-today,
+    .availability-table td.is-today { box-shadow: inset 0 0 0 2px rgba(15, 23, 42, 0.10); }
+    .availability-legend {
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top: 12px;
+      color: var(--subtext);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .availability-legend span {
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:6px 10px;
+      border-radius:999px;
+      background:#f8fafc;
+      border:1px solid var(--line);
+    }
+
     @media (max-width: 1180px) {
       .summary-grid { grid-template-columns:repeat(2, 1fr); }
       .grid, .page-grid { grid-template-columns:1fr; }
@@ -353,8 +439,10 @@
       body.menu-open .sidebar { transform: translateX(0); }
       .sidebar-toggle {
         display:inline-flex; align-items:center; justify-content:center; gap:10px;
-        min-height:40px; padding:0 14px; border-radius:999px; border:1px solid var(--line);
-        background:#fff; font-size:13px; font-weight:800; color:var(--text); cursor:pointer;
+        min-height:42px; padding:0 14px; border-radius:999px; border:1px solid rgba(15,23,42,0.16);
+        background:#111827; font-size:13px; font-weight:800; color:#ffffff; cursor:pointer;
+        box-shadow: 0 10px 24px rgba(15,23,42,0.18);
+        align-self:flex-start;
       }
       .sidebar-backdrop {
         display:block; position:fixed; inset:0; background:rgba(15,23,42,0.34); opacity:0; pointer-events:none; transition:opacity .2s ease; z-index:30;
@@ -362,10 +450,20 @@
       body.menu-open .sidebar-backdrop { opacity:1; pointer-events:auto; }
       .mobile-shop-link { display: inline-flex; }
       .main { padding-top: 16px; }
+      .topbar { align-items: flex-start; }
+      .topbar-right { justify-content: flex-end; }
+      .desktop-calendar-only { display:none; }
+      .mobile-calendar-only { display:block; }
+      .availability-wrap { max-height: none; }
+      .availability-table { min-width: 620px; }
     }
     @media (max-width: 720px) {
       .main, .sidebar { padding-left: 14px; padding-right: 14px; }
       .topbar { padding: 16px; border-radius: 20px; }
+      .topbar-right { width: 100%; }
+      .availability-table th,
+      .availability-table td { min-width: 72px; padding: 8px 6px; }
+      .availability-table .time-col { min-width: 82px; }
       .topbar-title { font-size: 24px; }
       .summary-grid { grid-template-columns:1fr; }
       .hero, .summary-card, .card, .nav-card { padding: 18px; border-radius: 20px; }
@@ -404,14 +502,14 @@
 
     <main class="main">
       <div class="topbar">
-        <div>
-          <button type="button" class="sidebar-toggle" onclick="document.body.classList.toggle('menu-open')">☰ MENU</button>
+        <div class="topbar-left">
           <div class="topbar-kicker">{{ page_title or '管理画面' }}</div>
           <div class="topbar-title">
             {% if active_page == 'dashboard' %}ダッシュボード{% elif active_page == 'reservations' %}予約管理{% elif active_page == 'customers' %}顧客管理{% elif active_page == 'settings' %}店舗情報{% elif active_page == 'staff' %}スタッフ予約{% else %}管理画面{% endif %}
           </div>
         </div>
         <div class="topbar-right">
+          <button type="button" class="sidebar-toggle" onclick="document.body.classList.toggle('menu-open')">☰ MENU</button>
           <a href="/shop/{{ shop_id }}" target="_blank" class="chip mobile-shop-link">予約サイト</a>
           <span class="chip">1店舗MVP</span>
           <span class="chip">iPad対応</span>

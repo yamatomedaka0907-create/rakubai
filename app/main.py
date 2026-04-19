@@ -10,6 +10,7 @@ from email.mime.text import MIMEText
 from email.utils import formataddr
 from pathlib import Path
 import secrets
+import re
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -118,6 +119,83 @@ def _safe_parse_date(value: str | None, fallback: date | None = None) -> date:
 def _build_time_slots() -> list[str]:
     return [f"{hour:02d}:00" for hour in range(10, 18)]
 
+
+
+def _parse_business_hours_range(business_hours: str | None) -> tuple[str, str]:
+    value = str(business_hours or '').strip()
+    match = re.search(r'(\d{1,2}:\d{2}).*?(\d{1,2}:\d{2})', value)
+    if not match:
+        return ('10:00', '19:00')
+    start_time, end_time = match.group(1), match.group(2)
+    return (start_time, end_time)
+
+
+def _build_half_hour_slots(business_hours: str | None) -> list[str]:
+    start_raw, end_raw = _parse_business_hours_range(business_hours)
+    try:
+        start_dt = datetime.strptime(start_raw, '%H:%M')
+        end_dt = datetime.strptime(end_raw, '%H:%M')
+    except ValueError:
+        return [f"{hour:02d}:00" for hour in range(10, 19)]
+
+    if end_dt <= start_dt:
+        end_dt = start_dt + timedelta(hours=9)
+
+    slots: list[str] = []
+    current = start_dt
+    safety = 0
+    while current < end_dt and safety < 96:
+        slots.append(current.strftime('%H:%M'))
+        current += timedelta(minutes=30)
+        safety += 1
+    return slots or [f"{hour:02d}:00" for hour in range(10, 19)]
+
+
+def _build_week_availability_matrix(*, shop: dict, reservations: list[dict], selected_date: date) -> tuple[list[dict], list[str], list[dict]]:
+    start_of_week = selected_date - timedelta(days=((selected_date.weekday() + 1) % 7))
+    holiday_idx = WEEKDAY_MAP.get(str(shop.get('holiday') or ''))
+    week_days: list[dict] = []
+    for offset in range(7):
+        current_day = start_of_week + timedelta(days=offset)
+        week_days.append({
+            'date': current_day.isoformat(),
+            'label': f"{current_day.month}/{current_day.day}",
+            'weekday': '日月火水木金土'[offset],
+            'is_today': current_day == date.today(),
+            'is_holiday': holiday_idx is not None and current_day.weekday() == holiday_idx,
+        })
+
+    time_slots = _build_half_hour_slots(shop.get('business_hours'))
+    active_reservations = [r for r in reservations if str(r.get('status') or '') != 'キャンセル']
+    reserved_keys: set[tuple[str, str]] = set()
+    for item in active_reservations:
+        reservation_date = str(item.get('reservation_date') or '')
+        start_time = str(item.get('start_time') or '')[:5]
+        if reservation_date and start_time:
+            reserved_keys.add((reservation_date, start_time))
+
+    weekly_rows: list[dict] = []
+    for slot in time_slots:
+        cells = []
+        for day in week_days:
+            if day['is_holiday']:
+                symbol = '休'
+                cell_class = 'is-holiday'
+            elif (day['date'], slot) in reserved_keys:
+                symbol = '×'
+                cell_class = 'is-booked'
+            else:
+                symbol = '◎'
+                cell_class = 'is-open'
+            cells.append({
+                'date': day['date'],
+                'time': slot,
+                'symbol': symbol,
+                'cell_class': cell_class,
+            })
+        weekly_rows.append({'time': slot, 'cells': cells})
+
+    return week_days, time_slots, weekly_rows
 
 def _send_reservation_mail(*, to_email: str, shop: dict, reservation_date: str, start_time: str, reply_to_email: str = '') -> None:
     settings = get_system_mail_settings()
@@ -851,6 +929,11 @@ def admin_page(request: Request, shop_id: str, error_message: str = ""):
     today_completed_count = sum(1 for item in reservations if item.get("reservation_date") == today and item.get("status") == "来店済み")
     total_sales = sum(int(item.get("price") or 0) for item in reservations if item.get("status") == "来店済み")
     completed_count = sum(1 for item in reservations if item.get("status") == "来店済み")
+    week_days, time_slots, weekly_rows = _build_week_availability_matrix(
+        shop=shop,
+        reservations=reservations,
+        selected_date=selected_date_obj,
+    )
     template_name = "admin/tool/dashboard.html" if shop.get("admin_ui_mode") == "tool" else "admin/dashboard.html"
 
     return templates.TemplateResponse(
@@ -884,6 +967,9 @@ def admin_page(request: Request, shop_id: str, error_message: str = ""):
             "selected_date": selected_date,
             "selected_day_schedule": selected_day_schedule,
             "selected_day_count": selected_day_count,
+            "week_days": week_days,
+            "time_slots": time_slots,
+            "weekly_rows": weekly_rows,
             "active_page": "dashboard",
         },
     )
@@ -952,6 +1038,11 @@ def admin_reservations_page(request: Request, shop_id: str, error_message: str =
         "completed_count": len(completed_items),
     }
 
+    week_days, time_slots, weekly_rows = _build_week_availability_matrix(
+        shop=shop,
+        reservations=filtered_reservations,
+        selected_date=_safe_parse_date(selected_date, today_obj),
+    )
     template_name = "admin/tool/reservations.html" if shop.get("admin_ui_mode") == "tool" else "admin/reservations.html"
     return templates.TemplateResponse(
         request=request,
@@ -980,6 +1071,9 @@ def admin_reservations_page(request: Request, shop_id: str, error_message: str =
             "selected_day_sales": selected_day_sales,
             "selected_day_completed_count": selected_day_completed_count,
             "view_sales_summary": view_sales_summary,
+            "week_days": week_days,
+            "time_slots": time_slots,
+            "weekly_rows": weekly_rows,
             "error_message": error_message,
             "admin_users": admin_users,
             "subscription": subscription,
