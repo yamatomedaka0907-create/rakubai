@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ shop.shop_name }} | 予約内容の確認</title>
+  <style>
+    :root {
+      --primary: {{ shop.primary_color }};
+      --primary-dark: {{ shop.primary_dark }};
+      --bg-soft: {{ shop.accent_bg }};
+      --line: #d8efec;
+      --text: #1f2937;
+      --subtext: #6b7280;
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #ffffff 0%, var(--bg-soft) 100%);
+      color: var(--text);
+    }
+    .wrap { max-width: 820px; margin: 0 auto; padding: 24px; }
+    .top-nav { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+    .top-nav a { display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:0 14px; border-radius:999px; background:#fff; border:1px solid var(--line); text-decoration:none; font-weight:700; color:var(--primary-dark); }
+    .card { background: #fff; border: 1px solid var(--line); border-radius: 24px; box-shadow: var(--shadow); padding: 28px; }
+    .badge {
+      display: inline-flex; padding: 8px 12px; border-radius: 999px; background: rgba(46, 196, 182, 0.14);
+      color: var(--primary-dark); font-weight: 800; font-size: 13px; margin-bottom: 14px;
+    }
+    h1 { margin: 0 0 10px; color: var(--primary-dark); }
+    .lead { margin: 0 0 22px; color: var(--subtext); line-height: 1.8; }
+    .detail-list { display: grid; gap: 12px; margin-bottom: 24px; }
+    .detail-item { border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; background: #fcfffe; }
+    .label { font-size: 12px; font-weight: 700; color: var(--subtext); margin-bottom: 6px; }
+    .value { font-size: 16px; font-weight: 700; }
+    .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 0 18px;
+      border-radius: 12px; text-decoration: none; font-weight: 800; border: none; cursor: pointer; font-size: 15px;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-secondary { background: #fff; color: var(--primary-dark); border: 1px solid var(--line); }
+    form { margin: 0; }
+    @media (max-width: 640px) {
+      .wrap { padding: 16px; }
+      .card { padding: 20px; border-radius: 20px; }
+      h1 { font-size: 26px; line-height: 1.35; }
+      .actions, .top-nav { gap: 10px; }
+      .actions > *, .top-nav a, .btn { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav class="top-nav">
+      <a href="/shop/{{ shop_id }}">店舗トップへ戻る</a>
+      <a href="/shop/{{ shop_id }}#reserve-form">予約内容を修正する</a>
+    </nav>
+
+    <div class="card">
+      <div class="badge">予約内容の確認</div>
+      <h1>{{ shop.shop_name }} の予約内容を確認してください</h1>
+      <p class="lead">まだ予約は確定していません。内容を確認して問題なければ、下のボタンから予約を確定してください。</p>
+
+      <div class="detail-list">
+        <div class="detail-item"><div class="label">お名前</div><div class="value">{{ reservation_preview.customer_name }}</div></div>
+        <div class="detail-item"><div class="label">電話番号</div><div class="value">{{ reservation_preview.phone }}</div></div>
+        <div class="detail-item"><div class="label">メール通知</div><div class="value">{% if reservation_preview.email %}{{ reservation_preview.email }} {% if reservation_preview.receive_email %}(送信する){% else %}(保存のみ){% endif %}{% else %}未入力{% endif %}</div></div>
+        <div class="detail-item"><div class="label">ご予約日時</div><div class="value">{{ reservation_preview.reservation_date }} {{ reservation_preview.start_time }}〜{{ reservation_preview.end_time }}</div></div>
+        <div class="detail-item"><div class="label">メニュー</div><div class="value">{{ reservation_preview.menu_name }} / {{ reservation_preview.duration }}分 / ¥{{ reservation_preview.price }}</div></div>
+        <div class="detail-item"><div class="label">担当スタッフ</div><div class="value">{{ reservation_preview.staff_name }}</div></div>
+      </div>
+
+      <div class="actions">
+        <form method="post" action="/shop/{{ shop_id }}/reserve">
+          <input type="hidden" name="customer_name" value="{{ reservation_preview.customer_name }}">
+          <input type="hidden" name="phone" value="{{ reservation_preview.phone }}">
+          <input type="hidden" name="email" value="{{ reservation_preview.email }}">
+          <input type="hidden" name="receive_email" value="{{ reservation_preview.receive_email }}">
+          <input type="hidden" name="staff_id" value="{{ reservation_preview.staff_id }}">
+          <input type="hidden" name="menu_id" value="{{ reservation_preview.menu_id }}">
+          <input type="hidden" name="reservation_date" value="{{ reservation_preview.reservation_date }}">
+          <input type="hidden" name="start_time" value="{{ reservation_preview.start_time }}">
+          <button class="btn btn-primary" type="submit">この内容で予約を確定する</button>
+        </form>
+
+        <form method="post" action="/shop/{{ shop_id }}/edit">
+          <input type="hidden" name="customer_name" value="{{ reservation_preview.customer_name }}">
+          <input type="hidden" name="phone" value="{{ reservation_preview.phone }}">
+          <input type="hidden" name="email" value="{{ reservation_preview.email }}">
+          <input type="hidden" name="receive_email" value="{{ reservation_preview.receive_email }}">
+          <input type="hidden" name="staff_id" value="{{ reservation_preview.staff_id }}">
+          <input type="hidden" name="menu_id" value="{{ reservation_preview.menu_id }}">
+          <input type="hidden" name="reservation_date" value="{{ reservation_preview.reservation_date }}">
+          <input type="hidden" name="start_time" value="{{ reservation_preview.start_time }}">
+          <button class="btn btn-secondary" type="submit">入力を修正する</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

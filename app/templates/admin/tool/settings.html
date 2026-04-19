@@ -1,0 +1,113 @@
+{% extends "admin/tool/base.html" %}
+{% block page_title %}店舗設定{% endblock %}
+{% block page_subtitle %}店舗情報、契約プラン、管理ユーザーを業務画面の密度で管理します。{% endblock %}
+{% block content %}
+<div class="tool-grid">
+  {% if success_message %}<div class="tool-alert is-success">{{ success_message }}</div>{% endif %}
+
+  <section class="tool-grid cols-2">
+    <div class="tool-panel">
+      <div class="tool-panel-head"><h2>店舗情報</h2></div>
+      <div class="tool-panel-body">
+        <form method="post" action="/admin/{{ shop_id }}/settings" id="tool-shop-settings-form">
+          <div class="tool-form-grid">
+            <div class="tool-field"><label class="tool-label">店舗名</label><input class="tool-input" type="text" name="shop_name" value="{{ shop.shop_name }}" required></div>
+            <div class="tool-field"><label class="tool-label">電話番号</label><input class="tool-input" type="text" name="phone" value="{{ shop.phone }}"></div>
+            <div class="tool-field full"><label class="tool-label">住所</label><input class="tool-input" type="text" name="address" value="{{ shop.address }}"></div>
+            <div class="tool-field"><label class="tool-label">営業時間</label><input class="tool-input" type="text" name="business_hours" value="{{ shop.business_hours }}"></div>
+            <div class="tool-field"><label class="tool-label">定休日</label><input class="tool-input" type="text" name="holiday" value="{{ shop.holiday }}"></div>
+            <div class="tool-field full"><label class="tool-label">キャッチコピー</label><input class="tool-input" type="text" name="catch_copy" value="{{ shop.catch_copy }}"></div>
+            <div class="tool-field full"><label class="tool-label">説明文</label><textarea class="tool-textarea" name="description">{{ shop.description }}</textarea></div>
+            <div class="tool-field"><label class="tool-label">管理画面タイプ</label><select class="tool-select" name="admin_ui_mode"><option value="web" {% if shop.admin_ui_mode != "tool" %}selected{% endif %}>WEB風</option><option value="tool" {% if shop.admin_ui_mode == "tool" %}selected{% endif %}>ツール風</option></select></div>
+            <div class="tool-field full">
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:8px;">
+                <label class="tool-label" style="margin:0;">予約ページのメニュー</label>
+                <button class="tool-btn" type="button" id="tool-add-menu-row">メニューを追加</button>
+              </div>
+              <div id="tool-menu-editor" style="display:grid; gap:10px;">
+                {% for menu in shop.menus %}
+                <div class="tool-menu-row" style="border:1px solid var(--tool-line); border-radius:14px; padding:12px;">
+                  <div class="tool-form-grid" style="grid-template-columns:1.4fr 0.7fr 0.8fr auto; align-items:end;">
+                    <div class="tool-field"><label class="tool-label">メニュー名</label><input class="tool-input" type="text" name="menu_name" value="{{ menu.name }}" required></div>
+                    <div class="tool-field"><label class="tool-label">時間</label><input class="tool-input" type="number" name="menu_duration" value="{{ menu.duration }}" min="0" step="1"></div>
+                    <div class="tool-field"><label class="tool-label">料金</label><input class="tool-input" type="number" name="menu_price" value="{{ menu.price }}" min="0" step="1"></div>
+                    <div class="tool-field"><button class="tool-btn tool-remove-menu-row" type="button">削除</button></div>
+                    <div class="tool-field full"><label class="tool-label">説明文</label><textarea class="tool-textarea" name="menu_description">{{ menu.description }}</textarea></div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          <div class="tool-actions with-top-gap"><button class="tool-btn is-primary" type="submit">店舗情報を保存</button></div>
+        </form>
+      </div>
+    </div>
+
+    <div class="tool-grid">
+      <section class="tool-panel">
+        <div class="tool-panel-head"><h2>契約プラン</h2></div>
+        <div class="tool-panel-body">
+          <form method="post" action="/admin/{{ shop_id }}/subscription">
+            <div class="tool-form-grid">
+              <div class="tool-field full"><label class="tool-label">現在のプラン</label><select class="tool-select" name="plan_id">{% for plan in available_plans %}<option value="{{ plan.id }}" {% if subscription and subscription.plan_id == plan.id %}selected{% endif %}>{{ plan.name }} / ¥{{ plan.monthly_price }}</option>{% endfor %}</select></div>
+              <div class="tool-field full"><label class="tool-label">契約状態</label><select class="tool-select" name="status"><option value="active" {% if subscription and subscription.status == 'active' %}selected{% endif %}>active</option><option value="trial" {% if subscription and subscription.status == 'trial' %}selected{% endif %}>trial</option><option value="canceled" {% if subscription and subscription.status == 'canceled' %}selected{% endif %}>canceled</option></select></div>
+            </div>
+            <div class="tool-actions with-top-gap"><button class="tool-btn is-primary" type="submit">プランを更新</button></div>
+          </form>
+        </div>
+      </section>
+
+      <section class="tool-panel">
+        <div class="tool-panel-head"><h2>管理ユーザー</h2></div>
+        <div class="tool-panel-body">
+          {% if admin_users %}
+          <div class="tool-table-wrap">
+            <table class="tool-table is-dense">
+              <thead><tr><th>名前</th><th>ログインID</th><th>所有者</th></tr></thead>
+              <tbody>
+                {% for user in admin_users %}
+                <tr><td>{{ user.name }}</td><td>{{ user.login_id }}</td><td>{{ 'owner' if user.is_owner else '-' }}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}<div class="tool-empty">管理ユーザーがまだいません。</div>{% endif %}
+          <div class="tool-actions with-top-gap"><a class="tool-btn" href="/admin/register/{{ shop_id }}">新規ユーザー登録へ</a></div>
+        </div>
+      </section>
+    </div>
+  </section>
+</div>
+<template id="tool-menu-row-template">
+  <div class="tool-menu-row" style="border:1px solid var(--tool-line); border-radius:14px; padding:12px;">
+    <div class="tool-form-grid" style="grid-template-columns:1.4fr 0.7fr 0.8fr auto; align-items:end;">
+      <div class="tool-field"><label class="tool-label">メニュー名</label><input class="tool-input" type="text" name="menu_name" required></div>
+      <div class="tool-field"><label class="tool-label">時間</label><input class="tool-input" type="number" name="menu_duration" min="0" step="1"></div>
+      <div class="tool-field"><label class="tool-label">料金</label><input class="tool-input" type="number" name="menu_price" min="0" step="1"></div>
+      <div class="tool-field"><button class="tool-btn tool-remove-menu-row" type="button">削除</button></div>
+      <div class="tool-field full"><label class="tool-label">説明文</label><textarea class="tool-textarea" name="menu_description"></textarea></div>
+    </div>
+  </div>
+</template>
+<script>
+(function () {
+  const editor = document.getElementById('tool-menu-editor');
+  const template = document.getElementById('tool-menu-row-template');
+  const addButton = document.getElementById('tool-add-menu-row');
+  function bindRemove(root) {
+    const btn = root.querySelector('.tool-remove-menu-row');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      root.remove();
+    });
+  }
+  editor.querySelectorAll('.tool-menu-row').forEach(bindRemove);
+  addButton.addEventListener('click', function () {
+    const node = template.content.firstElementChild.cloneNode(true);
+    editor.appendChild(node);
+    bindRemove(node);
+  });
+})();
+</script>
+{% endblock %}

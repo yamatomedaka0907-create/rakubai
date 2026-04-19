@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ shop.shop_name }} ログイン</title>
+  <style>
+    :root {
+      --primary: {{ shop.primary_color }};
+      --primary-dark: {{ shop.primary_dark }};
+      --bg-soft: {{ shop.accent_bg }};
+      --text: #1f2937;
+      --subtext: #6b7280;
+      --line: #d8efec;
+      --card: #ffffff;
+      --danger: #ef4444;
+      --shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #ffffff 0%, var(--bg-soft) 100%);
+    }
+
+    .login-card {
+      width: min(100%, 460px);
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: var(--shadow);
+    }
+
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(46, 196, 182, 0.14);
+      color: var(--primary-dark);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      color: var(--primary-dark);
+    }
+
+    p {
+      margin: 0 0 20px;
+      line-height: 1.7;
+      color: var(--subtext);
+      font-size: 14px;
+    }
+
+    .error-box {
+      margin-bottom: 14px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(239, 68, 68, 0.10);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      color: #b91c1c;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    form {
+      display: grid;
+      gap: 12px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    input, button {
+      width: 100%;
+      min-height: 46px;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 16px;
+    }
+
+    input {
+      border: 1px solid #c7d9d7;
+      background: #ffffff;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(46, 196, 182, 0.14);
+    }
+
+    button {
+      border: none;
+      background: var(--primary);
+      color: #ffffff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .sub-links {
+      margin-top: 16px;
+      font-size: 13px;
+      color: var(--subtext);
+    }
+
+    .sub-links a {
+      color: var(--primary-dark);
+      text-decoration: none;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <main class="login-card">
+    <div class="eyebrow">店舗管理ログイン</div>
+    <h1>{{ shop.shop_name }}</h1>
+    <p>この店舗の管理画面に入るには、ログインIDとパスワードが必要です。</p>
+
+    {% if error_message %}
+      <div class="error-box">{{ error_message }}</div>
+    {% endif %}
+
+    <form method="post" action="/admin/login/{{ shop_id }}">
+      <label>
+        ログインID
+        <input type="text" name="login_id" placeholder="ログインIDを入力" required>
+      </label>
+
+      <label>
+        パスワード
+        <input type="password" name="password" placeholder="パスワードを入力" required>
+      </label>
+
+      <button type="submit">ログインする</button>
+    </form>
+
+    <div class="sub-links">
+      顧客向けページに戻る: <a href="/shop/{{ shop_id }}">/shop/{{ shop_id }}</a>
+    </div>
+  </main>
+</body>
+</html>

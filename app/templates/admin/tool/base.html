@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ shop.shop_name }} 管理ツール</title>
+  <link rel="stylesheet" href="/static/admin_tool.css">
+</head>
+<body>
+  <div class="tool-shell">
+    <header class="tool-topbar">
+      <div class="tool-topbar-left">
+        <button class="tool-menu-button" type="button" id="toolMenuButton" aria-label="メニューを開く">☰</button>
+        <div class="tool-topbar-brand">
+          <div class="tool-topbar-kicker">STORE CONTROL PANEL</div>
+          <div class="tool-topbar-name">{{ shop.shop_name }}</div>
+        </div>
+      </div>
+      <div class="tool-topbar-right">
+        <div class="tool-chip">shop_id: {{ shop_id }}</div>
+        <div class="tool-chip">{{ subscription.plan_name if subscription else '未設定' }}</div>
+        <div class="tool-chip">本日予約 {{ today_reservations|length }} 件</div>
+        <div class="tool-chip">顧客 {{ customers|length }} 人</div>
+      </div>
+    </header>
+
+    <aside class="tool-sidebar" id="toolSidebar">
+      <div class="tool-brand-card">
+        <div class="tool-brand-title">管理メニュー</div>
+        <div class="tool-brand-text">画像の業務ツール風に寄せた一覧・管理中心のレイアウトです。</div>
+      </div>
+
+      <nav class="tool-nav-grid">
+        <a href="/admin/{{ shop_id }}/dashboard" class="tool-nav-tile {% if active_page == 'overview' %}is-active{% endif %}">
+          <span class="tool-nav-symbol">◫</span>
+          <span class="tool-nav-label">ダッシュボード</span>
+        </a>
+        <a href="/admin/{{ shop_id }}/reservations" class="tool-nav-tile {% if active_page == 'reservations' %}is-active{% endif %}">
+          <span class="tool-nav-symbol">▦</span>
+          <span class="tool-nav-label">予約管理</span>
+        </a>
+        <a href="/admin/{{ shop_id }}/customers" class="tool-nav-tile {% if active_page == 'customers' %}is-active{% endif %}">
+          <span class="tool-nav-symbol">◎</span>
+          <span class="tool-nav-label">顧客管理</span>
+        </a>
+        <a href="/admin/{{ shop_id }}/settings" class="tool-nav-tile {% if active_page == 'settings' %}is-active{% endif %}">
+          <span class="tool-nav-symbol">⚙</span>
+          <span class="tool-nav-label">店舗設定</span>
+        </a>
+        <a href="/admin/{{ shop_id }}/website" class="tool-nav-tile {% if active_page == 'website' %}is-active{% endif %}">
+          <span class="tool-nav-symbol">▣</span>
+          <span class="tool-nav-label">HP設定</span>
+        </a>
+      </nav>
+
+      <div class="tool-sidebar-section">
+        <div class="tool-section-head">運用情報</div>
+        <div class="tool-side-list">
+          <div class="tool-side-row"><span>ログイン中</span><strong>{{ current_admin_name }}</strong></div>
+          <div class="tool-side-row"><span>営業時間</span><strong>{{ shop.business_hours or '未設定' }}</strong></div>
+          <div class="tool-side-row"><span>定休日</span><strong>{{ shop.holiday or '未設定' }}</strong></div>
+        </div>
+      </div>
+
+      <div class="tool-sidebar-section">
+        <div class="tool-section-head">ショートカット</div>
+        <a href="/shop/{{ shop_id }}" class="tool-side-button" target="_blank">予約ページを見る</a>
+        <a href="/site/{{ shop_id }}" class="tool-side-button" target="_blank">ホームページを見る</a>
+        <form method="post" action="/admin/logout/{{ shop_id }}">
+          <button type="submit" class="tool-side-button is-ghost">ログアウト</button>
+        </form>
+      </div>
+    </aside>
+
+    <div class="tool-main-wrap">
+      <section class="tool-page-head">
+        <div>
+          <div class="tool-page-kicker">OPERATION SCREEN</div>
+          <h1>{% block page_title %}管理画面{% endblock %}</h1>
+          <p>{% block page_subtitle %}{{ current_admin_name }} さんでログイン中{% endblock %}</p>
+        </div>
+        <div class="tool-page-actions">
+          <a class="tool-btn" href="/admin/{{ shop_id }}/dashboard">トップへ</a>
+          <a class="tool-btn" href="/admin/{{ shop_id }}/reservations?date={{ today }}">今日の予約</a>
+        </div>
+      </section>
+
+      <main class="tool-content">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+  <script src="/static/admin_tool.js"></script>
+</body>
+</html>

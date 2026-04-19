@@ -1,0 +1,4356 @@
+{
+  "categories": [
+    {
+      "code": "hair-salon",
+      "name": "美容室",
+      "lead": "モデル・施術・店内まで入った、美容室向けの完成見本。"
+    },
+    {
+      "code": "nail-salon",
+      "name": "ネイルサロン",
+      "lead": "デザイン選びから予約導線まで体験できる完成見本。"
+    },
+    {
+      "code": "cram-school",
+      "name": "学習塾",
+      "lead": "実績・安心感・無料体験導線をまとめた完成見本。"
+    },
+    {
+      "code": "golf-school",
+      "name": "ゴルフスクール",
+      "lead": "上達感と通いやすさを両立した完成見本。"
+    },
+    {
+      "code": "restaurant",
+      "name": "飲食店",
+      "lead": "料理や空間の空気感まで伝わる完成見本。"
+    },
+    {
+      "code": "fitness",
+      "name": "ジム・スタジオ",
+      "lead": "体験申込みまでつながるLP風の完成見本。"
+    }
+  ],
+  "samples": [
+    {
+      "category_code": "hair-salon",
+      "category_name": "美容室",
+      "code": "korean-split",
+      "name": "韓国ムード",
+      "summary": "柔らかな人物写真を主役にした分割ヒーロー。",
+      "lead": "モデル・施術・店内まで入った、美容室向けの完成見本。",
+      "sort_order": 1,
+      "variant": "split",
+      "template_file": "platform/showcase_variants/split_intro.html",
+      "theme": {
+        "bg": "#f5f2ed",
+        "surface": "#ffffff",
+        "text": "#171717",
+        "sub": "#6c655f",
+        "line": "#ddd6cf",
+        "primary": "#1c1c1c",
+        "accent": "#ece5dd",
+        "accent_text": "#171717",
+        "accent_soft": "#ece5dd"
+      },
+      "thumb_image": "https://images.pexels.com/photos/29189919/pexels-photo-29189919.jpeg?cs=srgb&dl=pexels-sie7e-29189919.jpg&fm=jpg",
+      "thumb_image_alt": "韓国ムード",
+      "assets": [
+        "https://images.pexels.com/photos/29189919/pexels-photo-29189919.jpeg?cs=srgb&dl=pexels-sie7e-29189919.jpg&fm=jpg",
+        "https://images.pexels.com/photos/35225397/pexels-photo-35225397.jpeg?cs=srgb&dl=pexels-goksun-baris-gokalp-2158208031-35225397.jpg&fm=jpg",
+        "https://images.pexels.com/photos/853427/pexels-photo-853427.jpeg?cs=srgb&dl=pexels-delbeautybox-211032-853427.jpg&fm=jpg",
+        "https://images.pexels.com/photos/3992848/pexels-photo-3992848.jpeg?cs=srgb&dl=pexels-cottonbro-3992848.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/29189919/pexels-photo-29189919.jpeg?cs=srgb&dl=pexels-sie7e-29189919.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "A stylist applies hair color to a client in a modern salon setting.",
+          "author": "sie7e"
+        },
+        {
+          "url": "https://images.pexels.com/photos/35225397/pexels-photo-35225397.jpeg?cs=srgb&dl=pexels-goksun-baris-gokalp-2158208031-35225397.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Bright salon with stylist and client.",
+          "author": "Göksun Barış Gökalp"
+        },
+        {
+          "url": "https://images.pexels.com/photos/853427/pexels-photo-853427.jpeg?cs=srgb&dl=pexels-delbeautybox-211032-853427.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Spacious salon interior with mirrors and chairs.",
+          "author": "Delbeautybox"
+        },
+        {
+          "url": "https://images.pexels.com/photos/3992848/pexels-photo-3992848.jpeg?cs=srgb&dl=pexels-cottonbro-3992848.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Hair styling tools hanging in a salon.",
+          "author": "cottonbro studio"
+        }
+      ],
+      "brand": "NOIR",
+      "copy": {
+        "nav": [
+          "HOME",
+          "ABOUT",
+          "STYLE",
+          "MENU",
+          "NEWS",
+          "CONTACT"
+        ],
+        "hero_kicker": "Hair salon sample",
+        "hero_title": "韓国ムードで伝わる、\n予約したくなる空気感。",
+        "hero_text": "人物写真だけでなく、施術・店内・メニュー・ニュースまで入れて、完成した美容室ホームページとして見せる前提で組んだサンプルです。",
+        "primary_cta": "RESERVE",
+        "secondary_cta": "STYLEを見る",
+        "stats": [
+          [
+            "4.8",
+            "口コミ平均"
+          ],
+          [
+            "71%",
+            "新規指名率"
+          ],
+          [
+            "24h",
+            "Web予約受付"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "似合わせカット",
+            "price": "¥5,500",
+            "desc": "骨格と毛流れを見て提案"
+          },
+          {
+            "title": "透明感カラー",
+            "price": "¥8,800",
+            "desc": "柔らかく見える色設計"
+          },
+          {
+            "title": "髪質改善ケア",
+            "price": "¥11,000",
+            "desc": "艶とまとまりを両立"
+          }
+        ],
+        "features": [
+          {
+            "title": "初回カウンセリング",
+            "desc": "悩みと理想を最初にすり合わせ"
+          },
+          {
+            "title": "指名しやすい導線",
+            "desc": "スタイリストごとの世界観を見せる"
+          },
+          {
+            "title": "再来につながる設計",
+            "desc": "NEWSとSTYLE更新でリピートを促進"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.15",
+            "春の透明感カラー特集"
+          ],
+          [
+            "2026.04.08",
+            "スタッフ紹介を更新"
+          ],
+          [
+            "2026.04.02",
+            "新規限定クーポン公開"
+          ]
+        ],
+        "story": [
+          "初めて来る人が一番知りたいのは、技術そのものよりも“自分に合いそうか”という空気感です。",
+          "このサンプルでは、人物写真と店内写真を交互に置きながら、予約に必要な情報を自然に読ませる構成にしています。",
+          "SNSから流入した人でも、そのまま予約ボタンを押しやすいように、各セクションの最後に導線を配置しています。"
+        ],
+        "quote": "雰囲気で選ばれるサロンは、最初の一画面で決まる。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "hair-salon",
+      "category_name": "美容室",
+      "code": "editorial-grid",
+      "name": "エディトリアル",
+      "summary": "雑誌のように写真と文字を交互に見せる構成。",
+      "lead": "モデル・施術・店内まで入った、美容室向けの完成見本。",
+      "sort_order": 2,
+      "variant": "editorial",
+      "template_file": "platform/showcase_variants/editorial_grid.html",
+      "theme": {
+        "bg": "#fbf8f4",
+        "surface": "#ffffff",
+        "text": "#181716",
+        "sub": "#6e6964",
+        "line": "#e3dbd3",
+        "primary": "#181716",
+        "accent": "#f0e5da",
+        "accent_text": "#181716",
+        "accent_soft": "#f0e5da"
+      },
+      "thumb_image": "https://images.pexels.com/photos/35225397/pexels-photo-35225397.jpeg?cs=srgb&dl=pexels-goksun-baris-gokalp-2158208031-35225397.jpg&fm=jpg",
+      "thumb_image_alt": "エディトリアル",
+      "assets": [
+        "https://images.pexels.com/photos/35225397/pexels-photo-35225397.jpeg?cs=srgb&dl=pexels-goksun-baris-gokalp-2158208031-35225397.jpg&fm=jpg",
+        "https://images.pexels.com/photos/853427/pexels-photo-853427.jpeg?cs=srgb&dl=pexels-delbeautybox-211032-853427.jpg&fm=jpg",
+        "https://images.pexels.com/photos/29189919/pexels-photo-29189919.jpeg?cs=srgb&dl=pexels-sie7e-29189919.jpg&fm=jpg",
+        "https://images.pexels.com/photos/3992848/pexels-photo-3992848.jpeg?cs=srgb&dl=pexels-cottonbro-3992848.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/35225397/pexels-photo-35225397.jpeg?cs=srgb&dl=pexels-goksun-baris-gokalp-2158208031-35225397.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Bright salon with stylist and client.",
+          "author": "Göksun Barış Gökalp"
+        },
+        {
+          "url": "https://images.pexels.com/photos/853427/pexels-photo-853427.jpeg?cs=srgb&dl=pexels-delbeautybox-211032-853427.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Spacious salon interior with mirrors and chairs.",
+          "author": "Delbeautybox"
+        },
+        {
+          "url": "https://images.pexels.com/photos/29189919/pexels-photo-29189919.jpeg?cs=srgb&dl=pexels-sie7e-29189919.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "A stylist applies hair color to a client in a modern salon setting.",
+          "author": "sie7e"
+        },
+        {
+          "url": "https://images.pexels.com/photos/3992848/pexels-photo-3992848.jpeg?cs=srgb&dl=pexels-cottonbro-3992848.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Hair styling tools hanging in a salon.",
+          "author": "cottonbro studio"
+        }
+      ],
+      "brand": "NOIR",
+      "copy": {
+        "nav": [
+          "HOME",
+          "ABOUT",
+          "STYLE",
+          "MENU",
+          "NEWS",
+          "CONTACT"
+        ],
+        "hero_kicker": "Hair salon sample",
+        "hero_title": "エディトリアルで伝わる、\n予約したくなる空気感。",
+        "hero_text": "人物写真だけでなく、施術・店内・メニュー・ニュースまで入れて、完成した美容室ホームページとして見せる前提で組んだサンプルです。",
+        "primary_cta": "RESERVE",
+        "secondary_cta": "STYLEを見る",
+        "stats": [
+          [
+            "4.8",
+            "口コミ平均"
+          ],
+          [
+            "71%",
+            "新規指名率"
+          ],
+          [
+            "24h",
+            "Web予約受付"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "似合わせカット",
+            "price": "¥5,500",
+            "desc": "骨格と毛流れを見て提案"
+          },
+          {
+            "title": "透明感カラー",
+            "price": "¥8,800",
+            "desc": "柔らかく見える色設計"
+          },
+          {
+            "title": "髪質改善ケア",
+            "price": "¥11,000",
+            "desc": "艶とまとまりを両立"
+          }
+        ],
+        "features": [
+          {
+            "title": "初回カウンセリング",
+            "desc": "悩みと理想を最初にすり合わせ"
+          },
+          {
+            "title": "指名しやすい導線",
+            "desc": "スタイリストごとの世界観を見せる"
+          },
+          {
+            "title": "再来につながる設計",
+            "desc": "NEWSとSTYLE更新でリピートを促進"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.15",
+            "春の透明感カラー特集"
+          ],
+          [
+            "2026.04.08",
+            "スタッフ紹介を更新"
+          ],
+          [
+            "2026.04.02",
+            "新規限定クーポン公開"
+          ]
+        ],
+        "story": [
+          "初めて来る人が一番知りたいのは、技術そのものよりも“自分に合いそうか”という空気感です。",
+          "このサンプルでは、人物写真と店内写真を交互に置きながら、予約に必要な情報を自然に読ませる構成にしています。",
+          "SNSから流入した人でも、そのまま予約ボタンを押しやすいように、各セクションの最後に導線を配置しています。"
+        ],
+        "quote": "雰囲気で選ばれるサロンは、最初の一画面で決まる。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "hair-salon",
+      "category_name": "美容室",
+      "code": "gold-luxury",
+      "name": "ゴールドラグジュアリー",
+      "summary": "暗めの店内写真で高級感を押し出す構成。",
+      "lead": "モデル・施術・店内まで入った、美容室向けの完成見本。",
+      "sort_order": 3,
+      "variant": "dark",
+      "template_file": "platform/showcase_variants/luxury_dark.html",
+      "theme": {
+        "bg": "#121111",
+        "surface": "#1c1a19",
+        "text": "#f7f1ea",
+        "sub": "#c8b7a5",
+        "line": "#3a312b",
+        "primary": "#d4b07a",
+        "accent": "#221c18",
+        "accent_text": "#f7f1ea",
+        "accent_soft": "#221c18"
+      },
+      "thumb_image": "https://images.pexels.com/photos/35844833/pexels-photo-35844833.png?cs=srgb&dl=pexels-emirhan-sayar-478511598-35844833.jpg&fm=jpg",
+      "thumb_image_alt": "ゴールドラグジュアリー",
+      "assets": [
+        "https://images.pexels.com/photos/35844833/pexels-photo-35844833.png?cs=srgb&dl=pexels-emirhan-sayar-478511598-35844833.jpg&fm=jpg",
+        "https://images.pexels.com/photos/3993309/pexels-photo-3993309.jpeg?cs=srgb&dl=pexels-cottonbro-3993309.jpg&fm=jpg",
+        "https://images.pexels.com/photos/3992848/pexels-photo-3992848.jpeg?cs=srgb&dl=pexels-cottonbro-3992848.jpg&fm=jpg",
+        "https://images.pexels.com/photos/29189919/pexels-photo-29189919.jpeg?cs=srgb&dl=pexels-sie7e-29189919.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/35844833/pexels-photo-35844833.png?cs=srgb&dl=pexels-emirhan-sayar-478511598-35844833.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Dark-toned modern salon interior.",
+          "author": "Emirhan Sayar"
+        },
+        {
+          "url": "https://images.pexels.com/photos/3993309/pexels-photo-3993309.jpeg?cs=srgb&dl=pexels-cottonbro-3993309.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Contemporary hair salon with sleek chairs and mirrors.",
+          "author": "cottonbro studio"
+        },
+        {
+          "url": "https://images.pexels.com/photos/3992848/pexels-photo-3992848.jpeg?cs=srgb&dl=pexels-cottonbro-3992848.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Hair styling tools hanging in a salon.",
+          "author": "cottonbro studio"
+        },
+        {
+          "url": "https://images.pexels.com/photos/29189919/pexels-photo-29189919.jpeg?cs=srgb&dl=pexels-sie7e-29189919.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "A stylist applies hair color to a client in a modern salon setting.",
+          "author": "sie7e"
+        }
+      ],
+      "brand": "NOIR",
+      "copy": {
+        "nav": [
+          "HOME",
+          "ABOUT",
+          "STYLE",
+          "MENU",
+          "NEWS",
+          "CONTACT"
+        ],
+        "hero_kicker": "Hair salon sample",
+        "hero_title": "ゴールドラグジュアリーで伝わる、\n予約したくなる空気感。",
+        "hero_text": "人物写真だけでなく、施術・店内・メニュー・ニュースまで入れて、完成した美容室ホームページとして見せる前提で組んだサンプルです。",
+        "primary_cta": "RESERVE",
+        "secondary_cta": "STYLEを見る",
+        "stats": [
+          [
+            "4.8",
+            "口コミ平均"
+          ],
+          [
+            "71%",
+            "新規指名率"
+          ],
+          [
+            "24h",
+            "Web予約受付"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "似合わせカット",
+            "price": "¥5,500",
+            "desc": "骨格と毛流れを見て提案"
+          },
+          {
+            "title": "透明感カラー",
+            "price": "¥8,800",
+            "desc": "柔らかく見える色設計"
+          },
+          {
+            "title": "髪質改善ケア",
+            "price": "¥11,000",
+            "desc": "艶とまとまりを両立"
+          }
+        ],
+        "features": [
+          {
+            "title": "初回カウンセリング",
+            "desc": "悩みと理想を最初にすり合わせ"
+          },
+          {
+            "title": "指名しやすい導線",
+            "desc": "スタイリストごとの世界観を見せる"
+          },
+          {
+            "title": "再来につながる設計",
+            "desc": "NEWSとSTYLE更新でリピートを促進"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.15",
+            "春の透明感カラー特集"
+          ],
+          [
+            "2026.04.08",
+            "スタッフ紹介を更新"
+          ],
+          [
+            "2026.04.02",
+            "新規限定クーポン公開"
+          ]
+        ],
+        "story": [
+          "初めて来る人が一番知りたいのは、技術そのものよりも“自分に合いそうか”という空気感です。",
+          "このサンプルでは、人物写真と店内写真を交互に置きながら、予約に必要な情報を自然に読ませる構成にしています。",
+          "SNSから流入した人でも、そのまま予約ボタンを押しやすいように、各セクションの最後に導線を配置しています。"
+        ],
+        "quote": "雰囲気で選ばれるサロンは、最初の一画面で決まる。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "hair-salon",
+      "category_name": "美容室",
+      "code": "natural-cards",
+      "name": "ナチュラルカード",
+      "summary": "メニューやスタイルをカードで見せる親しみ型。",
+      "lead": "モデル・施術・店内まで入った、美容室向けの完成見本。",
+      "sort_order": 4,
+      "variant": "cards",
+      "template_file": "platform/showcase_variants/cards_catalog.html",
+      "theme": {
+        "bg": "#f3f6f3",
+        "surface": "#ffffff",
+        "text": "#1c2620",
+        "sub": "#647166",
+        "line": "#dbe5dd",
+        "primary": "#1c2620",
+        "accent": "#eaf1eb",
+        "accent_text": "#1c2620",
+        "accent_soft": "#eaf1eb"
+      },
+      "thumb_image": "https://images.pexels.com/photos/853427/pexels-photo-853427.jpeg?cs=srgb&dl=pexels-delbeautybox-211032-853427.jpg&fm=jpg",
+      "thumb_image_alt": "ナチュラルカード",
+      "assets": [
+        "https://images.pexels.com/photos/853427/pexels-photo-853427.jpeg?cs=srgb&dl=pexels-delbeautybox-211032-853427.jpg&fm=jpg",
+        "https://images.pexels.com/photos/29189919/pexels-photo-29189919.jpeg?cs=srgb&dl=pexels-sie7e-29189919.jpg&fm=jpg",
+        "https://images.pexels.com/photos/35225397/pexels-photo-35225397.jpeg?cs=srgb&dl=pexels-goksun-baris-gokalp-2158208031-35225397.jpg&fm=jpg",
+        "https://images.pexels.com/photos/3992848/pexels-photo-3992848.jpeg?cs=srgb&dl=pexels-cottonbro-3992848.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/853427/pexels-photo-853427.jpeg?cs=srgb&dl=pexels-delbeautybox-211032-853427.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Spacious salon interior with mirrors and chairs.",
+          "author": "Delbeautybox"
+        },
+        {
+          "url": "https://images.pexels.com/photos/29189919/pexels-photo-29189919.jpeg?cs=srgb&dl=pexels-sie7e-29189919.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "A stylist applies hair color to a client in a modern salon setting.",
+          "author": "sie7e"
+        },
+        {
+          "url": "https://images.pexels.com/photos/35225397/pexels-photo-35225397.jpeg?cs=srgb&dl=pexels-goksun-baris-gokalp-2158208031-35225397.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Bright salon with stylist and client.",
+          "author": "Göksun Barış Gökalp"
+        },
+        {
+          "url": "https://images.pexels.com/photos/3992848/pexels-photo-3992848.jpeg?cs=srgb&dl=pexels-cottonbro-3992848.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Hair styling tools hanging in a salon.",
+          "author": "cottonbro studio"
+        }
+      ],
+      "brand": "NOIR",
+      "copy": {
+        "nav": [
+          "HOME",
+          "ABOUT",
+          "STYLE",
+          "MENU",
+          "NEWS",
+          "CONTACT"
+        ],
+        "hero_kicker": "Hair salon sample",
+        "hero_title": "ナチュラルカードで伝わる、\n予約したくなる空気感。",
+        "hero_text": "人物写真だけでなく、施術・店内・メニュー・ニュースまで入れて、完成した美容室ホームページとして見せる前提で組んだサンプルです。",
+        "primary_cta": "RESERVE",
+        "secondary_cta": "STYLEを見る",
+        "stats": [
+          [
+            "4.8",
+            "口コミ平均"
+          ],
+          [
+            "71%",
+            "新規指名率"
+          ],
+          [
+            "24h",
+            "Web予約受付"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "似合わせカット",
+            "price": "¥5,500",
+            "desc": "骨格と毛流れを見て提案"
+          },
+          {
+            "title": "透明感カラー",
+            "price": "¥8,800",
+            "desc": "柔らかく見える色設計"
+          },
+          {
+            "title": "髪質改善ケア",
+            "price": "¥11,000",
+            "desc": "艶とまとまりを両立"
+          }
+        ],
+        "features": [
+          {
+            "title": "初回カウンセリング",
+            "desc": "悩みと理想を最初にすり合わせ"
+          },
+          {
+            "title": "指名しやすい導線",
+            "desc": "スタイリストごとの世界観を見せる"
+          },
+          {
+            "title": "再来につながる設計",
+            "desc": "NEWSとSTYLE更新でリピートを促進"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.15",
+            "春の透明感カラー特集"
+          ],
+          [
+            "2026.04.08",
+            "スタッフ紹介を更新"
+          ],
+          [
+            "2026.04.02",
+            "新規限定クーポン公開"
+          ]
+        ],
+        "story": [
+          "初めて来る人が一番知りたいのは、技術そのものよりも“自分に合いそうか”という空気感です。",
+          "このサンプルでは、人物写真と店内写真を交互に置きながら、予約に必要な情報を自然に読ませる構成にしています。",
+          "SNSから流入した人でも、そのまま予約ボタンを押しやすいように、各セクションの最後に導線を配置しています。"
+        ],
+        "quote": "雰囲気で選ばれるサロンは、最初の一画面で決まる。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "hair-salon",
+      "category_name": "美容室",
+      "code": "salon-story",
+      "name": "サロンストーリー",
+      "summary": "文章量を増やして世界観に浸らせる長文型。",
+      "lead": "モデル・施術・店内まで入った、美容室向けの完成見本。",
+      "sort_order": 5,
+      "variant": "story",
+      "template_file": "platform/showcase_variants/story_flow.html",
+      "theme": {
+        "bg": "#f7f3f0",
+        "surface": "#ffffff",
+        "text": "#1f1c1a",
+        "sub": "#70655f",
+        "line": "#e6ddd7",
+        "primary": "#1f1c1a",
+        "accent": "#eee4db",
+        "accent_text": "#1f1c1a",
+        "accent_soft": "#eee4db"
+      },
+      "thumb_image": "https://images.pexels.com/photos/35225397/pexels-photo-35225397.jpeg?cs=srgb&dl=pexels-goksun-baris-gokalp-2158208031-35225397.jpg&fm=jpg",
+      "thumb_image_alt": "サロンストーリー",
+      "assets": [
+        "https://images.pexels.com/photos/35225397/pexels-photo-35225397.jpeg?cs=srgb&dl=pexels-goksun-baris-gokalp-2158208031-35225397.jpg&fm=jpg",
+        "https://images.pexels.com/photos/35844833/pexels-photo-35844833.png?cs=srgb&dl=pexels-emirhan-sayar-478511598-35844833.jpg&fm=jpg",
+        "https://images.pexels.com/photos/853427/pexels-photo-853427.jpeg?cs=srgb&dl=pexels-delbeautybox-211032-853427.jpg&fm=jpg",
+        "https://images.pexels.com/photos/29189919/pexels-photo-29189919.jpeg?cs=srgb&dl=pexels-sie7e-29189919.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/35225397/pexels-photo-35225397.jpeg?cs=srgb&dl=pexels-goksun-baris-gokalp-2158208031-35225397.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Bright salon with stylist and client.",
+          "author": "Göksun Barış Gökalp"
+        },
+        {
+          "url": "https://images.pexels.com/photos/35844833/pexels-photo-35844833.png?cs=srgb&dl=pexels-emirhan-sayar-478511598-35844833.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Dark-toned modern salon interior.",
+          "author": "Emirhan Sayar"
+        },
+        {
+          "url": "https://images.pexels.com/photos/853427/pexels-photo-853427.jpeg?cs=srgb&dl=pexels-delbeautybox-211032-853427.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Spacious salon interior with mirrors and chairs.",
+          "author": "Delbeautybox"
+        },
+        {
+          "url": "https://images.pexels.com/photos/29189919/pexels-photo-29189919.jpeg?cs=srgb&dl=pexels-sie7e-29189919.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "A stylist applies hair color to a client in a modern salon setting.",
+          "author": "sie7e"
+        }
+      ],
+      "brand": "NOIR",
+      "copy": {
+        "nav": [
+          "HOME",
+          "ABOUT",
+          "STYLE",
+          "MENU",
+          "NEWS",
+          "CONTACT"
+        ],
+        "hero_kicker": "Hair salon sample",
+        "hero_title": "サロンストーリーで伝わる、\n予約したくなる空気感。",
+        "hero_text": "人物写真だけでなく、施術・店内・メニュー・ニュースまで入れて、完成した美容室ホームページとして見せる前提で組んだサンプルです。",
+        "primary_cta": "RESERVE",
+        "secondary_cta": "STYLEを見る",
+        "stats": [
+          [
+            "4.8",
+            "口コミ平均"
+          ],
+          [
+            "71%",
+            "新規指名率"
+          ],
+          [
+            "24h",
+            "Web予約受付"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "似合わせカット",
+            "price": "¥5,500",
+            "desc": "骨格と毛流れを見て提案"
+          },
+          {
+            "title": "透明感カラー",
+            "price": "¥8,800",
+            "desc": "柔らかく見える色設計"
+          },
+          {
+            "title": "髪質改善ケア",
+            "price": "¥11,000",
+            "desc": "艶とまとまりを両立"
+          }
+        ],
+        "features": [
+          {
+            "title": "初回カウンセリング",
+            "desc": "悩みと理想を最初にすり合わせ"
+          },
+          {
+            "title": "指名しやすい導線",
+            "desc": "スタイリストごとの世界観を見せる"
+          },
+          {
+            "title": "再来につながる設計",
+            "desc": "NEWSとSTYLE更新でリピートを促進"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.15",
+            "春の透明感カラー特集"
+          ],
+          [
+            "2026.04.08",
+            "スタッフ紹介を更新"
+          ],
+          [
+            "2026.04.02",
+            "新規限定クーポン公開"
+          ]
+        ],
+        "story": [
+          "初めて来る人が一番知りたいのは、技術そのものよりも“自分に合いそうか”という空気感です。",
+          "このサンプルでは、人物写真と店内写真を交互に置きながら、予約に必要な情報を自然に読ませる構成にしています。",
+          "SNSから流入した人でも、そのまま予約ボタンを押しやすいように、各セクションの最後に導線を配置しています。"
+        ],
+        "quote": "雰囲気で選ばれるサロンは、最初の一画面で決まる。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "nail-salon",
+      "category_name": "ネイルサロン",
+      "code": "design-split",
+      "name": "デザインスプリット",
+      "summary": "施術写真と価格導線を左右で見せる構成。",
+      "lead": "デザイン選びから予約導線まで体験できる完成見本。",
+      "sort_order": 1,
+      "variant": "split",
+      "template_file": "platform/showcase_variants/split_intro.html",
+      "theme": {
+        "bg": "#fcf7fa",
+        "surface": "#ffffff",
+        "text": "#493f45",
+        "sub": "#8a7b84",
+        "line": "#ebdfe6",
+        "primary": "#6f5c67",
+        "accent": "#f7e8ef",
+        "accent_text": "#493f45",
+        "accent_soft": "#f7e8ef"
+      },
+      "thumb_image": "https://images.pexels.com/photos/16041435/pexels-photo-16041435.jpeg?cs=srgb&dl=pexels-andreamostiphotography-16041435.jpg&fm=jpg",
+      "thumb_image_alt": "デザインスプリット",
+      "assets": [
+        "https://images.pexels.com/photos/16041435/pexels-photo-16041435.jpeg?cs=srgb&dl=pexels-andreamostiphotography-16041435.jpg&fm=jpg",
+        "https://images.pexels.com/photos/3736313/pexels-photo-3736313.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-3736313.jpg&fm=jpg",
+        "https://images.pexels.com/photos/4677860/pexels-photo-4677860.jpeg?cs=srgb&dl=pexels-leeloothefirst-4677860.jpg&fm=jpg",
+        "https://images.pexels.com/photos/7446919/pexels-photo-7446919.jpeg?cs=srgb&dl=pexels-gustavo-fring-7446919.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/16041435/pexels-photo-16041435.jpeg?cs=srgb&dl=pexels-andreamostiphotography-16041435.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Close-up of nail polish application.",
+          "author": "Andrea Mosti"
+        },
+        {
+          "url": "https://images.pexels.com/photos/3736313/pexels-photo-3736313.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-3736313.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Hands selecting nail polish colors in a salon.",
+          "author": "Polina Tankilevitch"
+        },
+        {
+          "url": "https://images.pexels.com/photos/4677860/pexels-photo-4677860.jpeg?cs=srgb&dl=pexels-leeloothefirst-4677860.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "A nail technician providing a manicure to a client in a cozy salon.",
+          "author": "Leeloo The First"
+        },
+        {
+          "url": "https://images.pexels.com/photos/7446919/pexels-photo-7446919.jpeg?cs=srgb&dl=pexels-gustavo-fring-7446919.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Professional nail service across a manicure table.",
+          "author": "Gustavo Fring"
+        }
+      ],
+      "brand": "atelier m",
+      "copy": {
+        "nav": [
+          "TOP",
+          "DESIGN",
+          "PRICE",
+          "STAFF",
+          "NEWS",
+          "RESERVE"
+        ],
+        "hero_kicker": "Nail salon sample",
+        "hero_title": "デザインスプリットで見せる、\n今っぽいネイル選び。",
+        "hero_text": "検索アプリのような見やすさと、個人サロンらしい世界観を両立したネイルサロン向けサンプルです。",
+        "primary_cta": "予約する",
+        "secondary_cta": "人気デザインを見る",
+        "stats": [
+          [
+            "320+",
+            "掲載デザイン"
+          ],
+          [
+            "4.9",
+            "満足度"
+          ],
+          [
+            "当日",
+            "空き確認OK"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "定額デザイン",
+            "price": "¥6,980",
+            "desc": "人気アートを毎月更新"
+          },
+          {
+            "title": "ワンカラー",
+            "price": "¥5,500",
+            "desc": "上品カラーを豊富に用意"
+          },
+          {
+            "title": "持ち込みアート",
+            "price": "¥8,800〜",
+            "desc": "画像相談OKの自由設計"
+          }
+        ],
+        "features": [
+          {
+            "title": "検索しやすい",
+            "desc": "色・系統・価格で選びやすい"
+          },
+          {
+            "title": "不安が少ない",
+            "desc": "所要時間やオフ有無を明記"
+          },
+          {
+            "title": "再来しやすい",
+            "desc": "次回提案につながる更新設計"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.12",
+            "新作ニュアンスデザイン公開"
+          ],
+          [
+            "2026.04.05",
+            "春の定額コース更新"
+          ],
+          [
+            "2026.04.01",
+            "初回クーポンを追加"
+          ]
+        ],
+        "story": [
+          "ネイルは写真の見せ方だけで予約率が大きく変わります。",
+          "このサンプルでは、ディテール写真・施術風景・価格をセットにして、迷わず選べる構成にしています。",
+          "オフィス向け、韓国っぽ、ニュアンスなど系統別に広げやすい土台です。"
+        ],
+        "quote": "見つけた瞬間に“これにしたい”と思わせる。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "nail-salon",
+      "category_name": "ネイルサロン",
+      "code": "gallery-editorial",
+      "name": "ギャラリーエディトリアル",
+      "summary": "ネイル見本とコラムを交互に読ませる構成。",
+      "lead": "デザイン選びから予約導線まで体験できる完成見本。",
+      "sort_order": 2,
+      "variant": "editorial",
+      "template_file": "platform/showcase_variants/editorial_grid.html",
+      "theme": {
+        "bg": "#fffafc",
+        "surface": "#ffffff",
+        "text": "#493f45",
+        "sub": "#8a7b84",
+        "line": "#ebdfe6",
+        "primary": "#816773",
+        "accent": "#f8edf1",
+        "accent_text": "#493f45",
+        "accent_soft": "#f8edf1"
+      },
+      "thumb_image": "https://images.pexels.com/photos/7446919/pexels-photo-7446919.jpeg?cs=srgb&dl=pexels-gustavo-fring-7446919.jpg&fm=jpg",
+      "thumb_image_alt": "ギャラリーエディトリアル",
+      "assets": [
+        "https://images.pexels.com/photos/7446919/pexels-photo-7446919.jpeg?cs=srgb&dl=pexels-gustavo-fring-7446919.jpg&fm=jpg",
+        "https://images.pexels.com/photos/3736313/pexels-photo-3736313.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-3736313.jpg&fm=jpg",
+        "https://images.pexels.com/photos/3997374/pexels-photo-3997374.jpeg?cs=srgb&dl=pexels-cottonbro-3997374.jpg&fm=jpg",
+        "https://images.pexels.com/photos/16041435/pexels-photo-16041435.jpeg?cs=srgb&dl=pexels-andreamostiphotography-16041435.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/7446919/pexels-photo-7446919.jpeg?cs=srgb&dl=pexels-gustavo-fring-7446919.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Professional nail service across a manicure table.",
+          "author": "Gustavo Fring"
+        },
+        {
+          "url": "https://images.pexels.com/photos/3736313/pexels-photo-3736313.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-3736313.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Hands selecting nail polish colors in a salon.",
+          "author": "Polina Tankilevitch"
+        },
+        {
+          "url": "https://images.pexels.com/photos/3997374/pexels-photo-3997374.jpeg?cs=srgb&dl=pexels-cottonbro-3997374.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Close-up manicure process with black gloves.",
+          "author": "cottonbro studio"
+        },
+        {
+          "url": "https://images.pexels.com/photos/16041435/pexels-photo-16041435.jpeg?cs=srgb&dl=pexels-andreamostiphotography-16041435.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Close-up of nail polish application.",
+          "author": "Andrea Mosti"
+        }
+      ],
+      "brand": "atelier m",
+      "copy": {
+        "nav": [
+          "TOP",
+          "DESIGN",
+          "PRICE",
+          "STAFF",
+          "NEWS",
+          "RESERVE"
+        ],
+        "hero_kicker": "Nail salon sample",
+        "hero_title": "ギャラリーエディトリアルで見せる、\n今っぽいネイル選び。",
+        "hero_text": "検索アプリのような見やすさと、個人サロンらしい世界観を両立したネイルサロン向けサンプルです。",
+        "primary_cta": "予約する",
+        "secondary_cta": "人気デザインを見る",
+        "stats": [
+          [
+            "320+",
+            "掲載デザイン"
+          ],
+          [
+            "4.9",
+            "満足度"
+          ],
+          [
+            "当日",
+            "空き確認OK"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "定額デザイン",
+            "price": "¥6,980",
+            "desc": "人気アートを毎月更新"
+          },
+          {
+            "title": "ワンカラー",
+            "price": "¥5,500",
+            "desc": "上品カラーを豊富に用意"
+          },
+          {
+            "title": "持ち込みアート",
+            "price": "¥8,800〜",
+            "desc": "画像相談OKの自由設計"
+          }
+        ],
+        "features": [
+          {
+            "title": "検索しやすい",
+            "desc": "色・系統・価格で選びやすい"
+          },
+          {
+            "title": "不安が少ない",
+            "desc": "所要時間やオフ有無を明記"
+          },
+          {
+            "title": "再来しやすい",
+            "desc": "次回提案につながる更新設計"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.12",
+            "新作ニュアンスデザイン公開"
+          ],
+          [
+            "2026.04.05",
+            "春の定額コース更新"
+          ],
+          [
+            "2026.04.01",
+            "初回クーポンを追加"
+          ]
+        ],
+        "story": [
+          "ネイルは写真の見せ方だけで予約率が大きく変わります。",
+          "このサンプルでは、ディテール写真・施術風景・価格をセットにして、迷わず選べる構成にしています。",
+          "オフィス向け、韓国っぽ、ニュアンスなど系統別に広げやすい土台です。"
+        ],
+        "quote": "見つけた瞬間に“これにしたい”と思わせる。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "nail-salon",
+      "category_name": "ネイルサロン",
+      "code": "luxury-black",
+      "name": "ラグジュアリーブラック",
+      "summary": "暗めのトーンで高単価感をつくる構成。",
+      "lead": "デザイン選びから予約導線まで体験できる完成見本。",
+      "sort_order": 3,
+      "variant": "dark",
+      "template_file": "platform/showcase_variants/luxury_dark.html",
+      "theme": {
+        "bg": "#1a1719",
+        "surface": "#242023",
+        "text": "#fff5fa",
+        "sub": "#d9c3cf",
+        "line": "#433741",
+        "primary": "#f4dbe7",
+        "accent": "#2a2328",
+        "accent_text": "#fff5fa",
+        "accent_soft": "#2a2328"
+      },
+      "thumb_image": "https://images.pexels.com/photos/10401643/pexels-photo-10401643.jpeg?cs=srgb&dl=pexels-lapushkina-10401643.jpg&fm=jpg",
+      "thumb_image_alt": "ラグジュアリーブラック",
+      "assets": [
+        "https://images.pexels.com/photos/10401643/pexels-photo-10401643.jpeg?cs=srgb&dl=pexels-lapushkina-10401643.jpg&fm=jpg",
+        "https://images.pexels.com/photos/3997374/pexels-photo-3997374.jpeg?cs=srgb&dl=pexels-cottonbro-3997374.jpg&fm=jpg",
+        "https://images.pexels.com/photos/4677860/pexels-photo-4677860.jpeg?cs=srgb&dl=pexels-leeloothefirst-4677860.jpg&fm=jpg",
+        "https://images.pexels.com/photos/16041435/pexels-photo-16041435.jpeg?cs=srgb&dl=pexels-andreamostiphotography-16041435.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/10401643/pexels-photo-10401643.jpeg?cs=srgb&dl=pexels-lapushkina-10401643.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Manicure detail in salon lighting.",
+          "author": "Anastasia Shuraeva"
+        },
+        {
+          "url": "https://images.pexels.com/photos/3997374/pexels-photo-3997374.jpeg?cs=srgb&dl=pexels-cottonbro-3997374.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Close-up manicure process with black gloves.",
+          "author": "cottonbro studio"
+        },
+        {
+          "url": "https://images.pexels.com/photos/4677860/pexels-photo-4677860.jpeg?cs=srgb&dl=pexels-leeloothefirst-4677860.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "A nail technician providing a manicure to a client in a cozy salon.",
+          "author": "Leeloo The First"
+        },
+        {
+          "url": "https://images.pexels.com/photos/16041435/pexels-photo-16041435.jpeg?cs=srgb&dl=pexels-andreamostiphotography-16041435.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Close-up of nail polish application.",
+          "author": "Andrea Mosti"
+        }
+      ],
+      "brand": "atelier m",
+      "copy": {
+        "nav": [
+          "TOP",
+          "DESIGN",
+          "PRICE",
+          "STAFF",
+          "NEWS",
+          "RESERVE"
+        ],
+        "hero_kicker": "Nail salon sample",
+        "hero_title": "ラグジュアリーブラックで見せる、\n今っぽいネイル選び。",
+        "hero_text": "検索アプリのような見やすさと、個人サロンらしい世界観を両立したネイルサロン向けサンプルです。",
+        "primary_cta": "予約する",
+        "secondary_cta": "人気デザインを見る",
+        "stats": [
+          [
+            "320+",
+            "掲載デザイン"
+          ],
+          [
+            "4.9",
+            "満足度"
+          ],
+          [
+            "当日",
+            "空き確認OK"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "定額デザイン",
+            "price": "¥6,980",
+            "desc": "人気アートを毎月更新"
+          },
+          {
+            "title": "ワンカラー",
+            "price": "¥5,500",
+            "desc": "上品カラーを豊富に用意"
+          },
+          {
+            "title": "持ち込みアート",
+            "price": "¥8,800〜",
+            "desc": "画像相談OKの自由設計"
+          }
+        ],
+        "features": [
+          {
+            "title": "検索しやすい",
+            "desc": "色・系統・価格で選びやすい"
+          },
+          {
+            "title": "不安が少ない",
+            "desc": "所要時間やオフ有無を明記"
+          },
+          {
+            "title": "再来しやすい",
+            "desc": "次回提案につながる更新設計"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.12",
+            "新作ニュアンスデザイン公開"
+          ],
+          [
+            "2026.04.05",
+            "春の定額コース更新"
+          ],
+          [
+            "2026.04.01",
+            "初回クーポンを追加"
+          ]
+        ],
+        "story": [
+          "ネイルは写真の見せ方だけで予約率が大きく変わります。",
+          "このサンプルでは、ディテール写真・施術風景・価格をセットにして、迷わず選べる構成にしています。",
+          "オフィス向け、韓国っぽ、ニュアンスなど系統別に広げやすい土台です。"
+        ],
+        "quote": "見つけた瞬間に“これにしたい”と思わせる。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "nail-salon",
+      "category_name": "ネイルサロン",
+      "code": "catalog-app",
+      "name": "カタログアプリ風",
+      "summary": "人気デザインを一覧で選ばせるカード型。",
+      "lead": "デザイン選びから予約導線まで体験できる完成見本。",
+      "sort_order": 4,
+      "variant": "cards",
+      "template_file": "platform/showcase_variants/cards_catalog.html",
+      "theme": {
+        "bg": "#faf6fb",
+        "surface": "#ffffff",
+        "text": "#463c43",
+        "sub": "#877986",
+        "line": "#e9deea",
+        "primary": "#7a6777",
+        "accent": "#f4ecf6",
+        "accent_text": "#463c43",
+        "accent_soft": "#f4ecf6"
+      },
+      "thumb_image": "https://images.pexels.com/photos/3736313/pexels-photo-3736313.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-3736313.jpg&fm=jpg",
+      "thumb_image_alt": "カタログアプリ風",
+      "assets": [
+        "https://images.pexels.com/photos/3736313/pexels-photo-3736313.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-3736313.jpg&fm=jpg",
+        "https://images.pexels.com/photos/16041435/pexels-photo-16041435.jpeg?cs=srgb&dl=pexels-andreamostiphotography-16041435.jpg&fm=jpg",
+        "https://images.pexels.com/photos/7446919/pexels-photo-7446919.jpeg?cs=srgb&dl=pexels-gustavo-fring-7446919.jpg&fm=jpg",
+        "https://images.pexels.com/photos/6135673/pexels-photo-6135673.jpeg?cs=srgb&dl=pexels-gabrielpuyen-6135673.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/3736313/pexels-photo-3736313.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-3736313.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Hands selecting nail polish colors in a salon.",
+          "author": "Polina Tankilevitch"
+        },
+        {
+          "url": "https://images.pexels.com/photos/16041435/pexels-photo-16041435.jpeg?cs=srgb&dl=pexels-andreamostiphotography-16041435.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Close-up of nail polish application.",
+          "author": "Andrea Mosti"
+        },
+        {
+          "url": "https://images.pexels.com/photos/7446919/pexels-photo-7446919.jpeg?cs=srgb&dl=pexels-gustavo-fring-7446919.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Professional nail service across a manicure table.",
+          "author": "Gustavo Fring"
+        },
+        {
+          "url": "https://images.pexels.com/photos/6135673/pexels-photo-6135673.jpeg?cs=srgb&dl=pexels-gabrielpuyen-6135673.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Nail care session with clipping and prep.",
+          "author": "Gabriel Puyén"
+        }
+      ],
+      "brand": "atelier m",
+      "copy": {
+        "nav": [
+          "TOP",
+          "DESIGN",
+          "PRICE",
+          "STAFF",
+          "NEWS",
+          "RESERVE"
+        ],
+        "hero_kicker": "Nail salon sample",
+        "hero_title": "カタログアプリ風で見せる、\n今っぽいネイル選び。",
+        "hero_text": "検索アプリのような見やすさと、個人サロンらしい世界観を両立したネイルサロン向けサンプルです。",
+        "primary_cta": "予約する",
+        "secondary_cta": "人気デザインを見る",
+        "stats": [
+          [
+            "320+",
+            "掲載デザイン"
+          ],
+          [
+            "4.9",
+            "満足度"
+          ],
+          [
+            "当日",
+            "空き確認OK"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "定額デザイン",
+            "price": "¥6,980",
+            "desc": "人気アートを毎月更新"
+          },
+          {
+            "title": "ワンカラー",
+            "price": "¥5,500",
+            "desc": "上品カラーを豊富に用意"
+          },
+          {
+            "title": "持ち込みアート",
+            "price": "¥8,800〜",
+            "desc": "画像相談OKの自由設計"
+          }
+        ],
+        "features": [
+          {
+            "title": "検索しやすい",
+            "desc": "色・系統・価格で選びやすい"
+          },
+          {
+            "title": "不安が少ない",
+            "desc": "所要時間やオフ有無を明記"
+          },
+          {
+            "title": "再来しやすい",
+            "desc": "次回提案につながる更新設計"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.12",
+            "新作ニュアンスデザイン公開"
+          ],
+          [
+            "2026.04.05",
+            "春の定額コース更新"
+          ],
+          [
+            "2026.04.01",
+            "初回クーポンを追加"
+          ]
+        ],
+        "story": [
+          "ネイルは写真の見せ方だけで予約率が大きく変わります。",
+          "このサンプルでは、ディテール写真・施術風景・価格をセットにして、迷わず選べる構成にしています。",
+          "オフィス向け、韓国っぽ、ニュアンスなど系統別に広げやすい土台です。"
+        ],
+        "quote": "見つけた瞬間に“これにしたい”と思わせる。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "nail-salon",
+      "category_name": "ネイルサロン",
+      "code": "private-story",
+      "name": "プライベートサロン",
+      "summary": "初来店の不安を減らすストーリー型。",
+      "lead": "デザイン選びから予約導線まで体験できる完成見本。",
+      "sort_order": 5,
+      "variant": "story",
+      "template_file": "platform/showcase_variants/story_flow.html",
+      "theme": {
+        "bg": "#f8f4f7",
+        "surface": "#ffffff",
+        "text": "#473d43",
+        "sub": "#887b83",
+        "line": "#e8dde2",
+        "primary": "#6f5d67",
+        "accent": "#efe6eb",
+        "accent_text": "#473d43",
+        "accent_soft": "#efe6eb"
+      },
+      "thumb_image": "https://images.pexels.com/photos/4677860/pexels-photo-4677860.jpeg?cs=srgb&dl=pexels-leeloothefirst-4677860.jpg&fm=jpg",
+      "thumb_image_alt": "プライベートサロン",
+      "assets": [
+        "https://images.pexels.com/photos/4677860/pexels-photo-4677860.jpeg?cs=srgb&dl=pexels-leeloothefirst-4677860.jpg&fm=jpg",
+        "https://images.pexels.com/photos/6135673/pexels-photo-6135673.jpeg?cs=srgb&dl=pexels-gabrielpuyen-6135673.jpg&fm=jpg",
+        "https://images.pexels.com/photos/3736313/pexels-photo-3736313.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-3736313.jpg&fm=jpg",
+        "https://images.pexels.com/photos/3997374/pexels-photo-3997374.jpeg?cs=srgb&dl=pexels-cottonbro-3997374.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/4677860/pexels-photo-4677860.jpeg?cs=srgb&dl=pexels-leeloothefirst-4677860.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "A nail technician providing a manicure to a client in a cozy salon.",
+          "author": "Leeloo The First"
+        },
+        {
+          "url": "https://images.pexels.com/photos/6135673/pexels-photo-6135673.jpeg?cs=srgb&dl=pexels-gabrielpuyen-6135673.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Nail care session with clipping and prep.",
+          "author": "Gabriel Puyén"
+        },
+        {
+          "url": "https://images.pexels.com/photos/3736313/pexels-photo-3736313.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-3736313.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Hands selecting nail polish colors in a salon.",
+          "author": "Polina Tankilevitch"
+        },
+        {
+          "url": "https://images.pexels.com/photos/3997374/pexels-photo-3997374.jpeg?cs=srgb&dl=pexels-cottonbro-3997374.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Close-up manicure process with black gloves.",
+          "author": "cottonbro studio"
+        }
+      ],
+      "brand": "atelier m",
+      "copy": {
+        "nav": [
+          "TOP",
+          "DESIGN",
+          "PRICE",
+          "STAFF",
+          "NEWS",
+          "RESERVE"
+        ],
+        "hero_kicker": "Nail salon sample",
+        "hero_title": "プライベートサロンで見せる、\n今っぽいネイル選び。",
+        "hero_text": "検索アプリのような見やすさと、個人サロンらしい世界観を両立したネイルサロン向けサンプルです。",
+        "primary_cta": "予約する",
+        "secondary_cta": "人気デザインを見る",
+        "stats": [
+          [
+            "320+",
+            "掲載デザイン"
+          ],
+          [
+            "4.9",
+            "満足度"
+          ],
+          [
+            "当日",
+            "空き確認OK"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "定額デザイン",
+            "price": "¥6,980",
+            "desc": "人気アートを毎月更新"
+          },
+          {
+            "title": "ワンカラー",
+            "price": "¥5,500",
+            "desc": "上品カラーを豊富に用意"
+          },
+          {
+            "title": "持ち込みアート",
+            "price": "¥8,800〜",
+            "desc": "画像相談OKの自由設計"
+          }
+        ],
+        "features": [
+          {
+            "title": "検索しやすい",
+            "desc": "色・系統・価格で選びやすい"
+          },
+          {
+            "title": "不安が少ない",
+            "desc": "所要時間やオフ有無を明記"
+          },
+          {
+            "title": "再来しやすい",
+            "desc": "次回提案につながる更新設計"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.12",
+            "新作ニュアンスデザイン公開"
+          ],
+          [
+            "2026.04.05",
+            "春の定額コース更新"
+          ],
+          [
+            "2026.04.01",
+            "初回クーポンを追加"
+          ]
+        ],
+        "story": [
+          "ネイルは写真の見せ方だけで予約率が大きく変わります。",
+          "このサンプルでは、ディテール写真・施術風景・価格をセットにして、迷わず選べる構成にしています。",
+          "オフィス向け、韓国っぽ、ニュアンスなど系統別に広げやすい土台です。"
+        ],
+        "quote": "見つけた瞬間に“これにしたい”と思わせる。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "cram-school",
+      "category_name": "学習塾",
+      "code": "trust-split",
+      "name": "信頼スプリット",
+      "summary": "先生と生徒の距離感を大きく見せる構成。",
+      "lead": "実績・安心感・無料体験導線をまとめた完成見本。",
+      "sort_order": 1,
+      "variant": "split",
+      "template_file": "platform/showcase_variants/split_intro.html",
+      "theme": {
+        "bg": "#f6f9ff",
+        "surface": "#ffffff",
+        "text": "#17233b",
+        "sub": "#66748d",
+        "line": "#dbe5f3",
+        "primary": "#2858b8",
+        "accent": "#e8f0ff",
+        "accent_text": "#17233b",
+        "accent_soft": "#e8f0ff"
+      },
+      "thumb_image": "https://images.pexels.com/photos/6929183/pexels-photo-6929183.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-6929183.jpg&fm=jpg",
+      "thumb_image_alt": "信頼スプリット",
+      "assets": [
+        "https://images.pexels.com/photos/6929183/pexels-photo-6929183.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-6929183.jpg&fm=jpg",
+        "https://images.pexels.com/photos/7156103/pexels-photo-7156103.jpeg?cs=srgb&dl=pexels-gustavo-fring-7156103.jpg&fm=jpg",
+        "https://images.pexels.com/photos/6929182/pexels-photo-6929182.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-6929182.jpg&fm=jpg",
+        "https://images.pexels.com/photos/5311406/pexels-photo-5311406.jpeg?cs=srgb&dl=pexels-karola-g-5311406.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/6929183/pexels-photo-6929183.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-6929183.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Tutor and student in a learning session.",
+          "author": "Polina Tankilevitch"
+        },
+        {
+          "url": "https://images.pexels.com/photos/7156103/pexels-photo-7156103.jpeg?cs=srgb&dl=pexels-gustavo-fring-7156103.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Teacher and students in a bright learning environment.",
+          "author": "Gustavo Fring"
+        },
+        {
+          "url": "https://images.pexels.com/photos/6929182/pexels-photo-6929182.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-6929182.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Tutor talking through study materials.",
+          "author": "Polina Tankilevitch"
+        },
+        {
+          "url": "https://images.pexels.com/photos/5311406/pexels-photo-5311406.jpeg?cs=srgb&dl=pexels-karola-g-5311406.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Tutor guiding a student while reviewing notes.",
+          "author": "Karolina Grabowska"
+        }
+      ],
+      "brand": "BLUE ACADEMY",
+      "copy": {
+        "nav": [
+          "TOP",
+          "COURSE",
+          "RESULT",
+          "FLOW",
+          "FAQ",
+          "CONTACT"
+        ],
+        "hero_kicker": "School sample",
+        "hero_title": "信頼スプリットで伝える、\n安心して通える理由。",
+        "hero_text": "保護者が知りたい安心感と、生徒が知りたい成果の両方を見せる学習塾向けサンプルです。",
+        "primary_cta": "無料体験を予約",
+        "secondary_cta": "資料を見る",
+        "stats": [
+          [
+            "96%",
+            "継続率"
+          ],
+          [
+            "142名",
+            "20点UP実績"
+          ],
+          [
+            "38校",
+            "合格実績"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "個別指導",
+            "price": "月額 ¥19,800〜",
+            "desc": "理解度に合わせて進行"
+          },
+          {
+            "title": "受験対策",
+            "price": "月額 ¥29,800〜",
+            "desc": "志望校ごとの戦略設計"
+          },
+          {
+            "title": "無料体験",
+            "price": "¥0",
+            "desc": "教室の空気感を確認できる"
+          }
+        ],
+        "features": [
+          {
+            "title": "保護者連携",
+            "desc": "定期面談と毎回の報告を用意"
+          },
+          {
+            "title": "弱点分析",
+            "desc": "テスト結果から課題を可視化"
+          },
+          {
+            "title": "通いやすい導線",
+            "desc": "時間割と料金を先に見せる"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.14",
+            "春期講習の募集開始"
+          ],
+          [
+            "2026.04.07",
+            "合格体験記を更新"
+          ],
+          [
+            "2026.04.01",
+            "新年度コースを公開"
+          ]
+        ],
+        "story": [
+          "塾選びでは、数字だけではなく“この先生たちなら任せられそう”という安心感が必要です。",
+          "このサンプルでは、指導風景・実績・コース・体験申込みの順に並べて、読み手の不安を一つずつ解消する構成にしています。",
+          "個別指導塾、英語特化塾、小中学生向け教室などにも転用しやすい見せ方です。"
+        ],
+        "quote": "通わせる前の不安を、順番に消していく。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "cram-school",
+      "category_name": "学習塾",
+      "code": "results-editorial",
+      "name": "実績エディトリアル",
+      "summary": "数字と説明を読みやすく並べる構成。",
+      "lead": "実績・安心感・無料体験導線をまとめた完成見本。",
+      "sort_order": 2,
+      "variant": "editorial",
+      "template_file": "platform/showcase_variants/editorial_grid.html",
+      "theme": {
+        "bg": "#f8fbff",
+        "surface": "#ffffff",
+        "text": "#16253d",
+        "sub": "#6a7890",
+        "line": "#dfe8f5",
+        "primary": "#2e66c7",
+        "accent": "#eaf1fc",
+        "accent_text": "#16253d",
+        "accent_soft": "#eaf1fc"
+      },
+      "thumb_image": "https://images.pexels.com/photos/7156103/pexels-photo-7156103.jpeg?cs=srgb&dl=pexels-gustavo-fring-7156103.jpg&fm=jpg",
+      "thumb_image_alt": "実績エディトリアル",
+      "assets": [
+        "https://images.pexels.com/photos/7156103/pexels-photo-7156103.jpeg?cs=srgb&dl=pexels-gustavo-fring-7156103.jpg&fm=jpg",
+        "https://images.pexels.com/photos/6929183/pexels-photo-6929183.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-6929183.jpg&fm=jpg",
+        "https://images.pexels.com/photos/7156105/pexels-photo-7156105.jpeg?cs=srgb&dl=pexels-gustavo-fring-7156105.jpg&fm=jpg",
+        "https://images.pexels.com/photos/5311406/pexels-photo-5311406.jpeg?cs=srgb&dl=pexels-karola-g-5311406.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/7156103/pexels-photo-7156103.jpeg?cs=srgb&dl=pexels-gustavo-fring-7156103.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Teacher and students in a bright learning environment.",
+          "author": "Gustavo Fring"
+        },
+        {
+          "url": "https://images.pexels.com/photos/6929183/pexels-photo-6929183.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-6929183.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Tutor and student in a learning session.",
+          "author": "Polina Tankilevitch"
+        },
+        {
+          "url": "https://images.pexels.com/photos/7156105/pexels-photo-7156105.jpeg?cs=srgb&dl=pexels-gustavo-fring-7156105.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Teacher helping two students in class.",
+          "author": "Gustavo Fring"
+        },
+        {
+          "url": "https://images.pexels.com/photos/5311406/pexels-photo-5311406.jpeg?cs=srgb&dl=pexels-karola-g-5311406.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Tutor guiding a student while reviewing notes.",
+          "author": "Karolina Grabowska"
+        }
+      ],
+      "brand": "BLUE ACADEMY",
+      "copy": {
+        "nav": [
+          "TOP",
+          "COURSE",
+          "RESULT",
+          "FLOW",
+          "FAQ",
+          "CONTACT"
+        ],
+        "hero_kicker": "School sample",
+        "hero_title": "実績エディトリアルで伝える、\n安心して通える理由。",
+        "hero_text": "保護者が知りたい安心感と、生徒が知りたい成果の両方を見せる学習塾向けサンプルです。",
+        "primary_cta": "無料体験を予約",
+        "secondary_cta": "資料を見る",
+        "stats": [
+          [
+            "96%",
+            "継続率"
+          ],
+          [
+            "142名",
+            "20点UP実績"
+          ],
+          [
+            "38校",
+            "合格実績"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "個別指導",
+            "price": "月額 ¥19,800〜",
+            "desc": "理解度に合わせて進行"
+          },
+          {
+            "title": "受験対策",
+            "price": "月額 ¥29,800〜",
+            "desc": "志望校ごとの戦略設計"
+          },
+          {
+            "title": "無料体験",
+            "price": "¥0",
+            "desc": "教室の空気感を確認できる"
+          }
+        ],
+        "features": [
+          {
+            "title": "保護者連携",
+            "desc": "定期面談と毎回の報告を用意"
+          },
+          {
+            "title": "弱点分析",
+            "desc": "テスト結果から課題を可視化"
+          },
+          {
+            "title": "通いやすい導線",
+            "desc": "時間割と料金を先に見せる"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.14",
+            "春期講習の募集開始"
+          ],
+          [
+            "2026.04.07",
+            "合格体験記を更新"
+          ],
+          [
+            "2026.04.01",
+            "新年度コースを公開"
+          ]
+        ],
+        "story": [
+          "塾選びでは、数字だけではなく“この先生たちなら任せられそう”という安心感が必要です。",
+          "このサンプルでは、指導風景・実績・コース・体験申込みの順に並べて、読み手の不安を一つずつ解消する構成にしています。",
+          "個別指導塾、英語特化塾、小中学生向け教室などにも転用しやすい見せ方です。"
+        ],
+        "quote": "通わせる前の不安を、順番に消していく。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "cram-school",
+      "category_name": "学習塾",
+      "code": "exam-premium",
+      "name": "受験プレミアム",
+      "summary": "夜間講習や難関校対策向けの重厚な構成。",
+      "lead": "実績・安心感・無料体験導線をまとめた完成見本。",
+      "sort_order": 3,
+      "variant": "dark",
+      "template_file": "platform/showcase_variants/luxury_dark.html",
+      "theme": {
+        "bg": "#101b2b",
+        "surface": "#162235",
+        "text": "#f5f9ff",
+        "sub": "#b9c7dd",
+        "line": "#30455f",
+        "primary": "#9fc4ff",
+        "accent": "#18273c",
+        "accent_text": "#f5f9ff",
+        "accent_soft": "#18273c"
+      },
+      "thumb_image": "https://images.pexels.com/photos/6929182/pexels-photo-6929182.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-6929182.jpg&fm=jpg",
+      "thumb_image_alt": "受験プレミアム",
+      "assets": [
+        "https://images.pexels.com/photos/6929182/pexels-photo-6929182.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-6929182.jpg&fm=jpg",
+        "https://images.pexels.com/photos/6929183/pexels-photo-6929183.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-6929183.jpg&fm=jpg",
+        "https://images.pexels.com/photos/5311406/pexels-photo-5311406.jpeg?cs=srgb&dl=pexels-karola-g-5311406.jpg&fm=jpg",
+        "https://images.pexels.com/photos/7156103/pexels-photo-7156103.jpeg?cs=srgb&dl=pexels-gustavo-fring-7156103.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/6929182/pexels-photo-6929182.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-6929182.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Tutor talking through study materials.",
+          "author": "Polina Tankilevitch"
+        },
+        {
+          "url": "https://images.pexels.com/photos/6929183/pexels-photo-6929183.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-6929183.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Tutor and student in a learning session.",
+          "author": "Polina Tankilevitch"
+        },
+        {
+          "url": "https://images.pexels.com/photos/5311406/pexels-photo-5311406.jpeg?cs=srgb&dl=pexels-karola-g-5311406.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Tutor guiding a student while reviewing notes.",
+          "author": "Karolina Grabowska"
+        },
+        {
+          "url": "https://images.pexels.com/photos/7156103/pexels-photo-7156103.jpeg?cs=srgb&dl=pexels-gustavo-fring-7156103.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Teacher and students in a bright learning environment.",
+          "author": "Gustavo Fring"
+        }
+      ],
+      "brand": "BLUE ACADEMY",
+      "copy": {
+        "nav": [
+          "TOP",
+          "COURSE",
+          "RESULT",
+          "FLOW",
+          "FAQ",
+          "CONTACT"
+        ],
+        "hero_kicker": "School sample",
+        "hero_title": "受験プレミアムで伝える、\n安心して通える理由。",
+        "hero_text": "保護者が知りたい安心感と、生徒が知りたい成果の両方を見せる学習塾向けサンプルです。",
+        "primary_cta": "無料体験を予約",
+        "secondary_cta": "資料を見る",
+        "stats": [
+          [
+            "96%",
+            "継続率"
+          ],
+          [
+            "142名",
+            "20点UP実績"
+          ],
+          [
+            "38校",
+            "合格実績"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "個別指導",
+            "price": "月額 ¥19,800〜",
+            "desc": "理解度に合わせて進行"
+          },
+          {
+            "title": "受験対策",
+            "price": "月額 ¥29,800〜",
+            "desc": "志望校ごとの戦略設計"
+          },
+          {
+            "title": "無料体験",
+            "price": "¥0",
+            "desc": "教室の空気感を確認できる"
+          }
+        ],
+        "features": [
+          {
+            "title": "保護者連携",
+            "desc": "定期面談と毎回の報告を用意"
+          },
+          {
+            "title": "弱点分析",
+            "desc": "テスト結果から課題を可視化"
+          },
+          {
+            "title": "通いやすい導線",
+            "desc": "時間割と料金を先に見せる"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.14",
+            "春期講習の募集開始"
+          ],
+          [
+            "2026.04.07",
+            "合格体験記を更新"
+          ],
+          [
+            "2026.04.01",
+            "新年度コースを公開"
+          ]
+        ],
+        "story": [
+          "塾選びでは、数字だけではなく“この先生たちなら任せられそう”という安心感が必要です。",
+          "このサンプルでは、指導風景・実績・コース・体験申込みの順に並べて、読み手の不安を一つずつ解消する構成にしています。",
+          "個別指導塾、英語特化塾、小中学生向け教室などにも転用しやすい見せ方です。"
+        ],
+        "quote": "通わせる前の不安を、順番に消していく。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "cram-school",
+      "category_name": "学習塾",
+      "code": "trial-cards",
+      "name": "体験カード型",
+      "summary": "コース比較と体験導線を前面に出す構成。",
+      "lead": "実績・安心感・無料体験導線をまとめた完成見本。",
+      "sort_order": 4,
+      "variant": "cards",
+      "template_file": "platform/showcase_variants/cards_catalog.html",
+      "theme": {
+        "bg": "#f6fbfb",
+        "surface": "#ffffff",
+        "text": "#15323a",
+        "sub": "#64808a",
+        "line": "#d6e8ea",
+        "primary": "#1c6f7d",
+        "accent": "#e9f6f7",
+        "accent_text": "#15323a",
+        "accent_soft": "#e9f6f7"
+      },
+      "thumb_image": "https://images.pexels.com/photos/7156105/pexels-photo-7156105.jpeg?cs=srgb&dl=pexels-gustavo-fring-7156105.jpg&fm=jpg",
+      "thumb_image_alt": "体験カード型",
+      "assets": [
+        "https://images.pexels.com/photos/7156105/pexels-photo-7156105.jpeg?cs=srgb&dl=pexels-gustavo-fring-7156105.jpg&fm=jpg",
+        "https://images.pexels.com/photos/7156103/pexels-photo-7156103.jpeg?cs=srgb&dl=pexels-gustavo-fring-7156103.jpg&fm=jpg",
+        "https://images.pexels.com/photos/6502728/pexels-photo-6502728.jpeg?cs=srgb&dl=pexels-thirdman-6502728.jpg&fm=jpg",
+        "https://images.pexels.com/photos/5311406/pexels-photo-5311406.jpeg?cs=srgb&dl=pexels-karola-g-5311406.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/7156105/pexels-photo-7156105.jpeg?cs=srgb&dl=pexels-gustavo-fring-7156105.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Teacher helping two students in class.",
+          "author": "Gustavo Fring"
+        },
+        {
+          "url": "https://images.pexels.com/photos/7156103/pexels-photo-7156103.jpeg?cs=srgb&dl=pexels-gustavo-fring-7156103.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Teacher and students in a bright learning environment.",
+          "author": "Gustavo Fring"
+        },
+        {
+          "url": "https://images.pexels.com/photos/6502728/pexels-photo-6502728.jpeg?cs=srgb&dl=pexels-thirdman-6502728.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Female tutor helping male student with homework at a desk indoors.",
+          "author": "Thirdman"
+        },
+        {
+          "url": "https://images.pexels.com/photos/5311406/pexels-photo-5311406.jpeg?cs=srgb&dl=pexels-karola-g-5311406.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Tutor guiding a student while reviewing notes.",
+          "author": "Karolina Grabowska"
+        }
+      ],
+      "brand": "BLUE ACADEMY",
+      "copy": {
+        "nav": [
+          "TOP",
+          "COURSE",
+          "RESULT",
+          "FLOW",
+          "FAQ",
+          "CONTACT"
+        ],
+        "hero_kicker": "School sample",
+        "hero_title": "体験カード型で伝える、\n安心して通える理由。",
+        "hero_text": "保護者が知りたい安心感と、生徒が知りたい成果の両方を見せる学習塾向けサンプルです。",
+        "primary_cta": "無料体験を予約",
+        "secondary_cta": "資料を見る",
+        "stats": [
+          [
+            "96%",
+            "継続率"
+          ],
+          [
+            "142名",
+            "20点UP実績"
+          ],
+          [
+            "38校",
+            "合格実績"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "個別指導",
+            "price": "月額 ¥19,800〜",
+            "desc": "理解度に合わせて進行"
+          },
+          {
+            "title": "受験対策",
+            "price": "月額 ¥29,800〜",
+            "desc": "志望校ごとの戦略設計"
+          },
+          {
+            "title": "無料体験",
+            "price": "¥0",
+            "desc": "教室の空気感を確認できる"
+          }
+        ],
+        "features": [
+          {
+            "title": "保護者連携",
+            "desc": "定期面談と毎回の報告を用意"
+          },
+          {
+            "title": "弱点分析",
+            "desc": "テスト結果から課題を可視化"
+          },
+          {
+            "title": "通いやすい導線",
+            "desc": "時間割と料金を先に見せる"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.14",
+            "春期講習の募集開始"
+          ],
+          [
+            "2026.04.07",
+            "合格体験記を更新"
+          ],
+          [
+            "2026.04.01",
+            "新年度コースを公開"
+          ]
+        ],
+        "story": [
+          "塾選びでは、数字だけではなく“この先生たちなら任せられそう”という安心感が必要です。",
+          "このサンプルでは、指導風景・実績・コース・体験申込みの順に並べて、読み手の不安を一つずつ解消する構成にしています。",
+          "個別指導塾、英語特化塾、小中学生向け教室などにも転用しやすい見せ方です。"
+        ],
+        "quote": "通わせる前の不安を、順番に消していく。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "cram-school",
+      "category_name": "学習塾",
+      "code": "parent-story",
+      "name": "保護者ストーリー",
+      "summary": "通い始めてからの変化を物語で見せる構成。",
+      "lead": "実績・安心感・無料体験導線をまとめた完成見本。",
+      "sort_order": 5,
+      "variant": "story",
+      "template_file": "platform/showcase_variants/story_flow.html",
+      "theme": {
+        "bg": "#f7f8fb",
+        "surface": "#ffffff",
+        "text": "#1c2435",
+        "sub": "#6c7689",
+        "line": "#e0e5ef",
+        "primary": "#4a5d86",
+        "accent": "#eef1f7",
+        "accent_text": "#1c2435",
+        "accent_soft": "#eef1f7"
+      },
+      "thumb_image": "https://images.pexels.com/photos/6929183/pexels-photo-6929183.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-6929183.jpg&fm=jpg",
+      "thumb_image_alt": "保護者ストーリー",
+      "assets": [
+        "https://images.pexels.com/photos/6929183/pexels-photo-6929183.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-6929183.jpg&fm=jpg",
+        "https://images.pexels.com/photos/6929182/pexels-photo-6929182.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-6929182.jpg&fm=jpg",
+        "https://images.pexels.com/photos/7156103/pexels-photo-7156103.jpeg?cs=srgb&dl=pexels-gustavo-fring-7156103.jpg&fm=jpg",
+        "https://images.pexels.com/photos/5311406/pexels-photo-5311406.jpeg?cs=srgb&dl=pexels-karola-g-5311406.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/6929183/pexels-photo-6929183.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-6929183.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Tutor and student in a learning session.",
+          "author": "Polina Tankilevitch"
+        },
+        {
+          "url": "https://images.pexels.com/photos/6929182/pexels-photo-6929182.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-6929182.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Tutor talking through study materials.",
+          "author": "Polina Tankilevitch"
+        },
+        {
+          "url": "https://images.pexels.com/photos/7156103/pexels-photo-7156103.jpeg?cs=srgb&dl=pexels-gustavo-fring-7156103.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Teacher and students in a bright learning environment.",
+          "author": "Gustavo Fring"
+        },
+        {
+          "url": "https://images.pexels.com/photos/5311406/pexels-photo-5311406.jpeg?cs=srgb&dl=pexels-karola-g-5311406.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Tutor guiding a student while reviewing notes.",
+          "author": "Karolina Grabowska"
+        }
+      ],
+      "brand": "BLUE ACADEMY",
+      "copy": {
+        "nav": [
+          "TOP",
+          "COURSE",
+          "RESULT",
+          "FLOW",
+          "FAQ",
+          "CONTACT"
+        ],
+        "hero_kicker": "School sample",
+        "hero_title": "保護者ストーリーで伝える、\n安心して通える理由。",
+        "hero_text": "保護者が知りたい安心感と、生徒が知りたい成果の両方を見せる学習塾向けサンプルです。",
+        "primary_cta": "無料体験を予約",
+        "secondary_cta": "資料を見る",
+        "stats": [
+          [
+            "96%",
+            "継続率"
+          ],
+          [
+            "142名",
+            "20点UP実績"
+          ],
+          [
+            "38校",
+            "合格実績"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "個別指導",
+            "price": "月額 ¥19,800〜",
+            "desc": "理解度に合わせて進行"
+          },
+          {
+            "title": "受験対策",
+            "price": "月額 ¥29,800〜",
+            "desc": "志望校ごとの戦略設計"
+          },
+          {
+            "title": "無料体験",
+            "price": "¥0",
+            "desc": "教室の空気感を確認できる"
+          }
+        ],
+        "features": [
+          {
+            "title": "保護者連携",
+            "desc": "定期面談と毎回の報告を用意"
+          },
+          {
+            "title": "弱点分析",
+            "desc": "テスト結果から課題を可視化"
+          },
+          {
+            "title": "通いやすい導線",
+            "desc": "時間割と料金を先に見せる"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.14",
+            "春期講習の募集開始"
+          ],
+          [
+            "2026.04.07",
+            "合格体験記を更新"
+          ],
+          [
+            "2026.04.01",
+            "新年度コースを公開"
+          ]
+        ],
+        "story": [
+          "塾選びでは、数字だけではなく“この先生たちなら任せられそう”という安心感が必要です。",
+          "このサンプルでは、指導風景・実績・コース・体験申込みの順に並べて、読み手の不安を一つずつ解消する構成にしています。",
+          "個別指導塾、英語特化塾、小中学生向け教室などにも転用しやすい見せ方です。"
+        ],
+        "quote": "通わせる前の不安を、順番に消していく。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "golf-school",
+      "category_name": "ゴルフスクール",
+      "code": "swing-split",
+      "name": "スイングスプリット",
+      "summary": "レッスン風景と体験導線を左右で見せる構成。",
+      "lead": "上達感と通いやすさを両立した完成見本。",
+      "sort_order": 1,
+      "variant": "split",
+      "template_file": "platform/showcase_variants/split_intro.html",
+      "theme": {
+        "bg": "#f5f8f2",
+        "surface": "#ffffff",
+        "text": "#182717",
+        "sub": "#647260",
+        "line": "#dce6d7",
+        "primary": "#3c6a35",
+        "accent": "#e9f1e4",
+        "accent_text": "#182717",
+        "accent_soft": "#e9f1e4"
+      },
+      "thumb_image": "https://images.pexels.com/photos/1325673/pexels-photo-1325673.jpeg?cs=srgb&dl=pexels-jopwell-1325673.jpg&fm=jpg",
+      "thumb_image_alt": "スイングスプリット",
+      "assets": [
+        "https://images.pexels.com/photos/1325673/pexels-photo-1325673.jpeg?cs=srgb&dl=pexels-jopwell-1325673.jpg&fm=jpg",
+        "https://images.pexels.com/photos/1325656/pexels-photo-1325656.jpeg?cs=srgb&dl=pexels-jopwell-1325656.jpg&fm=jpg",
+        "https://images.pexels.com/photos/15686437/pexels-photo-15686437.jpeg?cs=srgb&dl=pexels-kawerodriguess-15686437.jpg&fm=jpg",
+        "https://images.pexels.com/photos/15686437/pexels-photo-15686437.jpeg?cs=srgb&dl=pexels-kawerodriguess-15686437.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/1325673/pexels-photo-1325673.jpeg?cs=srgb&dl=pexels-jopwell-1325673.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Coach teaching golf at an outdoor range.",
+          "author": "Jopwell"
+        },
+        {
+          "url": "https://images.pexels.com/photos/1325656/pexels-photo-1325656.jpeg?cs=srgb&dl=pexels-jopwell-1325656.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Girl practicing golf under coach supervision.",
+          "author": "Jopwell"
+        },
+        {
+          "url": "https://images.pexels.com/photos/15686437/pexels-photo-15686437.jpeg?cs=srgb&dl=pexels-kawerodriguess-15686437.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Golfer putting on a course.",
+          "author": "Kawe Rodrigues"
+        },
+        {
+          "url": "https://images.pexels.com/photos/15686437/pexels-photo-15686437.jpeg?cs=srgb&dl=pexels-kawerodriguess-15686437.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Golfer putting on a green course.",
+          "author": "Kawe Rodrigues"
+        }
+      ],
+      "brand": "GREEN LINKS",
+      "copy": {
+        "nav": [
+          "TOP",
+          "LESSON",
+          "COACH",
+          "PRICE",
+          "VOICE",
+          "TRIAL"
+        ],
+        "hero_kicker": "Golf school sample",
+        "hero_title": "スイングスプリットで見せる、\n上達のイメージ。",
+        "hero_text": "レッスン風景と上達実感をセットで見せて、初回体験に進みやすくしたゴルフスクール向けサンプルです。",
+        "primary_cta": "体験レッスン予約",
+        "secondary_cta": "コーチ紹介を見る",
+        "stats": [
+          [
+            "-8.4",
+            "平均スコア改善"
+          ],
+          [
+            "88%",
+            "継続率"
+          ],
+          [
+            "50分",
+            "初回診断"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "体験レッスン",
+            "price": "¥3,300",
+            "desc": "フォーム診断つき"
+          },
+          {
+            "title": "月4回プラン",
+            "price": "¥19,800",
+            "desc": "継続改善向けの定番"
+          },
+          {
+            "title": "マンツーマン",
+            "price": "¥8,800 / 回",
+            "desc": "弱点を集中改善"
+          }
+        ],
+        "features": [
+          {
+            "title": "初心者歓迎",
+            "desc": "クラブの握り方からサポート"
+          },
+          {
+            "title": "フォーム分析",
+            "desc": "課題を言語化して改善"
+          },
+          {
+            "title": "通いやすい",
+            "desc": "平日夜と週末枠を用意"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.15",
+            "初心者向け体験枠を追加"
+          ],
+          [
+            "2026.04.09",
+            "コーチ紹介を更新"
+          ],
+          [
+            "2026.04.02",
+            "春の入会特典を公開"
+          ]
+        ],
+        "story": [
+          "ゴルフは“なんとなく教わる”では続きません。",
+          "このサンプルでは、何が改善できるのか、誰が見てくれるのか、どれくらいで実感できるのかを順番に伝える構成にしています。",
+          "屋外スクールだけでなく、インドアレンジや個人レッスンにも合わせやすい土台です。"
+        ],
+        "quote": "上達の手応えが見えると、体験の一歩が軽くなる。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "golf-school",
+      "category_name": "ゴルフスクール",
+      "code": "coach-editorial",
+      "name": "コーチエディトリアル",
+      "summary": "コーチの信頼感を軸に見せる構成。",
+      "lead": "上達感と通いやすさを両立した完成見本。",
+      "sort_order": 2,
+      "variant": "editorial",
+      "template_file": "platform/showcase_variants/editorial_grid.html",
+      "theme": {
+        "bg": "#f8faf5",
+        "surface": "#ffffff",
+        "text": "#1a2618",
+        "sub": "#647160",
+        "line": "#dfe8da",
+        "primary": "#507347",
+        "accent": "#eef3e8",
+        "accent_text": "#1a2618",
+        "accent_soft": "#eef3e8"
+      },
+      "thumb_image": "https://images.pexels.com/photos/1325656/pexels-photo-1325656.jpeg?cs=srgb&dl=pexels-jopwell-1325656.jpg&fm=jpg",
+      "thumb_image_alt": "コーチエディトリアル",
+      "assets": [
+        "https://images.pexels.com/photos/1325656/pexels-photo-1325656.jpeg?cs=srgb&dl=pexels-jopwell-1325656.jpg&fm=jpg",
+        "https://images.pexels.com/photos/1325673/pexels-photo-1325673.jpeg?cs=srgb&dl=pexels-jopwell-1325673.jpg&fm=jpg",
+        "https://images.pexels.com/photos/15686437/pexels-photo-15686437.jpeg?cs=srgb&dl=pexels-kawerodriguess-15686437.jpg&fm=jpg",
+        "https://images.pexels.com/photos/15686437/pexels-photo-15686437.jpeg?cs=srgb&dl=pexels-kawerodriguess-15686437.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/1325656/pexels-photo-1325656.jpeg?cs=srgb&dl=pexels-jopwell-1325656.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Girl practicing golf under coach supervision.",
+          "author": "Jopwell"
+        },
+        {
+          "url": "https://images.pexels.com/photos/1325673/pexels-photo-1325673.jpeg?cs=srgb&dl=pexels-jopwell-1325673.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Coach teaching golf at an outdoor range.",
+          "author": "Jopwell"
+        },
+        {
+          "url": "https://images.pexels.com/photos/15686437/pexels-photo-15686437.jpeg?cs=srgb&dl=pexels-kawerodriguess-15686437.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Golfer putting on a course.",
+          "author": "Kawe Rodrigues"
+        },
+        {
+          "url": "https://images.pexels.com/photos/15686437/pexels-photo-15686437.jpeg?cs=srgb&dl=pexels-kawerodriguess-15686437.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Golfer putting on a green course.",
+          "author": "Kawe Rodrigues"
+        }
+      ],
+      "brand": "GREEN LINKS",
+      "copy": {
+        "nav": [
+          "TOP",
+          "LESSON",
+          "COACH",
+          "PRICE",
+          "VOICE",
+          "TRIAL"
+        ],
+        "hero_kicker": "Golf school sample",
+        "hero_title": "コーチエディトリアルで見せる、\n上達のイメージ。",
+        "hero_text": "レッスン風景と上達実感をセットで見せて、初回体験に進みやすくしたゴルフスクール向けサンプルです。",
+        "primary_cta": "体験レッスン予約",
+        "secondary_cta": "コーチ紹介を見る",
+        "stats": [
+          [
+            "-8.4",
+            "平均スコア改善"
+          ],
+          [
+            "88%",
+            "継続率"
+          ],
+          [
+            "50分",
+            "初回診断"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "体験レッスン",
+            "price": "¥3,300",
+            "desc": "フォーム診断つき"
+          },
+          {
+            "title": "月4回プラン",
+            "price": "¥19,800",
+            "desc": "継続改善向けの定番"
+          },
+          {
+            "title": "マンツーマン",
+            "price": "¥8,800 / 回",
+            "desc": "弱点を集中改善"
+          }
+        ],
+        "features": [
+          {
+            "title": "初心者歓迎",
+            "desc": "クラブの握り方からサポート"
+          },
+          {
+            "title": "フォーム分析",
+            "desc": "課題を言語化して改善"
+          },
+          {
+            "title": "通いやすい",
+            "desc": "平日夜と週末枠を用意"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.15",
+            "初心者向け体験枠を追加"
+          ],
+          [
+            "2026.04.09",
+            "コーチ紹介を更新"
+          ],
+          [
+            "2026.04.02",
+            "春の入会特典を公開"
+          ]
+        ],
+        "story": [
+          "ゴルフは“なんとなく教わる”では続きません。",
+          "このサンプルでは、何が改善できるのか、誰が見てくれるのか、どれくらいで実感できるのかを順番に伝える構成にしています。",
+          "屋外スクールだけでなく、インドアレンジや個人レッスンにも合わせやすい土台です。"
+        ],
+        "quote": "上達の手応えが見えると、体験の一歩が軽くなる。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "golf-school",
+      "category_name": "ゴルフスクール",
+      "code": "members-dark",
+      "name": "メンバーズダーク",
+      "summary": "会員制っぽい落ち着きと上質感の構成。",
+      "lead": "上達感と通いやすさを両立した完成見本。",
+      "sort_order": 3,
+      "variant": "dark",
+      "template_file": "platform/showcase_variants/luxury_dark.html",
+      "theme": {
+        "bg": "#10150f",
+        "surface": "#171f16",
+        "text": "#f6fbf3",
+        "sub": "#c0cfbc",
+        "line": "#31402f",
+        "primary": "#d0eb9a",
+        "accent": "#1c261b",
+        "accent_text": "#f6fbf3",
+        "accent_soft": "#1c261b"
+      },
+      "thumb_image": "https://images.pexels.com/photos/15686437/pexels-photo-15686437.jpeg?cs=srgb&dl=pexels-kawerodriguess-15686437.jpg&fm=jpg",
+      "thumb_image_alt": "メンバーズダーク",
+      "assets": [
+        "https://images.pexels.com/photos/15686437/pexels-photo-15686437.jpeg?cs=srgb&dl=pexels-kawerodriguess-15686437.jpg&fm=jpg",
+        "https://images.pexels.com/photos/1325673/pexels-photo-1325673.jpeg?cs=srgb&dl=pexels-jopwell-1325673.jpg&fm=jpg",
+        "https://images.pexels.com/photos/1325656/pexels-photo-1325656.jpeg?cs=srgb&dl=pexels-jopwell-1325656.jpg&fm=jpg",
+        "https://images.pexels.com/photos/15686437/pexels-photo-15686437.jpeg?cs=srgb&dl=pexels-kawerodriguess-15686437.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/15686437/pexels-photo-15686437.jpeg?cs=srgb&dl=pexels-kawerodriguess-15686437.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Golfer putting on a course.",
+          "author": "Kawe Rodrigues"
+        },
+        {
+          "url": "https://images.pexels.com/photos/1325673/pexels-photo-1325673.jpeg?cs=srgb&dl=pexels-jopwell-1325673.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Coach teaching golf at an outdoor range.",
+          "author": "Jopwell"
+        },
+        {
+          "url": "https://images.pexels.com/photos/1325656/pexels-photo-1325656.jpeg?cs=srgb&dl=pexels-jopwell-1325656.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Girl practicing golf under coach supervision.",
+          "author": "Jopwell"
+        },
+        {
+          "url": "https://images.pexels.com/photos/15686437/pexels-photo-15686437.jpeg?cs=srgb&dl=pexels-kawerodriguess-15686437.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Golfer putting on a green course.",
+          "author": "Kawe Rodrigues"
+        }
+      ],
+      "brand": "GREEN LINKS",
+      "copy": {
+        "nav": [
+          "TOP",
+          "LESSON",
+          "COACH",
+          "PRICE",
+          "VOICE",
+          "TRIAL"
+        ],
+        "hero_kicker": "Golf school sample",
+        "hero_title": "メンバーズダークで見せる、\n上達のイメージ。",
+        "hero_text": "レッスン風景と上達実感をセットで見せて、初回体験に進みやすくしたゴルフスクール向けサンプルです。",
+        "primary_cta": "体験レッスン予約",
+        "secondary_cta": "コーチ紹介を見る",
+        "stats": [
+          [
+            "-8.4",
+            "平均スコア改善"
+          ],
+          [
+            "88%",
+            "継続率"
+          ],
+          [
+            "50分",
+            "初回診断"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "体験レッスン",
+            "price": "¥3,300",
+            "desc": "フォーム診断つき"
+          },
+          {
+            "title": "月4回プラン",
+            "price": "¥19,800",
+            "desc": "継続改善向けの定番"
+          },
+          {
+            "title": "マンツーマン",
+            "price": "¥8,800 / 回",
+            "desc": "弱点を集中改善"
+          }
+        ],
+        "features": [
+          {
+            "title": "初心者歓迎",
+            "desc": "クラブの握り方からサポート"
+          },
+          {
+            "title": "フォーム分析",
+            "desc": "課題を言語化して改善"
+          },
+          {
+            "title": "通いやすい",
+            "desc": "平日夜と週末枠を用意"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.15",
+            "初心者向け体験枠を追加"
+          ],
+          [
+            "2026.04.09",
+            "コーチ紹介を更新"
+          ],
+          [
+            "2026.04.02",
+            "春の入会特典を公開"
+          ]
+        ],
+        "story": [
+          "ゴルフは“なんとなく教わる”では続きません。",
+          "このサンプルでは、何が改善できるのか、誰が見てくれるのか、どれくらいで実感できるのかを順番に伝える構成にしています。",
+          "屋外スクールだけでなく、インドアレンジや個人レッスンにも合わせやすい土台です。"
+        ],
+        "quote": "上達の手応えが見えると、体験の一歩が軽くなる。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "golf-school",
+      "category_name": "ゴルフスクール",
+      "code": "lesson-cards",
+      "name": "レッスンカード",
+      "summary": "レッスンプラン比較に強いカード型。",
+      "lead": "上達感と通いやすさを両立した完成見本。",
+      "sort_order": 4,
+      "variant": "cards",
+      "template_file": "platform/showcase_variants/cards_catalog.html",
+      "theme": {
+        "bg": "#f4f7f0",
+        "surface": "#ffffff",
+        "text": "#1a2518",
+        "sub": "#687263",
+        "line": "#dfe6d8",
+        "primary": "#46613d",
+        "accent": "#e9efe2",
+        "accent_text": "#1a2518",
+        "accent_soft": "#e9efe2"
+      },
+      "thumb_image": "https://images.pexels.com/photos/15686437/pexels-photo-15686437.jpeg?cs=srgb&dl=pexels-kawerodriguess-15686437.jpg&fm=jpg",
+      "thumb_image_alt": "レッスンカード",
+      "assets": [
+        "https://images.pexels.com/photos/15686437/pexels-photo-15686437.jpeg?cs=srgb&dl=pexels-kawerodriguess-15686437.jpg&fm=jpg",
+        "https://images.pexels.com/photos/1325656/pexels-photo-1325656.jpeg?cs=srgb&dl=pexels-jopwell-1325656.jpg&fm=jpg",
+        "https://images.pexels.com/photos/1325673/pexels-photo-1325673.jpeg?cs=srgb&dl=pexels-jopwell-1325673.jpg&fm=jpg",
+        "https://images.pexels.com/photos/15686437/pexels-photo-15686437.jpeg?cs=srgb&dl=pexels-kawerodriguess-15686437.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/15686437/pexels-photo-15686437.jpeg?cs=srgb&dl=pexels-kawerodriguess-15686437.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Golfer putting on a green course.",
+          "author": "Kawe Rodrigues"
+        },
+        {
+          "url": "https://images.pexels.com/photos/1325656/pexels-photo-1325656.jpeg?cs=srgb&dl=pexels-jopwell-1325656.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Girl practicing golf under coach supervision.",
+          "author": "Jopwell"
+        },
+        {
+          "url": "https://images.pexels.com/photos/1325673/pexels-photo-1325673.jpeg?cs=srgb&dl=pexels-jopwell-1325673.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Coach teaching golf at an outdoor range.",
+          "author": "Jopwell"
+        },
+        {
+          "url": "https://images.pexels.com/photos/15686437/pexels-photo-15686437.jpeg?cs=srgb&dl=pexels-kawerodriguess-15686437.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Golfer putting on a course.",
+          "author": "Kawe Rodrigues"
+        }
+      ],
+      "brand": "GREEN LINKS",
+      "copy": {
+        "nav": [
+          "TOP",
+          "LESSON",
+          "COACH",
+          "PRICE",
+          "VOICE",
+          "TRIAL"
+        ],
+        "hero_kicker": "Golf school sample",
+        "hero_title": "レッスンカードで見せる、\n上達のイメージ。",
+        "hero_text": "レッスン風景と上達実感をセットで見せて、初回体験に進みやすくしたゴルフスクール向けサンプルです。",
+        "primary_cta": "体験レッスン予約",
+        "secondary_cta": "コーチ紹介を見る",
+        "stats": [
+          [
+            "-8.4",
+            "平均スコア改善"
+          ],
+          [
+            "88%",
+            "継続率"
+          ],
+          [
+            "50分",
+            "初回診断"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "体験レッスン",
+            "price": "¥3,300",
+            "desc": "フォーム診断つき"
+          },
+          {
+            "title": "月4回プラン",
+            "price": "¥19,800",
+            "desc": "継続改善向けの定番"
+          },
+          {
+            "title": "マンツーマン",
+            "price": "¥8,800 / 回",
+            "desc": "弱点を集中改善"
+          }
+        ],
+        "features": [
+          {
+            "title": "初心者歓迎",
+            "desc": "クラブの握り方からサポート"
+          },
+          {
+            "title": "フォーム分析",
+            "desc": "課題を言語化して改善"
+          },
+          {
+            "title": "通いやすい",
+            "desc": "平日夜と週末枠を用意"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.15",
+            "初心者向け体験枠を追加"
+          ],
+          [
+            "2026.04.09",
+            "コーチ紹介を更新"
+          ],
+          [
+            "2026.04.02",
+            "春の入会特典を公開"
+          ]
+        ],
+        "story": [
+          "ゴルフは“なんとなく教わる”では続きません。",
+          "このサンプルでは、何が改善できるのか、誰が見てくれるのか、どれくらいで実感できるのかを順番に伝える構成にしています。",
+          "屋外スクールだけでなく、インドアレンジや個人レッスンにも合わせやすい土台です。"
+        ],
+        "quote": "上達の手応えが見えると、体験の一歩が軽くなる。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "golf-school",
+      "category_name": "ゴルフスクール",
+      "code": "improve-story",
+      "name": "上達ストーリー",
+      "summary": "体験から上達までの流れを追わせる構成。",
+      "lead": "上達感と通いやすさを両立した完成見本。",
+      "sort_order": 5,
+      "variant": "story",
+      "template_file": "platform/showcase_variants/story_flow.html",
+      "theme": {
+        "bg": "#f7f6f0",
+        "surface": "#ffffff",
+        "text": "#26231a",
+        "sub": "#716c60",
+        "line": "#e5e0d4",
+        "primary": "#7b7252",
+        "accent": "#efe8d8",
+        "accent_text": "#26231a",
+        "accent_soft": "#efe8d8"
+      },
+      "thumb_image": "https://images.pexels.com/photos/1325656/pexels-photo-1325656.jpeg?cs=srgb&dl=pexels-jopwell-1325656.jpg&fm=jpg",
+      "thumb_image_alt": "上達ストーリー",
+      "assets": [
+        "https://images.pexels.com/photos/1325656/pexels-photo-1325656.jpeg?cs=srgb&dl=pexels-jopwell-1325656.jpg&fm=jpg",
+        "https://images.pexels.com/photos/15686437/pexels-photo-15686437.jpeg?cs=srgb&dl=pexels-kawerodriguess-15686437.jpg&fm=jpg",
+        "https://images.pexels.com/photos/1325673/pexels-photo-1325673.jpeg?cs=srgb&dl=pexels-jopwell-1325673.jpg&fm=jpg",
+        "https://images.pexels.com/photos/15686437/pexels-photo-15686437.jpeg?cs=srgb&dl=pexels-kawerodriguess-15686437.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/1325656/pexels-photo-1325656.jpeg?cs=srgb&dl=pexels-jopwell-1325656.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Girl practicing golf under coach supervision.",
+          "author": "Jopwell"
+        },
+        {
+          "url": "https://images.pexels.com/photos/15686437/pexels-photo-15686437.jpeg?cs=srgb&dl=pexels-kawerodriguess-15686437.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Golfer putting on a course.",
+          "author": "Kawe Rodrigues"
+        },
+        {
+          "url": "https://images.pexels.com/photos/1325673/pexels-photo-1325673.jpeg?cs=srgb&dl=pexels-jopwell-1325673.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Coach teaching golf at an outdoor range.",
+          "author": "Jopwell"
+        },
+        {
+          "url": "https://images.pexels.com/photos/15686437/pexels-photo-15686437.jpeg?cs=srgb&dl=pexels-kawerodriguess-15686437.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Golfer putting on a green course.",
+          "author": "Kawe Rodrigues"
+        }
+      ],
+      "brand": "GREEN LINKS",
+      "copy": {
+        "nav": [
+          "TOP",
+          "LESSON",
+          "COACH",
+          "PRICE",
+          "VOICE",
+          "TRIAL"
+        ],
+        "hero_kicker": "Golf school sample",
+        "hero_title": "上達ストーリーで見せる、\n上達のイメージ。",
+        "hero_text": "レッスン風景と上達実感をセットで見せて、初回体験に進みやすくしたゴルフスクール向けサンプルです。",
+        "primary_cta": "体験レッスン予約",
+        "secondary_cta": "コーチ紹介を見る",
+        "stats": [
+          [
+            "-8.4",
+            "平均スコア改善"
+          ],
+          [
+            "88%",
+            "継続率"
+          ],
+          [
+            "50分",
+            "初回診断"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "体験レッスン",
+            "price": "¥3,300",
+            "desc": "フォーム診断つき"
+          },
+          {
+            "title": "月4回プラン",
+            "price": "¥19,800",
+            "desc": "継続改善向けの定番"
+          },
+          {
+            "title": "マンツーマン",
+            "price": "¥8,800 / 回",
+            "desc": "弱点を集中改善"
+          }
+        ],
+        "features": [
+          {
+            "title": "初心者歓迎",
+            "desc": "クラブの握り方からサポート"
+          },
+          {
+            "title": "フォーム分析",
+            "desc": "課題を言語化して改善"
+          },
+          {
+            "title": "通いやすい",
+            "desc": "平日夜と週末枠を用意"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.15",
+            "初心者向け体験枠を追加"
+          ],
+          [
+            "2026.04.09",
+            "コーチ紹介を更新"
+          ],
+          [
+            "2026.04.02",
+            "春の入会特典を公開"
+          ]
+        ],
+        "story": [
+          "ゴルフは“なんとなく教わる”では続きません。",
+          "このサンプルでは、何が改善できるのか、誰が見てくれるのか、どれくらいで実感できるのかを順番に伝える構成にしています。",
+          "屋外スクールだけでなく、インドアレンジや個人レッスンにも合わせやすい土台です。"
+        ],
+        "quote": "上達の手応えが見えると、体験の一歩が軽くなる。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "restaurant",
+      "category_name": "飲食店",
+      "code": "lantern-split",
+      "name": "ランタンスプリット",
+      "summary": "店外観と料理導線で予約したくなる構成。",
+      "lead": "料理や空間の空気感まで伝わる完成見本。",
+      "sort_order": 1,
+      "variant": "split",
+      "template_file": "platform/showcase_variants/split_intro.html",
+      "theme": {
+        "bg": "#120f0d",
+        "surface": "#1b1714",
+        "text": "#f7efe6",
+        "sub": "#c7b4a0",
+        "line": "#3a2d24",
+        "primary": "#c99a5d",
+        "accent": "#211a16",
+        "accent_text": "#f7efe6",
+        "accent_soft": "#211a16"
+      },
+      "thumb_image": "https://images.pexels.com/photos/33262782/pexels-photo-33262782.jpeg?cs=srgb&dl=pexels-talharesitoglu-33262782.jpg&fm=jpg",
+      "thumb_image_alt": "ランタンスプリット",
+      "assets": [
+        "https://images.pexels.com/photos/33262782/pexels-photo-33262782.jpeg?cs=srgb&dl=pexels-talharesitoglu-33262782.jpg&fm=jpg",
+        "https://images.pexels.com/photos/31326827/pexels-photo-31326827.jpeg?cs=srgb&dl=pexels-kristina-mitina-2150783382-31326827.jpg&fm=jpg",
+        "https://images.pexels.com/photos/15849845/pexels-photo-15849845.jpeg?cs=srgb&dl=pexels-brunocervera-15849845.jpg&fm=jpg",
+        "https://images.pexels.com/photos/19673767/pexels-photo-19673767.jpeg?cs=srgb&dl=pexels-kadernamuslu-19673767.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/33262782/pexels-photo-33262782.jpeg?cs=srgb&dl=pexels-talharesitoglu-33262782.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Japanese restaurant exterior with lanterns at night.",
+          "author": "Talha Reşitoğlu"
+        },
+        {
+          "url": "https://images.pexels.com/photos/31326827/pexels-photo-31326827.jpeg?cs=srgb&dl=pexels-kristina-mitina-2150783382-31326827.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Traditional Japanese restaurant interior with natural light.",
+          "author": "Kristina Mitina"
+        },
+        {
+          "url": "https://images.pexels.com/photos/15849845/pexels-photo-15849845.jpeg?cs=srgb&dl=pexels-brunocervera-15849845.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Booth seating in a Japanese-style restaurant.",
+          "author": "Bruno Cervera"
+        },
+        {
+          "url": "https://images.pexels.com/photos/19673767/pexels-photo-19673767.jpeg?cs=srgb&dl=pexels-kadernamuslu-19673767.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Warm inviting cafe interior with seating.",
+          "author": "Kader Namuslu"
+        }
+      ],
+      "brand": "笑月",
+      "copy": {
+        "nav": [
+          "TOP",
+          "MENU",
+          "SPACE",
+          "COURSE",
+          "NEWS",
+          "RESERVE"
+        ],
+        "hero_kicker": "Restaurant sample",
+        "hero_title": "ランタンスプリットで伝える、\n店の空気まで。",
+        "hero_text": "料理写真だけでなく、席の雰囲気や店主のこだわりまで見せて“ここに行きたい”をつくる飲食店向けサンプルです。",
+        "primary_cta": "席を予約する",
+        "secondary_cta": "本日のおすすめを見る",
+        "stats": [
+          [
+            "120席",
+            "最大収容"
+          ],
+          [
+            "17時〜",
+            "営業開始"
+          ],
+          [
+            "飲み放題",
+            "コース対応"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "季節のおまかせ",
+            "price": "¥4,800",
+            "desc": "旬の食材を小皿で楽しむ"
+          },
+          {
+            "title": "名物炭火焼き",
+            "price": "¥1,280",
+            "desc": "香りまで主役にした一皿"
+          },
+          {
+            "title": "飲み放題付きコース",
+            "price": "¥6,500",
+            "desc": "宴会や会食にも対応"
+          }
+        ],
+        "features": [
+          {
+            "title": "雰囲気で選ばれる",
+            "desc": "外観と内観を両方見せる"
+          },
+          {
+            "title": "迷わないメニュー",
+            "desc": "価格帯を先に出して安心"
+          },
+          {
+            "title": "予約しやすい",
+            "desc": "席タイプと人数導線を整理"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.13",
+            "春のコースが始まりました"
+          ],
+          [
+            "2026.04.07",
+            "個室予約枠を追加"
+          ],
+          [
+            "2026.04.01",
+            "ランチ営業スタート"
+          ]
+        ],
+        "story": [
+          "飲食店のサイトは、写真をただ並べるだけだと差が出ません。",
+          "このサンプルでは、外観・内観・おすすめ・予約導線の順で空気感を積み上げて、来店のハードルを下げる構成にしています。",
+          "居酒屋、カフェ、和食ダイニング、ビストロなど、業態に合わせてトーンを変えやすい設計です。"
+        ],
+        "quote": "味だけじゃなく、行く理由まで伝える。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "restaurant",
+      "category_name": "飲食店",
+      "code": "cafe-editorial",
+      "name": "カフェエディトリアル",
+      "summary": "明るい空間とおすすめメニューを丁寧に見せる構成。",
+      "lead": "料理や空間の空気感まで伝わる完成見本。",
+      "sort_order": 2,
+      "variant": "editorial",
+      "template_file": "platform/showcase_variants/editorial_grid.html",
+      "theme": {
+        "bg": "#faf5ee",
+        "surface": "#ffffff",
+        "text": "#261d17",
+        "sub": "#736458",
+        "line": "#eadfce",
+        "primary": "#8f5b30",
+        "accent": "#f5eadb",
+        "accent_text": "#261d17",
+        "accent_soft": "#f5eadb"
+      },
+      "thumb_image": "https://images.pexels.com/photos/30644204/pexels-photo-30644204.jpeg?cs=srgb&dl=pexels-chrislyn-dsouza-424969149-30644204.jpg&fm=jpg",
+      "thumb_image_alt": "カフェエディトリアル",
+      "assets": [
+        "https://images.pexels.com/photos/30644204/pexels-photo-30644204.jpeg?cs=srgb&dl=pexels-chrislyn-dsouza-424969149-30644204.jpg&fm=jpg",
+        "https://images.pexels.com/photos/19673767/pexels-photo-19673767.jpeg?cs=srgb&dl=pexels-kadernamuslu-19673767.jpg&fm=jpg",
+        "https://images.pexels.com/photos/24038987/pexels-photo-24038987.jpeg?cs=srgb&dl=pexels-ahsenilist-24038987.jpg&fm=jpg",
+        "https://images.pexels.com/photos/31326827/pexels-photo-31326827.jpeg?cs=srgb&dl=pexels-kristina-mitina-2150783382-31326827.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/30644204/pexels-photo-30644204.jpeg?cs=srgb&dl=pexels-chrislyn-dsouza-424969149-30644204.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Bright cafe interior with colorful cushions.",
+          "author": "Chrislyn D'Souza"
+        },
+        {
+          "url": "https://images.pexels.com/photos/19673767/pexels-photo-19673767.jpeg?cs=srgb&dl=pexels-kadernamuslu-19673767.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Warm inviting cafe interior with seating.",
+          "author": "Kader Namuslu"
+        },
+        {
+          "url": "https://images.pexels.com/photos/24038987/pexels-photo-24038987.jpeg?cs=srgb&dl=pexels-ahsenilist-24038987.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Minimalist café interior with arches and seating.",
+          "author": "Ahsen Ilıst"
+        },
+        {
+          "url": "https://images.pexels.com/photos/31326827/pexels-photo-31326827.jpeg?cs=srgb&dl=pexels-kristina-mitina-2150783382-31326827.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Traditional Japanese restaurant interior with natural light.",
+          "author": "Kristina Mitina"
+        }
+      ],
+      "brand": "笑月",
+      "copy": {
+        "nav": [
+          "TOP",
+          "MENU",
+          "SPACE",
+          "COURSE",
+          "NEWS",
+          "RESERVE"
+        ],
+        "hero_kicker": "Restaurant sample",
+        "hero_title": "カフェエディトリアルで伝える、\n店の空気まで。",
+        "hero_text": "料理写真だけでなく、席の雰囲気や店主のこだわりまで見せて“ここに行きたい”をつくる飲食店向けサンプルです。",
+        "primary_cta": "席を予約する",
+        "secondary_cta": "本日のおすすめを見る",
+        "stats": [
+          [
+            "120席",
+            "最大収容"
+          ],
+          [
+            "17時〜",
+            "営業開始"
+          ],
+          [
+            "飲み放題",
+            "コース対応"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "季節のおまかせ",
+            "price": "¥4,800",
+            "desc": "旬の食材を小皿で楽しむ"
+          },
+          {
+            "title": "名物炭火焼き",
+            "price": "¥1,280",
+            "desc": "香りまで主役にした一皿"
+          },
+          {
+            "title": "飲み放題付きコース",
+            "price": "¥6,500",
+            "desc": "宴会や会食にも対応"
+          }
+        ],
+        "features": [
+          {
+            "title": "雰囲気で選ばれる",
+            "desc": "外観と内観を両方見せる"
+          },
+          {
+            "title": "迷わないメニュー",
+            "desc": "価格帯を先に出して安心"
+          },
+          {
+            "title": "予約しやすい",
+            "desc": "席タイプと人数導線を整理"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.13",
+            "春のコースが始まりました"
+          ],
+          [
+            "2026.04.07",
+            "個室予約枠を追加"
+          ],
+          [
+            "2026.04.01",
+            "ランチ営業スタート"
+          ]
+        ],
+        "story": [
+          "飲食店のサイトは、写真をただ並べるだけだと差が出ません。",
+          "このサンプルでは、外観・内観・おすすめ・予約導線の順で空気感を積み上げて、来店のハードルを下げる構成にしています。",
+          "居酒屋、カフェ、和食ダイニング、ビストロなど、業態に合わせてトーンを変えやすい設計です。"
+        ],
+        "quote": "味だけじゃなく、行く理由まで伝える。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "restaurant",
+      "category_name": "飲食店",
+      "code": "night-luxury",
+      "name": "ナイトラグジュアリー",
+      "summary": "夜の空気感を主役にしたダーク構成。",
+      "lead": "料理や空間の空気感まで伝わる完成見本。",
+      "sort_order": 3,
+      "variant": "dark",
+      "template_file": "platform/showcase_variants/luxury_dark.html",
+      "theme": {
+        "bg": "#0f0d0c",
+        "surface": "#161312",
+        "text": "#f7efe6",
+        "sub": "#cdb8a7",
+        "line": "#362c26",
+        "primary": "#d59b53",
+        "accent": "#1e1714",
+        "accent_text": "#f7efe6",
+        "accent_soft": "#1e1714"
+      },
+      "thumb_image": "https://images.pexels.com/photos/33262782/pexels-photo-33262782.jpeg?cs=srgb&dl=pexels-talharesitoglu-33262782.jpg&fm=jpg",
+      "thumb_image_alt": "ナイトラグジュアリー",
+      "assets": [
+        "https://images.pexels.com/photos/33262782/pexels-photo-33262782.jpeg?cs=srgb&dl=pexels-talharesitoglu-33262782.jpg&fm=jpg",
+        "https://images.pexels.com/photos/15849845/pexels-photo-15849845.jpeg?cs=srgb&dl=pexels-brunocervera-15849845.jpg&fm=jpg",
+        "https://images.pexels.com/photos/31326827/pexels-photo-31326827.jpeg?cs=srgb&dl=pexels-kristina-mitina-2150783382-31326827.jpg&fm=jpg",
+        "https://images.pexels.com/photos/19673767/pexels-photo-19673767.jpeg?cs=srgb&dl=pexels-kadernamuslu-19673767.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/33262782/pexels-photo-33262782.jpeg?cs=srgb&dl=pexels-talharesitoglu-33262782.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Japanese restaurant exterior with lanterns at night.",
+          "author": "Talha Reşitoğlu"
+        },
+        {
+          "url": "https://images.pexels.com/photos/15849845/pexels-photo-15849845.jpeg?cs=srgb&dl=pexels-brunocervera-15849845.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Booth seating in a Japanese-style restaurant.",
+          "author": "Bruno Cervera"
+        },
+        {
+          "url": "https://images.pexels.com/photos/31326827/pexels-photo-31326827.jpeg?cs=srgb&dl=pexels-kristina-mitina-2150783382-31326827.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Traditional Japanese restaurant interior with natural light.",
+          "author": "Kristina Mitina"
+        },
+        {
+          "url": "https://images.pexels.com/photos/19673767/pexels-photo-19673767.jpeg?cs=srgb&dl=pexels-kadernamuslu-19673767.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Warm inviting cafe interior with seating.",
+          "author": "Kader Namuslu"
+        }
+      ],
+      "brand": "笑月",
+      "copy": {
+        "nav": [
+          "TOP",
+          "MENU",
+          "SPACE",
+          "COURSE",
+          "NEWS",
+          "RESERVE"
+        ],
+        "hero_kicker": "Restaurant sample",
+        "hero_title": "ナイトラグジュアリーで伝える、\n店の空気まで。",
+        "hero_text": "料理写真だけでなく、席の雰囲気や店主のこだわりまで見せて“ここに行きたい”をつくる飲食店向けサンプルです。",
+        "primary_cta": "席を予約する",
+        "secondary_cta": "本日のおすすめを見る",
+        "stats": [
+          [
+            "120席",
+            "最大収容"
+          ],
+          [
+            "17時〜",
+            "営業開始"
+          ],
+          [
+            "飲み放題",
+            "コース対応"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "季節のおまかせ",
+            "price": "¥4,800",
+            "desc": "旬の食材を小皿で楽しむ"
+          },
+          {
+            "title": "名物炭火焼き",
+            "price": "¥1,280",
+            "desc": "香りまで主役にした一皿"
+          },
+          {
+            "title": "飲み放題付きコース",
+            "price": "¥6,500",
+            "desc": "宴会や会食にも対応"
+          }
+        ],
+        "features": [
+          {
+            "title": "雰囲気で選ばれる",
+            "desc": "外観と内観を両方見せる"
+          },
+          {
+            "title": "迷わないメニュー",
+            "desc": "価格帯を先に出して安心"
+          },
+          {
+            "title": "予約しやすい",
+            "desc": "席タイプと人数導線を整理"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.13",
+            "春のコースが始まりました"
+          ],
+          [
+            "2026.04.07",
+            "個室予約枠を追加"
+          ],
+          [
+            "2026.04.01",
+            "ランチ営業スタート"
+          ]
+        ],
+        "story": [
+          "飲食店のサイトは、写真をただ並べるだけだと差が出ません。",
+          "このサンプルでは、外観・内観・おすすめ・予約導線の順で空気感を積み上げて、来店のハードルを下げる構成にしています。",
+          "居酒屋、カフェ、和食ダイニング、ビストロなど、業態に合わせてトーンを変えやすい設計です。"
+        ],
+        "quote": "味だけじゃなく、行く理由まで伝える。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "restaurant",
+      "category_name": "飲食店",
+      "code": "menu-cards",
+      "name": "メニューカード",
+      "summary": "ランチやコースを比較しやすいカード型。",
+      "lead": "料理や空間の空気感まで伝わる完成見本。",
+      "sort_order": 4,
+      "variant": "cards",
+      "template_file": "platform/showcase_variants/cards_catalog.html",
+      "theme": {
+        "bg": "#fff8f0",
+        "surface": "#ffffff",
+        "text": "#2a211a",
+        "sub": "#79675a",
+        "line": "#ecdfd1",
+        "primary": "#9b6b3f",
+        "accent": "#f8ecdf",
+        "accent_text": "#2a211a",
+        "accent_soft": "#f8ecdf"
+      },
+      "thumb_image": "https://images.pexels.com/photos/19673767/pexels-photo-19673767.jpeg?cs=srgb&dl=pexels-kadernamuslu-19673767.jpg&fm=jpg",
+      "thumb_image_alt": "メニューカード",
+      "assets": [
+        "https://images.pexels.com/photos/19673767/pexels-photo-19673767.jpeg?cs=srgb&dl=pexels-kadernamuslu-19673767.jpg&fm=jpg",
+        "https://images.pexels.com/photos/30644204/pexels-photo-30644204.jpeg?cs=srgb&dl=pexels-chrislyn-dsouza-424969149-30644204.jpg&fm=jpg",
+        "https://images.pexels.com/photos/24038987/pexels-photo-24038987.jpeg?cs=srgb&dl=pexels-ahsenilist-24038987.jpg&fm=jpg",
+        "https://images.pexels.com/photos/31326827/pexels-photo-31326827.jpeg?cs=srgb&dl=pexels-kristina-mitina-2150783382-31326827.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/19673767/pexels-photo-19673767.jpeg?cs=srgb&dl=pexels-kadernamuslu-19673767.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Warm inviting cafe interior with seating.",
+          "author": "Kader Namuslu"
+        },
+        {
+          "url": "https://images.pexels.com/photos/30644204/pexels-photo-30644204.jpeg?cs=srgb&dl=pexels-chrislyn-dsouza-424969149-30644204.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Bright cafe interior with colorful cushions.",
+          "author": "Chrislyn D'Souza"
+        },
+        {
+          "url": "https://images.pexels.com/photos/24038987/pexels-photo-24038987.jpeg?cs=srgb&dl=pexels-ahsenilist-24038987.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Minimalist café interior with arches and seating.",
+          "author": "Ahsen Ilıst"
+        },
+        {
+          "url": "https://images.pexels.com/photos/31326827/pexels-photo-31326827.jpeg?cs=srgb&dl=pexels-kristina-mitina-2150783382-31326827.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Traditional Japanese restaurant interior with natural light.",
+          "author": "Kristina Mitina"
+        }
+      ],
+      "brand": "笑月",
+      "copy": {
+        "nav": [
+          "TOP",
+          "MENU",
+          "SPACE",
+          "COURSE",
+          "NEWS",
+          "RESERVE"
+        ],
+        "hero_kicker": "Restaurant sample",
+        "hero_title": "メニューカードで伝える、\n店の空気まで。",
+        "hero_text": "料理写真だけでなく、席の雰囲気や店主のこだわりまで見せて“ここに行きたい”をつくる飲食店向けサンプルです。",
+        "primary_cta": "席を予約する",
+        "secondary_cta": "本日のおすすめを見る",
+        "stats": [
+          [
+            "120席",
+            "最大収容"
+          ],
+          [
+            "17時〜",
+            "営業開始"
+          ],
+          [
+            "飲み放題",
+            "コース対応"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "季節のおまかせ",
+            "price": "¥4,800",
+            "desc": "旬の食材を小皿で楽しむ"
+          },
+          {
+            "title": "名物炭火焼き",
+            "price": "¥1,280",
+            "desc": "香りまで主役にした一皿"
+          },
+          {
+            "title": "飲み放題付きコース",
+            "price": "¥6,500",
+            "desc": "宴会や会食にも対応"
+          }
+        ],
+        "features": [
+          {
+            "title": "雰囲気で選ばれる",
+            "desc": "外観と内観を両方見せる"
+          },
+          {
+            "title": "迷わないメニュー",
+            "desc": "価格帯を先に出して安心"
+          },
+          {
+            "title": "予約しやすい",
+            "desc": "席タイプと人数導線を整理"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.13",
+            "春のコースが始まりました"
+          ],
+          [
+            "2026.04.07",
+            "個室予約枠を追加"
+          ],
+          [
+            "2026.04.01",
+            "ランチ営業スタート"
+          ]
+        ],
+        "story": [
+          "飲食店のサイトは、写真をただ並べるだけだと差が出ません。",
+          "このサンプルでは、外観・内観・おすすめ・予約導線の順で空気感を積み上げて、来店のハードルを下げる構成にしています。",
+          "居酒屋、カフェ、和食ダイニング、ビストロなど、業態に合わせてトーンを変えやすい設計です。"
+        ],
+        "quote": "味だけじゃなく、行く理由まで伝える。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "restaurant",
+      "category_name": "飲食店",
+      "code": "owner-story",
+      "name": "店主ストーリー",
+      "summary": "素材やこだわりを文章で読ませる構成。",
+      "lead": "料理や空間の空気感まで伝わる完成見本。",
+      "sort_order": 5,
+      "variant": "story",
+      "template_file": "platform/showcase_variants/story_flow.html",
+      "theme": {
+        "bg": "#f7f3ef",
+        "surface": "#ffffff",
+        "text": "#251d18",
+        "sub": "#6f655d",
+        "line": "#e7ddd5",
+        "primary": "#73553b",
+        "accent": "#efe5dc",
+        "accent_text": "#251d18",
+        "accent_soft": "#efe5dc"
+      },
+      "thumb_image": "https://images.pexels.com/photos/31326827/pexels-photo-31326827.jpeg?cs=srgb&dl=pexels-kristina-mitina-2150783382-31326827.jpg&fm=jpg",
+      "thumb_image_alt": "店主ストーリー",
+      "assets": [
+        "https://images.pexels.com/photos/31326827/pexels-photo-31326827.jpeg?cs=srgb&dl=pexels-kristina-mitina-2150783382-31326827.jpg&fm=jpg",
+        "https://images.pexels.com/photos/15849845/pexels-photo-15849845.jpeg?cs=srgb&dl=pexels-brunocervera-15849845.jpg&fm=jpg",
+        "https://images.pexels.com/photos/33262782/pexels-photo-33262782.jpeg?cs=srgb&dl=pexels-talharesitoglu-33262782.jpg&fm=jpg",
+        "https://images.pexels.com/photos/19673767/pexels-photo-19673767.jpeg?cs=srgb&dl=pexels-kadernamuslu-19673767.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/31326827/pexels-photo-31326827.jpeg?cs=srgb&dl=pexels-kristina-mitina-2150783382-31326827.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Traditional Japanese restaurant interior with natural light.",
+          "author": "Kristina Mitina"
+        },
+        {
+          "url": "https://images.pexels.com/photos/15849845/pexels-photo-15849845.jpeg?cs=srgb&dl=pexels-brunocervera-15849845.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Booth seating in a Japanese-style restaurant.",
+          "author": "Bruno Cervera"
+        },
+        {
+          "url": "https://images.pexels.com/photos/33262782/pexels-photo-33262782.jpeg?cs=srgb&dl=pexels-talharesitoglu-33262782.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Japanese restaurant exterior with lanterns at night.",
+          "author": "Talha Reşitoğlu"
+        },
+        {
+          "url": "https://images.pexels.com/photos/19673767/pexels-photo-19673767.jpeg?cs=srgb&dl=pexels-kadernamuslu-19673767.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Warm inviting cafe interior with seating.",
+          "author": "Kader Namuslu"
+        }
+      ],
+      "brand": "笑月",
+      "copy": {
+        "nav": [
+          "TOP",
+          "MENU",
+          "SPACE",
+          "COURSE",
+          "NEWS",
+          "RESERVE"
+        ],
+        "hero_kicker": "Restaurant sample",
+        "hero_title": "店主ストーリーで伝える、\n店の空気まで。",
+        "hero_text": "料理写真だけでなく、席の雰囲気や店主のこだわりまで見せて“ここに行きたい”をつくる飲食店向けサンプルです。",
+        "primary_cta": "席を予約する",
+        "secondary_cta": "本日のおすすめを見る",
+        "stats": [
+          [
+            "120席",
+            "最大収容"
+          ],
+          [
+            "17時〜",
+            "営業開始"
+          ],
+          [
+            "飲み放題",
+            "コース対応"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "季節のおまかせ",
+            "price": "¥4,800",
+            "desc": "旬の食材を小皿で楽しむ"
+          },
+          {
+            "title": "名物炭火焼き",
+            "price": "¥1,280",
+            "desc": "香りまで主役にした一皿"
+          },
+          {
+            "title": "飲み放題付きコース",
+            "price": "¥6,500",
+            "desc": "宴会や会食にも対応"
+          }
+        ],
+        "features": [
+          {
+            "title": "雰囲気で選ばれる",
+            "desc": "外観と内観を両方見せる"
+          },
+          {
+            "title": "迷わないメニュー",
+            "desc": "価格帯を先に出して安心"
+          },
+          {
+            "title": "予約しやすい",
+            "desc": "席タイプと人数導線を整理"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.13",
+            "春のコースが始まりました"
+          ],
+          [
+            "2026.04.07",
+            "個室予約枠を追加"
+          ],
+          [
+            "2026.04.01",
+            "ランチ営業スタート"
+          ]
+        ],
+        "story": [
+          "飲食店のサイトは、写真をただ並べるだけだと差が出ません。",
+          "このサンプルでは、外観・内観・おすすめ・予約導線の順で空気感を積み上げて、来店のハードルを下げる構成にしています。",
+          "居酒屋、カフェ、和食ダイニング、ビストロなど、業態に合わせてトーンを変えやすい設計です。"
+        ],
+        "quote": "味だけじゃなく、行く理由まで伝える。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "fitness",
+      "category_name": "ジム・スタジオ",
+      "code": "trainer-split",
+      "name": "トレーナースプリット",
+      "summary": "トレーナーと初回体験導線を強く見せる構成。",
+      "lead": "体験申込みまでつながるLP風の完成見本。",
+      "sort_order": 1,
+      "variant": "split",
+      "template_file": "platform/showcase_variants/split_intro.html",
+      "theme": {
+        "bg": "#0d1117",
+        "surface": "#161d25",
+        "text": "#f6f8fb",
+        "sub": "#a7b3c3",
+        "line": "#293343",
+        "primary": "#dce3ec",
+        "accent": "#1b2430",
+        "accent_text": "#f6f8fb",
+        "accent_soft": "#1b2430"
+      },
+      "thumb_image": "https://images.pexels.com/photos/4853692/pexels-photo-4853692.jpeg?cs=srgb&dl=pexels-ketut-subiyanto-4853692.jpg&fm=jpg",
+      "thumb_image_alt": "トレーナースプリット",
+      "assets": [
+        "https://images.pexels.com/photos/4853692/pexels-photo-4853692.jpeg?cs=srgb&dl=pexels-ketut-subiyanto-4853692.jpg&fm=jpg",
+        "https://images.pexels.com/photos/5878669/pexels-photo-5878669.jpeg?cs=srgb&dl=pexels-shkrabaanthony-5878669.jpg&fm=jpg",
+        "https://images.pexels.com/photos/35986381/pexels-photo-35986381.jpeg?cs=srgb&dl=pexels-jessie-kiermayr-2156410560-35986381.jpg&fm=jpg",
+        "https://images.pexels.com/photos/6740304/pexels-photo-6740304.jpeg?cs=srgb&dl=pexels-mikhail-nilov-6740304.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/4853692/pexels-photo-4853692.jpeg?cs=srgb&dl=pexels-ketut-subiyanto-4853692.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Personal trainer coaching a client lifting weights.",
+          "author": "Ketut Subiyanto"
+        },
+        {
+          "url": "https://images.pexels.com/photos/5878669/pexels-photo-5878669.jpeg?cs=srgb&dl=pexels-shkrabaanthony-5878669.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Trainer explaining a workout plan in a gym.",
+          "author": "Shkrabaanthony"
+        },
+        {
+          "url": "https://images.pexels.com/photos/35986381/pexels-photo-35986381.jpeg?cs=srgb&dl=pexels-jessie-kiermayr-2156410560-35986381.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Trainer spotting a dumbbell press in a gym.",
+          "author": "Jessie Kiermayr"
+        },
+        {
+          "url": "https://images.pexels.com/photos/6740304/pexels-photo-6740304.jpeg?cs=srgb&dl=pexels-mikhail-nilov-6740304.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Group exercise led by an instructor in a gym.",
+          "author": "Mikhail Nilov"
+        }
+      ],
+      "brand": "KRAIT",
+      "copy": {
+        "nav": [
+          "TOP",
+          "PLAN",
+          "TRAINER",
+          "RESULT",
+          "FLOW",
+          "TRIAL"
+        ],
+        "hero_kicker": "Fitness sample",
+        "hero_title": "トレーナースプリットで見せる、\n続けたくなる導線。",
+        "hero_text": "強すぎない煽りと、ちゃんと通えそうな安心感を両立したジム・スタジオ向けサンプルです。",
+        "primary_cta": "無料カウンセリング",
+        "secondary_cta": "プランを見る",
+        "stats": [
+          [
+            "3か月",
+            "継続率 89%"
+          ],
+          [
+            "60分",
+            "体験セッション"
+          ],
+          [
+            "7:00-23:00",
+            "通いやすい営業時間"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "体験セッション",
+            "price": "¥3,300",
+            "desc": "目的の整理からスタート"
+          },
+          {
+            "title": "月4回プラン",
+            "price": "¥24,800",
+            "desc": "続けやすい定番プラン"
+          },
+          {
+            "title": "短期集中プラン",
+            "price": "¥98,000 / 8回",
+            "desc": "食事提案つきで変化を加速"
+          }
+        ],
+        "features": [
+          {
+            "title": "無理のない提案",
+            "desc": "生活リズムに合わせて設計"
+          },
+          {
+            "title": "トレーナーの顔が見える",
+            "desc": "指名したくなる紹介設計"
+          },
+          {
+            "title": "女性向けにも展開",
+            "desc": "ピラティスや整える導線にも対応"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.11",
+            "春の体験キャンペーン開始"
+          ],
+          [
+            "2026.04.06",
+            "トレーナー紹介を更新"
+          ],
+          [
+            "2026.04.01",
+            "朝活プランを公開"
+          ]
+        ],
+        "story": [
+          "ジム選びで大切なのは、“キツそう”より先に“続けられそう”と思ってもらうことです。",
+          "このサンプルでは、トレーナーの空気感、料金の見やすさ、初回導線のわかりやすさを優先して構成しています。",
+          "パーソナルジム、セミパーソナル、ピラティス、ボディメイクスタジオにも流用しやすい形です。"
+        ],
+        "quote": "理想より先に、続けられる未来を見せる。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "fitness",
+      "category_name": "ジム・スタジオ",
+      "code": "body-editorial",
+      "name": "ボディエディトリアル",
+      "summary": "ビフォーアフター文脈を読みやすく並べる構成。",
+      "lead": "体験申込みまでつながるLP風の完成見本。",
+      "sort_order": 2,
+      "variant": "editorial",
+      "template_file": "platform/showcase_variants/editorial_grid.html",
+      "theme": {
+        "bg": "#f6f8fb",
+        "surface": "#ffffff",
+        "text": "#141d29",
+        "sub": "#667489",
+        "line": "#dce3ed",
+        "primary": "#24364f",
+        "accent": "#ebf0f7",
+        "accent_text": "#141d29",
+        "accent_soft": "#ebf0f7"
+      },
+      "thumb_image": "https://images.pexels.com/photos/35986381/pexels-photo-35986381.jpeg?cs=srgb&dl=pexels-jessie-kiermayr-2156410560-35986381.jpg&fm=jpg",
+      "thumb_image_alt": "ボディエディトリアル",
+      "assets": [
+        "https://images.pexels.com/photos/35986381/pexels-photo-35986381.jpeg?cs=srgb&dl=pexels-jessie-kiermayr-2156410560-35986381.jpg&fm=jpg",
+        "https://images.pexels.com/photos/4853692/pexels-photo-4853692.jpeg?cs=srgb&dl=pexels-ketut-subiyanto-4853692.jpg&fm=jpg",
+        "https://images.pexels.com/photos/5878669/pexels-photo-5878669.jpeg?cs=srgb&dl=pexels-shkrabaanthony-5878669.jpg&fm=jpg",
+        "https://images.pexels.com/photos/6740304/pexels-photo-6740304.jpeg?cs=srgb&dl=pexels-mikhail-nilov-6740304.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/35986381/pexels-photo-35986381.jpeg?cs=srgb&dl=pexels-jessie-kiermayr-2156410560-35986381.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Trainer spotting a dumbbell press in a gym.",
+          "author": "Jessie Kiermayr"
+        },
+        {
+          "url": "https://images.pexels.com/photos/4853692/pexels-photo-4853692.jpeg?cs=srgb&dl=pexels-ketut-subiyanto-4853692.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Personal trainer coaching a client lifting weights.",
+          "author": "Ketut Subiyanto"
+        },
+        {
+          "url": "https://images.pexels.com/photos/5878669/pexels-photo-5878669.jpeg?cs=srgb&dl=pexels-shkrabaanthony-5878669.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Trainer explaining a workout plan in a gym.",
+          "author": "Shkrabaanthony"
+        },
+        {
+          "url": "https://images.pexels.com/photos/6740304/pexels-photo-6740304.jpeg?cs=srgb&dl=pexels-mikhail-nilov-6740304.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Group exercise led by an instructor in a gym.",
+          "author": "Mikhail Nilov"
+        }
+      ],
+      "brand": "KRAIT",
+      "copy": {
+        "nav": [
+          "TOP",
+          "PLAN",
+          "TRAINER",
+          "RESULT",
+          "FLOW",
+          "TRIAL"
+        ],
+        "hero_kicker": "Fitness sample",
+        "hero_title": "ボディエディトリアルで見せる、\n続けたくなる導線。",
+        "hero_text": "強すぎない煽りと、ちゃんと通えそうな安心感を両立したジム・スタジオ向けサンプルです。",
+        "primary_cta": "無料カウンセリング",
+        "secondary_cta": "プランを見る",
+        "stats": [
+          [
+            "3か月",
+            "継続率 89%"
+          ],
+          [
+            "60分",
+            "体験セッション"
+          ],
+          [
+            "7:00-23:00",
+            "通いやすい営業時間"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "体験セッション",
+            "price": "¥3,300",
+            "desc": "目的の整理からスタート"
+          },
+          {
+            "title": "月4回プラン",
+            "price": "¥24,800",
+            "desc": "続けやすい定番プラン"
+          },
+          {
+            "title": "短期集中プラン",
+            "price": "¥98,000 / 8回",
+            "desc": "食事提案つきで変化を加速"
+          }
+        ],
+        "features": [
+          {
+            "title": "無理のない提案",
+            "desc": "生活リズムに合わせて設計"
+          },
+          {
+            "title": "トレーナーの顔が見える",
+            "desc": "指名したくなる紹介設計"
+          },
+          {
+            "title": "女性向けにも展開",
+            "desc": "ピラティスや整える導線にも対応"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.11",
+            "春の体験キャンペーン開始"
+          ],
+          [
+            "2026.04.06",
+            "トレーナー紹介を更新"
+          ],
+          [
+            "2026.04.01",
+            "朝活プランを公開"
+          ]
+        ],
+        "story": [
+          "ジム選びで大切なのは、“キツそう”より先に“続けられそう”と思ってもらうことです。",
+          "このサンプルでは、トレーナーの空気感、料金の見やすさ、初回導線のわかりやすさを優先して構成しています。",
+          "パーソナルジム、セミパーソナル、ピラティス、ボディメイクスタジオにも流用しやすい形です。"
+        ],
+        "quote": "理想より先に、続けられる未来を見せる。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "fitness",
+      "category_name": "ジム・スタジオ",
+      "code": "premium-dark",
+      "name": "プレミアムダーク",
+      "summary": "高単価パーソナル向けの重厚な構成。",
+      "lead": "体験申込みまでつながるLP風の完成見本。",
+      "sort_order": 3,
+      "variant": "dark",
+      "template_file": "platform/showcase_variants/luxury_dark.html",
+      "theme": {
+        "bg": "#0a0c10",
+        "surface": "#11151b",
+        "text": "#f8fafc",
+        "sub": "#aab6c6",
+        "line": "#242b34",
+        "primary": "#ffffff",
+        "accent": "#171b22",
+        "accent_text": "#f8fafc",
+        "accent_soft": "#171b22"
+      },
+      "thumb_image": "https://images.pexels.com/photos/35986381/pexels-photo-35986381.jpeg?cs=srgb&dl=pexels-jessie-kiermayr-2156410560-35986381.jpg&fm=jpg",
+      "thumb_image_alt": "プレミアムダーク",
+      "assets": [
+        "https://images.pexels.com/photos/35986381/pexels-photo-35986381.jpeg?cs=srgb&dl=pexels-jessie-kiermayr-2156410560-35986381.jpg&fm=jpg",
+        "https://images.pexels.com/photos/4853692/pexels-photo-4853692.jpeg?cs=srgb&dl=pexels-ketut-subiyanto-4853692.jpg&fm=jpg",
+        "https://images.pexels.com/photos/5878669/pexels-photo-5878669.jpeg?cs=srgb&dl=pexels-shkrabaanthony-5878669.jpg&fm=jpg",
+        "https://images.pexels.com/photos/6740304/pexels-photo-6740304.jpeg?cs=srgb&dl=pexels-mikhail-nilov-6740304.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/35986381/pexels-photo-35986381.jpeg?cs=srgb&dl=pexels-jessie-kiermayr-2156410560-35986381.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Trainer spotting a dumbbell press in a gym.",
+          "author": "Jessie Kiermayr"
+        },
+        {
+          "url": "https://images.pexels.com/photos/4853692/pexels-photo-4853692.jpeg?cs=srgb&dl=pexels-ketut-subiyanto-4853692.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Personal trainer coaching a client lifting weights.",
+          "author": "Ketut Subiyanto"
+        },
+        {
+          "url": "https://images.pexels.com/photos/5878669/pexels-photo-5878669.jpeg?cs=srgb&dl=pexels-shkrabaanthony-5878669.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Trainer explaining a workout plan in a gym.",
+          "author": "Shkrabaanthony"
+        },
+        {
+          "url": "https://images.pexels.com/photos/6740304/pexels-photo-6740304.jpeg?cs=srgb&dl=pexels-mikhail-nilov-6740304.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Group exercise led by an instructor in a gym.",
+          "author": "Mikhail Nilov"
+        }
+      ],
+      "brand": "KRAIT",
+      "copy": {
+        "nav": [
+          "TOP",
+          "PLAN",
+          "TRAINER",
+          "RESULT",
+          "FLOW",
+          "TRIAL"
+        ],
+        "hero_kicker": "Fitness sample",
+        "hero_title": "プレミアムダークで見せる、\n続けたくなる導線。",
+        "hero_text": "強すぎない煽りと、ちゃんと通えそうな安心感を両立したジム・スタジオ向けサンプルです。",
+        "primary_cta": "無料カウンセリング",
+        "secondary_cta": "プランを見る",
+        "stats": [
+          [
+            "3か月",
+            "継続率 89%"
+          ],
+          [
+            "60分",
+            "体験セッション"
+          ],
+          [
+            "7:00-23:00",
+            "通いやすい営業時間"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "体験セッション",
+            "price": "¥3,300",
+            "desc": "目的の整理からスタート"
+          },
+          {
+            "title": "月4回プラン",
+            "price": "¥24,800",
+            "desc": "続けやすい定番プラン"
+          },
+          {
+            "title": "短期集中プラン",
+            "price": "¥98,000 / 8回",
+            "desc": "食事提案つきで変化を加速"
+          }
+        ],
+        "features": [
+          {
+            "title": "無理のない提案",
+            "desc": "生活リズムに合わせて設計"
+          },
+          {
+            "title": "トレーナーの顔が見える",
+            "desc": "指名したくなる紹介設計"
+          },
+          {
+            "title": "女性向けにも展開",
+            "desc": "ピラティスや整える導線にも対応"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.11",
+            "春の体験キャンペーン開始"
+          ],
+          [
+            "2026.04.06",
+            "トレーナー紹介を更新"
+          ],
+          [
+            "2026.04.01",
+            "朝活プランを公開"
+          ]
+        ],
+        "story": [
+          "ジム選びで大切なのは、“キツそう”より先に“続けられそう”と思ってもらうことです。",
+          "このサンプルでは、トレーナーの空気感、料金の見やすさ、初回導線のわかりやすさを優先して構成しています。",
+          "パーソナルジム、セミパーソナル、ピラティス、ボディメイクスタジオにも流用しやすい形です。"
+        ],
+        "quote": "理想より先に、続けられる未来を見せる。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "fitness",
+      "category_name": "ジム・スタジオ",
+      "code": "pilates-cards",
+      "name": "ピラティスカード",
+      "summary": "明るいスタジオと料金比較を見せる構成。",
+      "lead": "体験申込みまでつながるLP風の完成見本。",
+      "sort_order": 4,
+      "variant": "cards",
+      "template_file": "platform/showcase_variants/cards_catalog.html",
+      "theme": {
+        "bg": "#f7faf8",
+        "surface": "#ffffff",
+        "text": "#19251f",
+        "sub": "#66756d",
+        "line": "#dce8e0",
+        "primary": "#2d5a48",
+        "accent": "#e9f2ed",
+        "accent_text": "#19251f",
+        "accent_soft": "#e9f2ed"
+      },
+      "thumb_image": "https://images.pexels.com/photos/25599827/pexels-photo-25599827.jpeg?cs=srgb&dl=pexels-ahmetkurt-25599827.jpg&fm=jpg",
+      "thumb_image_alt": "ピラティスカード",
+      "assets": [
+        "https://images.pexels.com/photos/25599827/pexels-photo-25599827.jpeg?cs=srgb&dl=pexels-ahmetkurt-25599827.jpg&fm=jpg",
+        "https://images.pexels.com/photos/31509824/pexels-photo-31509824.jpeg?cs=srgb&dl=pexels-flexity-31509824.jpg&fm=jpg",
+        "https://images.pexels.com/photos/18499504/pexels-photo-18499504.png?cs=srgb&dl=pexels-lngdik23-18499504.jpg&fm=jpg",
+        "https://images.pexels.com/photos/5878669/pexels-photo-5878669.jpeg?cs=srgb&dl=pexels-shkrabaanthony-5878669.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/25599827/pexels-photo-25599827.jpeg?cs=srgb&dl=pexels-ahmetkurt-25599827.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Pilates reformer studio with equipment.",
+          "author": "Ahmet Kurt"
+        },
+        {
+          "url": "https://images.pexels.com/photos/31509824/pexels-photo-31509824.jpeg?cs=srgb&dl=pexels-flexity-31509824.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Woman on pilates reformer at Flexity studio.",
+          "author": "Flexity"
+        },
+        {
+          "url": "https://images.pexels.com/photos/18499504/pexels-photo-18499504.png?cs=srgb&dl=pexels-lngdik23-18499504.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Bright pilates studio with reformer machines.",
+          "author": "lngdik23"
+        },
+        {
+          "url": "https://images.pexels.com/photos/5878669/pexels-photo-5878669.jpeg?cs=srgb&dl=pexels-shkrabaanthony-5878669.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Trainer explaining a workout plan in a gym.",
+          "author": "Shkrabaanthony"
+        }
+      ],
+      "brand": "KRAIT",
+      "copy": {
+        "nav": [
+          "TOP",
+          "PLAN",
+          "TRAINER",
+          "RESULT",
+          "FLOW",
+          "TRIAL"
+        ],
+        "hero_kicker": "Fitness sample",
+        "hero_title": "ピラティスカードで見せる、\n続けたくなる導線。",
+        "hero_text": "強すぎない煽りと、ちゃんと通えそうな安心感を両立したジム・スタジオ向けサンプルです。",
+        "primary_cta": "無料カウンセリング",
+        "secondary_cta": "プランを見る",
+        "stats": [
+          [
+            "3か月",
+            "継続率 89%"
+          ],
+          [
+            "60分",
+            "体験セッション"
+          ],
+          [
+            "7:00-23:00",
+            "通いやすい営業時間"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "体験セッション",
+            "price": "¥3,300",
+            "desc": "目的の整理からスタート"
+          },
+          {
+            "title": "月4回プラン",
+            "price": "¥24,800",
+            "desc": "続けやすい定番プラン"
+          },
+          {
+            "title": "短期集中プラン",
+            "price": "¥98,000 / 8回",
+            "desc": "食事提案つきで変化を加速"
+          }
+        ],
+        "features": [
+          {
+            "title": "無理のない提案",
+            "desc": "生活リズムに合わせて設計"
+          },
+          {
+            "title": "トレーナーの顔が見える",
+            "desc": "指名したくなる紹介設計"
+          },
+          {
+            "title": "女性向けにも展開",
+            "desc": "ピラティスや整える導線にも対応"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.11",
+            "春の体験キャンペーン開始"
+          ],
+          [
+            "2026.04.06",
+            "トレーナー紹介を更新"
+          ],
+          [
+            "2026.04.01",
+            "朝活プランを公開"
+          ]
+        ],
+        "story": [
+          "ジム選びで大切なのは、“キツそう”より先に“続けられそう”と思ってもらうことです。",
+          "このサンプルでは、トレーナーの空気感、料金の見やすさ、初回導線のわかりやすさを優先して構成しています。",
+          "パーソナルジム、セミパーソナル、ピラティス、ボディメイクスタジオにも流用しやすい形です。"
+        ],
+        "quote": "理想より先に、続けられる未来を見せる。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    },
+    {
+      "category_code": "fitness",
+      "category_name": "ジム・スタジオ",
+      "code": "wellness-story",
+      "name": "ウェルネスストーリー",
+      "summary": "整える習慣を長文で伝える構成。",
+      "lead": "体験申込みまでつながるLP風の完成見本。",
+      "sort_order": 5,
+      "variant": "story",
+      "template_file": "platform/showcase_variants/story_flow.html",
+      "theme": {
+        "bg": "#fbf8f5",
+        "surface": "#ffffff",
+        "text": "#241f1a",
+        "sub": "#726960",
+        "line": "#e8e0d8",
+        "primary": "#76624c",
+        "accent": "#f0e7de",
+        "accent_text": "#241f1a",
+        "accent_soft": "#f0e7de"
+      },
+      "thumb_image": "https://images.pexels.com/photos/31509824/pexels-photo-31509824.jpeg?cs=srgb&dl=pexels-flexity-31509824.jpg&fm=jpg",
+      "thumb_image_alt": "ウェルネスストーリー",
+      "assets": [
+        "https://images.pexels.com/photos/31509824/pexels-photo-31509824.jpeg?cs=srgb&dl=pexels-flexity-31509824.jpg&fm=jpg",
+        "https://images.pexels.com/photos/18499504/pexels-photo-18499504.png?cs=srgb&dl=pexels-lngdik23-18499504.jpg&fm=jpg",
+        "https://images.pexels.com/photos/25599827/pexels-photo-25599827.jpeg?cs=srgb&dl=pexels-ahmetkurt-25599827.jpg&fm=jpg",
+        "https://images.pexels.com/photos/5878669/pexels-photo-5878669.jpeg?cs=srgb&dl=pexels-shkrabaanthony-5878669.jpg&fm=jpg"
+      ],
+      "image_sources": [
+        {
+          "url": "https://images.pexels.com/photos/31509824/pexels-photo-31509824.jpeg?cs=srgb&dl=pexels-flexity-31509824.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Woman on pilates reformer at Flexity studio.",
+          "author": "Flexity"
+        },
+        {
+          "url": "https://images.pexels.com/photos/18499504/pexels-photo-18499504.png?cs=srgb&dl=pexels-lngdik23-18499504.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Bright pilates studio with reformer machines.",
+          "author": "lngdik23"
+        },
+        {
+          "url": "https://images.pexels.com/photos/25599827/pexels-photo-25599827.jpeg?cs=srgb&dl=pexels-ahmetkurt-25599827.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Pilates reformer studio with equipment.",
+          "author": "Ahmet Kurt"
+        },
+        {
+          "url": "https://images.pexels.com/photos/5878669/pexels-photo-5878669.jpeg?cs=srgb&dl=pexels-shkrabaanthony-5878669.jpg&fm=jpg",
+          "provider": "Pexels",
+          "title": "Trainer explaining a workout plan in a gym.",
+          "author": "Shkrabaanthony"
+        }
+      ],
+      "brand": "KRAIT",
+      "copy": {
+        "nav": [
+          "TOP",
+          "PLAN",
+          "TRAINER",
+          "RESULT",
+          "FLOW",
+          "TRIAL"
+        ],
+        "hero_kicker": "Fitness sample",
+        "hero_title": "ウェルネスストーリーで見せる、\n続けたくなる導線。",
+        "hero_text": "強すぎない煽りと、ちゃんと通えそうな安心感を両立したジム・スタジオ向けサンプルです。",
+        "primary_cta": "無料カウンセリング",
+        "secondary_cta": "プランを見る",
+        "stats": [
+          [
+            "3か月",
+            "継続率 89%"
+          ],
+          [
+            "60分",
+            "体験セッション"
+          ],
+          [
+            "7:00-23:00",
+            "通いやすい営業時間"
+          ]
+        ],
+        "menu": [
+          {
+            "title": "体験セッション",
+            "price": "¥3,300",
+            "desc": "目的の整理からスタート"
+          },
+          {
+            "title": "月4回プラン",
+            "price": "¥24,800",
+            "desc": "続けやすい定番プラン"
+          },
+          {
+            "title": "短期集中プラン",
+            "price": "¥98,000 / 8回",
+            "desc": "食事提案つきで変化を加速"
+          }
+        ],
+        "features": [
+          {
+            "title": "無理のない提案",
+            "desc": "生活リズムに合わせて設計"
+          },
+          {
+            "title": "トレーナーの顔が見える",
+            "desc": "指名したくなる紹介設計"
+          },
+          {
+            "title": "女性向けにも展開",
+            "desc": "ピラティスや整える導線にも対応"
+          }
+        ],
+        "news": [
+          [
+            "2026.04.11",
+            "春の体験キャンペーン開始"
+          ],
+          [
+            "2026.04.06",
+            "トレーナー紹介を更新"
+          ],
+          [
+            "2026.04.01",
+            "朝活プランを公開"
+          ]
+        ],
+        "story": [
+          "ジム選びで大切なのは、“キツそう”より先に“続けられそう”と思ってもらうことです。",
+          "このサンプルでは、トレーナーの空気感、料金の見やすさ、初回導線のわかりやすさを優先して構成しています。",
+          "パーソナルジム、セミパーソナル、ピラティス、ボディメイクスタジオにも流用しやすい形です。"
+        ],
+        "quote": "理想より先に、続けられる未来を見せる。",
+        "section_titles": {
+          "menu": "MENU / SERVICE",
+          "features": "FEATURES",
+          "story": "STORY",
+          "news": "NEWS",
+          "stats": "STATS"
+        }
+      }
+    }
+  ]
+}

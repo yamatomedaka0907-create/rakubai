@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ sample.name }} | {{ sample.category_name }}サンプル</title>
+<style>
+:root{
+  --bg:{{ sample.theme.bg }};
+  --surface:{{ sample.theme.surface }};
+  --text:{{ sample.theme.text }};
+  --sub:{{ sample.theme.sub }};
+  --line:{{ sample.theme.line }};
+  --primary:{{ sample.theme.primary }};
+  --accent:{{ sample.theme.accent }};
+  --accent-soft:{{ sample.theme.accent_soft }};
+}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+a{text-decoration:none;color:inherit}img{display:block;max-width:100%}
+.wrap{max-width:1280px;margin:0 auto;padding:0 24px}
+.mini-back{position:fixed;left:18px;bottom:18px;z-index:20;padding:11px 14px;border-radius:999px;background:rgba(255,255,255,.92);border:1px solid rgba(0,0,0,.08);backdrop-filter:blur(12px);font-weight:800}
+.section{padding:80px 0}.eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase}.muted{color:var(--sub);line-height:1.9}.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 18px;border-radius:999px;background:var(--primary);color:#fff;font-weight:800}.btn.outline{background:transparent;color:var(--text);border:1px solid var(--line)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:28px;overflow:hidden}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+.stat{padding:20px;border-radius:24px;background:var(--surface);border:1px solid var(--line)} .stat strong{display:block;font-size:34px;line-height:1.05}
+.menu-card,.feature-card{padding:20px;border-radius:24px;background:var(--surface);border:1px solid var(--line)} .menu-card strong,.feature-card strong{display:block;margin-bottom:10px;font-size:18px}
+.menu-card .price{font-weight:800;margin-bottom:10px}
+.media{width:100%;height:100%;object-fit:cover}
+.stack{display:grid;gap:18px}
+.note-chip{display:inline-flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.75)}
+.dark-surface{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.1)}
+@media (max-width:960px){.grid-3,.grid-2{grid-template-columns:1fr}.section{padding:56px 0}.mini-back{left:12px;bottom:12px}}
+/* hair */
+.hair-body{background:#f0ede8}
+.hair-header{padding:22px 0;position:sticky;top:0;z-index:10;background:rgba(243,241,236,.92);backdrop-filter:blur(12px)}
+.hair-nav{display:flex;align-items:center;justify-content:space-between;gap:18px}.hair-nav nav{display:flex;gap:28px;font-weight:800;font-size:14px;letter-spacing:.04em}
+.hair-logo{font-size:44px;letter-spacing:.18em}
+.hair-hero{position:relative;padding-bottom:24px}.hair-frame{max-width:1360px;margin:0 auto;padding:0 24px}
+.hair-stage{position:relative}.hair-stage img{width:100%;height:auto;border:1px solid #d4cec7}
+.topic-card{position:absolute;left:0;bottom:0;transform:translateY(45%);background:rgba(255,255,255,.88);backdrop-filter:blur(10px);display:grid;grid-template-columns:140px 120px 1fr 44px;align-items:center;gap:14px;min-height:92px;padding:16px 22px;max-width:680px;border-top-right-radius:10px}
+.reserve-pill{position:fixed;right:0;top:50%;transform:translateY(-50%);writing-mode:vertical-rl;padding:20px 18px;border-top-left-radius:999px;border-bottom-left-radius:999px;background:#0fb0ab;color:#fff;font-weight:900;letter-spacing:.08em;box-shadow:0 16px 30px rgba(15,176,171,.26)}
+.hair-content{padding-top:120px}
+.editorial{display:grid;grid-template-columns:1.2fr .8fr;gap:24px;align-items:end}
+.news-list{display:grid;gap:12px}.news-item{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid #ddd6cf}
+.gallery-strip{display:grid;grid-template-columns:1fr 1fr;gap:18px}.gallery-strip img{border-radius:24px}
+/* nail */
+.nail-body{background:#faf7f8}
+.nail-hero{padding:36px 0 20px}.phone-ui{display:grid;grid-template-columns:1.1fr .9fr;gap:28px;align-items:center}
+.nail-panel{background:var(--surface);border:1px solid var(--line);border-radius:34px;padding:22px;box-shadow:0 18px 40px rgba(74,64,69,.08)}
+.tabs{display:flex;justify-content:space-between;font-weight:700;color:#a5969d;padding:8px 6px 18px;border-bottom:1px solid var(--line)}
+.tabs .active{color:var(--text);position:relative}.tabs .active::after{content:'';position:absolute;left:0;right:0;bottom:-19px;height:4px;background:var(--primary);border-radius:999px}
+.searchbox{margin:18px 0;padding:16px 18px;border-radius:16px;background:#f1ecee;color:#a4979f}.nail-cardlist{display:grid;gap:14px}
+.nail-mini-card{padding:16px;border-radius:18px;background:#fff;border:1px solid var(--line)}
+.nail-gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.nail-gallery img{border-radius:20px;background:#fff}
+/* school */
+.school-hero{padding:78px 0;background:linear-gradient(180deg,var(--accent-soft),transparent)}
+.school-head{display:grid;grid-template-columns:1.05fr .95fr;gap:24px;align-items:center}
+.school-copy h1{font-size:clamp(34px,5vw,62px);line-height:1.08;margin:10px 0 16px;white-space:pre-line}.school-visual{padding:22px;border-radius:34px;background:#fff;border:1px solid var(--line);box-shadow:0 18px 36px rgba(47,95,179,.08)}
+.school-visual img{border-radius:24px}
+/* golf */
+.golf-hero{padding:78px 0;background:linear-gradient(180deg,#eef4ea,transparent)}
+.golf-head{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center}
+.golf-copy h1{font-size:clamp(34px,5vw,62px);line-height:1.08;margin:10px 0 16px;white-space:pre-line}.golf-visual{border-radius:36px;overflow:hidden;border:1px solid var(--line);background:#fff}
+/* restaurant */
+.restaurant-body{background:#13100d;color:#f6f0e8}
+.restaurant-body .mini-back{background:rgba(28,23,19,.92);color:#f6f0e8;border-color:#3c2e24}
+.restaurant-header{padding:22px 0;border-bottom:1px solid #2c2119;position:sticky;top:0;z-index:10;background:rgba(19,16,13,.92);backdrop-filter:blur(12px)}
+.restaurant-nav{display:flex;justify-content:space-between;align-items:center;gap:18px}.restaurant-nav nav{display:flex;gap:24px;color:#d8c5b3}
+.restaurant-brand{font-size:36px;letter-spacing:.2em}
+.restaurant-hero{padding:34px 0 26px}.restaurant-stage{display:grid;grid-template-columns:1.05fr .95fr;gap:28px;align-items:center}.restaurant-stage img{border-radius:30px}.restaurant-copy h1{font-size:clamp(34px,5vw,66px);line-height:1.05;margin:10px 0 16px;white-space:pre-line}.menu-card.dark,.feature-card.dark,.stat.dark{background:#1b1612;border-color:#3c2e24}
+.restaurant-body .btn.outline{border-color:#584435;color:#f6f0e8}
+.restaurant-body .btn{background:#b99058;color:#17120f}
+/* fitness */
+.fitness-body{background:#0f1115;color:#f8fafc}
+.fitness-body .mini-back{background:rgba(22,26,33,.92);color:#f8fafc;border-color:#252b35}
+.fit-hero{padding:82px 0 54px;background:radial-gradient(circle at top left,#202733,transparent 45%),#0f1115}
+.fit-head{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center}
+.fit-copy h1{font-size:clamp(36px,6vw,68px);line-height:1.04;margin:12px 0 16px;white-space:pre-line}.fit-card{background:#161a21;border:1px solid #252b35;border-radius:32px;padding:24px}
+.fit-visual{overflow:hidden}.fit-visual img{border-radius:24px}
+</style>
+</head>
+<body class="{% if sample.category_code == 'hair-salon' %}hair-body{% elif sample.category_code == 'nail-salon' %}nail-body{% elif sample.category_code == 'restaurant' %}restaurant-body{% elif sample.category_code == 'fitness' %}fitness-body{% endif %}">
+<a class="mini-back" href="/samples">← サンプル一覧へ</a>
+
+{% if sample.category_code == 'hair-salon' %}
+  <header class="hair-header">
+    <div class="hair-frame hair-nav">
+      <div class="hair-logo">{{ sample.brand }}</div>
+      <nav>{% for item in sample.copy.nav %}<a href="#">{{ item }}</a>{% endfor %}<a href="#contact">CONTACT</a></nav>
+    </div>
+  </header>
+  <section class="hair-hero">
+    <div class="hair-frame">
+      <div class="hair-stage">
+        <img src="{{ sample.assets[0] }}" alt="{{ sample.name }}">
+        <div class="topic-card">
+          <strong style="font-size:22px;letter-spacing:.1em">{{ sample.copy.topic_label }}</strong>
+          <div>{{ sample.copy.topic_date }}</div>
+          <div style="font-size:28px;font-weight:800">{{ sample.copy.topic_title }}</div>
+          <div style="font-size:28px">›</div>
+        </div>
+      </div>
+    </div>
+    <a class="reserve-pill" href="#contact">{{ sample.copy.cta }}<br><small style="font-size:12px;font-weight:700">{{ sample.copy.cta_sub }}</small></a>
+  </section>
+  <div class="wrap hair-content">
+    <section class="section editorial">
+      <div>
+        <div class="eyebrow">Hair salon sample</div>
+        <h1 style="font-size:clamp(38px,6vw,84px);line-height:1.02;margin:10px 0 16px;white-space:pre-line">{{ sample.copy.hero_title }}</h1>
+        <p class="muted" style="max-width:640px">{{ sample.copy.hero_text }}</p>
+        <div style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap"><a class="btn" href="#menu">{{ sample.copy.cta }}</a><a class="btn outline" href="#news">NEWS</a></div>
+      </div>
+      <div class="card" style="padding:20px">
+        <div class="eyebrow">Salon view</div>
+        <img class="media" style="border-radius:22px;margin-top:14px" src="{{ sample.assets[1] }}" alt="salon interior">
+      </div>
+    </section>
+    <section class="section" id="menu">
+      <div class="grid-3">
+        {% for item in sample.copy.menu %}
+        <div class="menu-card">
+          <strong>{{ item.title }}</strong>
+          <div class="price">{{ item.price }}</div>
+          <div class="muted">{{ item.desc }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    <section class="section">
+      <div class="grid-2">
+        <div>
+          <div class="eyebrow">{{ sample.copy.intro_title }}</div>
+          <p class="muted" style="margin-top:16px">{{ sample.copy.intro_text }}</p>
+          <div class="news-list" id="news" style="margin-top:26px">
+            {% for date, title in sample.copy.news %}
+            <div class="news-item"><strong>{{ date }}</strong><div>{{ title }}</div></div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="gallery-strip">
+          <img src="{{ sample.assets[2] }}" alt="story">
+          <img src="{{ sample.assets[1] }}" alt="interior">
+        </div>
+      </div>
+    </section>
+  </div>
+
+{% elif sample.category_code == 'nail-salon' %}
+  <section class="nail-hero">
+    <div class="wrap phone-ui">
+      <div class="nail-panel">
+        <div class="tabs">{% for t in sample.copy.tabs %}<span class="{% if loop.last %}active{% endif %}">{{ t }}</span>{% endfor %}</div>
+        <div class="searchbox">🔎 {{ sample.copy.search_placeholder }}</div>
+        <div style="font-size:38px;font-weight:800;margin-bottom:14px">{{ sample.copy.hero_title }}</div>
+        <p class="muted">{{ sample.copy.hero_text }}</p>
+        <div class="nail-cardlist" style="margin-top:18px">
+          {% for item in sample.copy.cards %}
+          <div class="nail-mini-card">
+            <strong style="display:block;margin-bottom:8px">{{ item.title }}</strong>
+            <div class="muted">{{ item.desc }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="stack">
+        <div class="card"><img class="media" src="{{ sample.assets[0] }}" alt="nail app"></div>
+        <div class="card" style="padding:18px">
+          <img class="media" style="border-radius:22px" src="{{ sample.assets[1] }}" alt="nail salon">
+        </div>
+      </div>
+    </div>
+  </section>
+  <div class="wrap">
+    <section class="section">
+      <div class="grid-3">
+        {% for item in sample.copy.menu %}
+        <div class="menu-card">
+          <strong>{{ item.title }}</strong>
+          <div class="price">{{ item.price }}</div>
+          <div class="muted">{{ item.desc }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    <section class="section">
+      <div class="nail-gallery">
+        <img src="{{ sample.assets[0] }}" alt="design 1">
+        <img src="{{ sample.assets[2] }}" alt="design 2">
+        <img src="{{ sample.assets[1] }}" alt="design 3">
+      </div>
+      <div style="margin-top:24px;display:flex;justify-content:center"><a class="btn" href="#">{{ sample.copy.cta }}</a></div>
+    </section>
+  </div>
+
+{% elif sample.category_code == 'cram-school' %}
+  <section class="school-hero">
+    <div class="wrap school-head">
+      <div class="school-copy">
+        <div class="eyebrow">{{ sample.brand }}</div>
+        <h1>{{ sample.copy.hero_title }}</h1>
+        <p class="muted">{{ sample.copy.hero_text }}</p>
+        <div style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap"><a class="btn" href="#courses">{{ sample.copy.cta }}</a><a class="btn outline" href="#features">資料を見る</a></div>
+      </div>
+      <div class="school-visual">
+        <img src="{{ sample.assets[0] }}" alt="school visual">
+      </div>
+    </div>
+  </section>
+  <div class="wrap">
+    <section class="section">
+      <div class="grid-3">
+        {% for value, label in sample.copy.stats %}
+        <div class="stat"><strong>{{ value }}</strong><span class="muted">{{ label }}</span></div>
+        {% endfor %}
+      </div>
+    </section>
+    <section class="section grid-2" id="courses">
+      <div class="card" style="padding:22px"><img class="media" style="border-radius:22px" src="{{ sample.assets[1] }}" alt="class"></div>
+      <div class="stack">
+        {% for item in sample.copy.menu %}
+        <div class="menu-card"><strong>{{ item.title }}</strong><div class="price">{{ item.price }}</div><div class="muted">{{ item.desc }}</div></div>
+        {% endfor %}
+      </div>
+    </section>
+    <section class="section" id="features">
+      <div class="grid-3">
+        {% for item in sample.copy.features %}
+        <div class="feature-card"><strong>{{ item.title }}</strong><div class="muted">{{ item.desc }}</div></div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+
+{% elif sample.category_code == 'golf-school' %}
+  <section class="golf-hero">
+    <div class="wrap golf-head">
+      <div class="golf-copy">
+        <div class="eyebrow">{{ sample.brand }}</div>
+        <h1>{{ sample.copy.hero_title }}</h1>
+        <p class="muted">{{ sample.copy.hero_text }}</p>
+        <div style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap"><a class="btn" href="#lesson">{{ sample.copy.cta }}</a><a class="btn outline" href="#about">スクール概要</a></div>
+      </div>
+      <div class="golf-visual"><img class="media" src="{{ sample.assets[0] }}" alt="golf"></div>
+    </div>
+  </section>
+  <div class="wrap">
+    <section class="section">
+      <div class="grid-3">
+        {% for value, label in sample.copy.stats %}
+        <div class="stat"><strong>{{ value }}</strong><span class="muted">{{ label }}</span></div>
+        {% endfor %}
+      </div>
+    </section>
+    <section class="section grid-2" id="lesson">
+      <div class="stack">
+        {% for item in sample.copy.menu %}
+        <div class="menu-card"><strong>{{ item.title }}</strong><div class="price">{{ item.price }}</div><div class="muted">{{ item.desc }}</div></div>
+        {% endfor %}
+      </div>
+      <div class="card" style="padding:20px"><img class="media" style="border-radius:24px" src="{{ sample.assets[1] }}" alt="facility"></div>
+    </section>
+    <section class="section" id="about">
+      <div class="grid-3">
+        {% for item in sample.copy.features %}
+        <div class="feature-card"><strong>{{ item.title }}</strong><div class="muted">{{ item.desc }}</div></div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+
+{% elif sample.category_code == 'restaurant' %}
+  <header class="restaurant-header">
+    <div class="wrap restaurant-nav">
+      <div class="restaurant-brand">{{ sample.brand }}</div>
+      <nav>{% for item in sample.copy.nav %}<a href="#">{{ item }}</a>{% endfor %}</nav>
+    </div>
+  </header>
+  <section class="restaurant-hero">
+    <div class="wrap restaurant-stage">
+      <div>
+        <img class="media" src="{{ sample.assets[0] }}" alt="restaurant">
+      </div>
+      <div class="restaurant-copy">
+        <div class="eyebrow">Japanese dining sample</div>
+        <h1>{{ sample.copy.hero_title }}</h1>
+        <p class="muted" style="max-width:560px">{{ sample.copy.hero_text }}</p>
+        <div style="margin-top:22px;display:flex;gap:12px;flex-wrap:wrap"><a class="btn" href="#menu">{{ sample.copy.cta }}</a><a class="btn outline" href="#space">空間を見る</a></div>
+      </div>
+    </div>
+  </section>
+  <div class="wrap">
+    <section class="section" id="menu">
+      <div class="grid-3">
+        {% for item in sample.copy.menu %}
+        <div class="menu-card dark"><strong>{{ item.title }}</strong><div class="price">{{ item.price }}</div><div class="muted">{{ item.desc }}</div></div>
+        {% endfor %}
+      </div>
+    </section>
+    <section class="section grid-2" id="space">
+      <div class="card dark-surface" style="padding:20px"><img class="media" style="border-radius:22px" src="{{ sample.assets[1] }}" alt="device"></div>
+      <div class="stack">
+        {% for item in sample.copy.features %}
+        <div class="feature-card dark"><strong>{{ item.title }}</strong><div class="muted">{{ item.desc }}</div></div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+
+{% else %}
+  <section class="fit-hero">
+    <div class="wrap fit-head">
+      <div class="fit-copy">
+        <div class="eyebrow">{{ sample.brand }}</div>
+        <h1>{{ sample.copy.hero_title }}</h1>
+        <p class="muted">{{ sample.copy.hero_text }}</p>
+        <div style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap"><a class="btn" href="#plans">{{ sample.copy.cta }}</a><a class="btn outline" href="#results">実績を見る</a></div>
+      </div>
+      <div class="fit-card fit-visual"><img class="media" src="{{ sample.assets[0] }}" alt="fitness"></div>
+    </div>
+  </section>
+  <div class="wrap">
+    <section class="section" id="results">
+      <div class="grid-3">
+        {% for value, label in sample.copy.stats %}
+        <div class="stat dark"><strong>{{ value }}</strong><span class="muted">{{ label }}</span></div>
+        {% endfor %}
+      </div>
+    </section>
+    <section class="section grid-2" id="plans">
+      <div class="stack">
+        {% for item in sample.copy.menu %}
+        <div class="menu-card dark"><strong>{{ item.title }}</strong><div class="price">{{ item.price }}</div><div class="muted">{{ item.desc }}</div></div>
+        {% endfor %}
+      </div>
+      <div class="fit-card"><img class="media" style="border-radius:24px" src="{{ sample.assets[1] }}" alt="studio"></div>
+    </section>
+    <section class="section">
+      <div class="grid-3">
+        {% for item in sample.copy.features %}
+        <div class="feature-card dark"><strong>{{ item.title }}</strong><div class="muted">{{ item.desc }}</div></div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+{% endif %}
+
+{% if request.query_params.get("applied") %}
+<div style="position:fixed;right:20px;top:20px;z-index:40;padding:12px 16px;border-radius:16px;background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;font-weight:800;box-shadow:0 12px 30px rgba(6,95,70,.12)">設定完了。このサンプルを店舗HPへ反映しました。</div>
+{% endif %}
+<div style="position:fixed;right:18px;bottom:18px;z-index:30;display:grid;gap:10px;max-width:min(92vw,380px)">
+  {% if current_admin_shop_id %}
+  <div style="padding:16px 18px;border-radius:24px;background:rgba(255,255,255,.94);border:1px solid rgba(0,0,0,.08);backdrop-filter:blur(12px);box-shadow:0 16px 30px rgba(17,24,39,.12)">
+    <div style="font-weight:900;font-size:16px;margin-bottom:8px">これに設定しますか？</div>
+    <div style="color:#4b5563;line-height:1.7;font-size:14px;margin-bottom:14px">{{ current_admin_shop.shop_name if current_admin_shop else current_admin_shop_id }} のホームページ初期内容として、このサンプルを設定します。反映時はサンプルのデザイン設定を使い、今入っている写真や文言は引き継ぎます。反映後は直接編集モードでさらに調整できます。</div>
+    <form method="post" action="/admin/{{ current_admin_shop_id }}/website/apply-sample" style="margin:0;display:grid;gap:10px">
+      <input type="hidden" name="sample_code" value="{{ sample.code }}">
+      <input type="hidden" name="return_to" value="{{ return_to }}">
+      <button type="submit" style="width:100%;border:none;border-radius:999px;padding:14px 18px;background:#111827;color:#fff;font-weight:800;box-shadow:0 16px 30px rgba(17,24,39,.22);cursor:pointer">はい、設定する</button>
+    </form>
+    <a href="/admin/{{ current_admin_shop_id }}/website" style="display:block;text-align:center;margin-top:10px;padding:12px 16px;border-radius:999px;background:#fff;border:1px solid rgba(0,0,0,.08);font-weight:800">ホームページ設定を開く</a>
+  </div>
+  {% else %}
+  <a href="/samples" style="display:none"></a>
+  {% endif %}
+</div>
+
+</body>
+</html>

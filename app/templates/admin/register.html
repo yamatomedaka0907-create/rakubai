@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ shop.shop_name }} | 新規ユーザー登録</title>
+  <style>
+    :root {
+      --primary: {{ shop.primary_color }};
+      --primary-dark: {{ shop.primary_dark }};
+      --bg-soft: {{ shop.accent_bg }};
+      --text: #1f2937;
+      --subtext: #6b7280;
+      --line: #d8efec;
+      --card: #ffffff;
+      --shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+      --radius: 22px;
+      --danger: #b91c1c;
+      --danger-soft: #fef2f2;
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; padding:24px; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--text); background:linear-gradient(180deg,#ffffff 0%,var(--bg-soft) 100%); }
+    .top-nav { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-bottom:16px; }
+    .top-nav a { display:inline-flex; align-items:center; justify-content:center; min-height:40px; padding:0 14px; border-radius:999px; background:#fff; border:1px solid var(--line); text-decoration:none; font-weight:700; color:var(--primary-dark); }
+    .card { width:min(100%, 520px); background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:28px; }
+    .eyebrow { display:inline-flex; padding:8px 12px; border-radius:999px; background:rgba(46,196,182,0.14); color:var(--primary-dark); font-weight:700; font-size:13px; margin-bottom:14px; }
+    h1 { margin:0 0 8px; font-size:28px; color:var(--primary-dark); }
+    .lead,.hint { color:var(--subtext); line-height:1.7; }
+    label { display:block; font-size:14px; font-weight:700; margin-top:16px; }
+    input { width:100%; margin-top:8px; padding:14px 14px; border:1px solid var(--line); border-radius:12px; font-size:15px; }
+    button,.link-btn { width:100%; min-height:48px; border:none; border-radius:12px; background:var(--primary); color:#fff; font-weight:800; font-size:15px; margin-top:18px; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
+    .link-btn { background:#fff; color:var(--primary-dark); border:1px solid var(--line); margin-top:12px; }
+    .msg { margin:18px 0 0; padding:12px 14px; border-radius:12px; border:1px solid #fecaca; background:var(--danger-soft); color:var(--danger); font-size:14px; font-weight:700; }
+  </style>
+</head>
+<body>
+  <div>
+    <nav class="top-nav">
+      <a href="/shop/{{ shop_id }}" target="_blank">予約サイト</a>
+      <a href="/admin/login/{{ shop_id }}">ログイン</a>
+      <a href="/admin/register/{{ shop_id }}">新規登録</a>
+      <a href="/signup">新規店舗登録</a>
+    </nav>
+    <div class="card">
+      <div class="eyebrow">管理ユーザーの新規登録</div>
+      <h1>{{ shop.shop_name }}</h1>
+      <p class="lead">この店舗の管理画面にログインできるユーザーを新しく作成します。</p>
+
+      <form method="post" action="/admin/register/{{ shop_id }}">
+        <label>表示名
+          <input type="text" name="name" placeholder="例: 山田 太郎" required>
+        </label>
+        <label>ログインID
+          <input type="text" name="login_id" placeholder="4文字以上" required>
+        </label>
+        <label>パスワード
+          <input type="password" name="password" placeholder="6文字以上" required>
+        </label>
+        <label>確認用パスワード
+          <input type="password" name="password_confirm" placeholder="もう一度入力" required>
+        </label>
+        <button type="submit">新規ユーザーを登録する</button>
+      </form>
+
+      <a href="/admin/login/{{ shop_id }}" class="link-btn">ログイン画面へ戻る</a>
+
+      {% if error_message %}<div class="msg">{{ error_message }}</div>{% endif %}
+      {% if success_message %}<div class="msg" style="background:#ecfdf5; border-color:#bbf7d0; color:#166534;">{{ success_message }}</div>{% endif %}
+      <p class="hint">登録後はこの店舗のログイン画面から入れます。</p>
+    </div>
+  </div>
+</body>
+</html>

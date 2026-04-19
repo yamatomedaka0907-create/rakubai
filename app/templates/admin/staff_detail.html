@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ shop.shop_name }} | {{ staff.name }} の予約状況</title>
+  <style>
+    :root {
+      --primary: {{ shop.primary_color }};
+      --primary-dark: {{ shop.primary_dark }};
+      --bg-soft: {{ shop.accent_bg }};
+      --text: #1f2937;
+      --subtext: #6b7280;
+      --line: #d8efec;
+      --card: #ffffff;
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+      --reserved-soft: rgba(46, 196, 182, 0.14);
+      --holiday-soft: #fef2f2;
+      --holiday-line: #fecaca;
+      --holiday-text: #b91c1c;
+      --done: #15803d;
+      --done-soft: #dcfce7;
+      --danger-dark: #991b1b;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--text); background: linear-gradient(180deg, #ffffff 0%, var(--bg-soft) 100%); }
+    a { color: inherit; }
+    .wrap { max-width: 1180px; margin: 0 auto; }
+    .top-nav { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+    .top-nav a { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 14px; border-radius: 999px; background: #fff; border: 1px solid var(--line); text-decoration: none; font-weight: 700; color: var(--primary-dark); }
+    .top-nav a.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .hero, .card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow); }
+    .hero { padding: 26px; margin-bottom: 18px; }
+    .hero-top { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+    .hero h1 { margin: 0 0 8px; color: var(--primary-dark); }
+    .hero p { margin: 0; color: var(--subtext); line-height: 1.7; }
+    .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .hero-actions a { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line); background: #fff; text-decoration: none; font-weight: 700; color: var(--primary-dark); }
+    .hero-actions a.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .staff-strip { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+    .staff-strip a { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 14px; border-radius: 999px; text-decoration: none; border: 1px solid var(--line); background: #fff; font-weight: 700; color: var(--primary-dark); }
+    .staff-strip a.active { background: rgba(46, 196, 182, 0.14); border-color: var(--primary); }
+    .calendar-layout { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 16px; align-items: start; }
+    .card { padding: 22px; }
+    .card-header, .day-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+    .card-header h2, .day-title { margin: 0; color: var(--primary-dark); }
+    .badge { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; padding: 7px 12px; background: rgba(46, 196, 182, 0.14); color: var(--primary-dark); font-size: 12px; font-weight: 800; text-decoration: none; }
+    .holiday-badge { background: var(--holiday-soft); color: var(--holiday-text); }
+    .calendar-nav { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .calendar-nav a { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 14px; border-radius: 10px; text-decoration: none; font-weight: 700; border: 1px solid var(--line); background: #fff; color: var(--primary-dark); }
+    .calendar-nav .month-label { min-width: 108px; text-align: center; font-weight: 800; color: var(--primary-dark); }
+    .calendar-weekdays, .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
+    .calendar-weekdays { margin-bottom: 10px; padding: 0 2px; }
+    .calendar-weekday { text-align: center; font-size: 12px; font-weight: 800; color: var(--subtext); }
+    .calendar-day { display: block; min-height: 110px; padding: 12px; border-radius: 16px; border: 1px solid var(--line); background: #fff; text-decoration: none; }
+    .calendar-day.is-outside { opacity: .5; background: #fbfdfd; }
+    .calendar-day.is-today { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
+    .calendar-day.is-selected { background: linear-gradient(180deg, #ffffff 0%, #eefdfa 100%); border-color: var(--primary); }
+    .calendar-day.is-holiday { background: var(--holiday-soft); border-color: var(--holiday-line); }
+    .calendar-day.is-holiday .calendar-day-number, .calendar-day.is-holiday .calendar-meta, .calendar-day.is-holiday .holiday-label { color: var(--holiday-text); }
+    .calendar-day-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px; }
+    .calendar-day-number { font-size: 15px; font-weight: 800; }
+    .calendar-count { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--reserved-soft); color: var(--primary-dark); font-size: 12px; font-weight: 800; }
+    .calendar-meta { font-size: 12px; color: var(--subtext); line-height: 1.6; }
+    .holiday-label { display: block; margin-top: 6px; font-size: 11px; font-weight: 800; }
+    .day-sub { margin: 6px 0 0; color: var(--subtext); font-size: 14px; }
+    .timeline { display: grid; gap: 12px; }
+    .timeline-item { border: 1px solid var(--line); border-radius: 16px; padding: 14px; background: #fff; }
+    .timeline-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+    .timeline-time { font-size: 18px; font-weight: 800; color: var(--primary-dark); }
+    .timeline-main { display: grid; gap: 6px; font-size: 14px; }
+    .status { display: inline-flex; align-items: center; justify-content: center; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .status-reserved { background: var(--reserved-soft); color: var(--primary-dark); }
+    .status-done { background: var(--done-soft); color: var(--done); }
+    .status-cancelled { background: rgba(239, 68, 68, 0.12); color: var(--danger-dark); }
+    .empty { margin: 0; padding: 18px; border-radius: 12px; background: #f9fffe; border: 1px dashed var(--line); color: var(--subtext); }
+    @media (max-width: 980px) { .calendar-layout { grid-template-columns: 1fr; } }
+    @media (max-width: 640px) { body { padding: 16px; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav class="top-nav">
+      <a href="/shop/{{ shop_id }}" target="_blank">予約サイト</a>
+      <a href="/admin/login/{{ shop_id }}">ログイン</a>
+      <a href="/admin/{{ shop_id }}">管理トップ</a>
+      <a href="/admin/{{ shop_id }}/staff/{{ staff.id }}" class="active">{{ staff.name }}</a>
+    </nav>
+
+    <div class="hero">
+      <div class="hero-top">
+        <div>
+          <h1>{{ staff.name }} の予約状況</h1>
+          <p>{{ shop.shop_name }} のスタッフ個別ページです。月間カレンダーから日付を押すと、その日の担当予約だけを確認できます。</p>
+        </div>
+        <div class="hero-actions">
+          <a href="/admin/{{ shop_id }}" class="primary">管理トップへ戻る</a>
+          <a href="/shop/{{ shop_id }}" target="_blank">予約サイトを見る</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="staff-strip">
+      {% for item in staff_list %}
+      <a href="/admin/{{ shop_id }}/staff/{{ item.id }}" {% if item.id == staff.id %}class="active"{% endif %}>{{ item.name }}</a>
+      {% endfor %}
+    </div>
+
+    <div class="calendar-layout">
+      <div class="card">
+        <div class="card-header">
+          <h2>{{ staff.name }} の月間カレンダー</h2>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <span class="badge holiday-badge">{{ shop.holiday }} は赤表示</span>
+            <div class="calendar-nav">
+              <a href="/admin/{{ shop_id }}/staff/{{ staff.id }}?month={{ calendar_prev_month }}&date={{ selected_date }}">← 前月</a>
+              <div class="month-label">{{ calendar_month_label }}</div>
+              <a href="/admin/{{ shop_id }}/staff/{{ staff.id }}?month={{ calendar_next_month }}&date={{ selected_date }}">次月 →</a>
+            </div>
+          </div>
+        </div>
+        <div class="calendar-weekdays"><div class="calendar-weekday">日</div><div class="calendar-weekday">月</div><div class="calendar-weekday">火</div><div class="calendar-weekday">水</div><div class="calendar-weekday">木</div><div class="calendar-weekday">金</div><div class="calendar-weekday">土</div></div>
+        <div class="calendar-grid">
+          {% for day in calendar_days %}
+          <a href="/admin/{{ shop_id }}/staff/{{ staff.id }}?month={{ calendar_month_value }}&date={{ day.date }}" class="calendar-day{% if not day.is_current_month %} is-outside{% endif %}{% if day.is_today %} is-today{% endif %}{% if selected_date == day.date %} is-selected{% endif %}{% if day.is_holiday %} is-holiday{% endif %}">
+            <div class="calendar-day-top"><span class="calendar-day-number">{{ day.day }}</span><span class="calendar-count">{{ day.count }}人</span></div>
+            <div class="calendar-meta">{% if day.count > 0 %}担当予約あり{% else %}担当予約なし{% endif %}</div>
+            {% if day.is_holiday %}<span class="holiday-label">定休日</span>{% endif %}
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="day-header">
+          <div>
+            <h2 class="day-title">{{ selected_date }} の {{ staff.name }}</h2>
+            <p class="day-sub">担当予約 {{ selected_day_count }}件</p>
+          </div>
+          <a href="/admin/{{ shop_id }}/staff/{{ staff.id }}?month={{ calendar_month_value }}&date={{ today }}" class="badge">今日を見る</a>
+        </div>
+        {% if selected_day_schedule %}
+        <div class="timeline">
+          {% for reservation in selected_day_schedule %}
+          <div class="timeline-item">
+            <div class="timeline-top">
+              <div class="timeline-time">{{ reservation.start_time }} - {{ reservation.end_time }}</div>
+              {% if reservation.status == "キャンセル" %}<span class="status status-cancelled">キャンセル</span>{% elif reservation.status == "来店済み" %}<span class="status status-done">来店済み</span>{% else %}<span class="status status-reserved">予約済み</span>{% endif %}
+            </div>
+            <div class="timeline-main">
+              <div><strong>顧客:</strong> {{ reservation.customer_name }}</div>
+              <div><strong>メニュー:</strong> {{ reservation.menu_name }} / {{ reservation.duration }}分 / ¥{{ reservation.price }}</div>
+              <div><strong>店舗全体:</strong> <a href="/admin/{{ shop_id }}?month={{ calendar_month_value }}&date={{ reservation.reservation_date }}">その日の全体カレンダーを見る</a></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty">この日の {{ staff.name }} の予約はありません。</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</body>
+</html>

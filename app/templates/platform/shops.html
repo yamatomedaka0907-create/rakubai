@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>登録店舗管理</title>
+  <style>
+    :root{--primary:#2ec4b6;--primary-dark:#159a90;--bg:#f7fffe;--line:#d8efec;--text:#1f2937;--sub:#6b7280;--card:#fff;--ok:#166534;--ok-bg:#f0fdf4;--danger:#b91c1c;--danger-bg:#fef2f2}
+    *{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#fff 0%,var(--bg) 100%);color:var(--text);padding:24px}
+    .wrap{max-width:1220px;margin:0 auto}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:18px}.links{display:flex;gap:10px;flex-wrap:wrap}.links a{display:inline-flex;padding:10px 14px;border-radius:999px;border:1px solid var(--line);text-decoration:none;color:var(--primary-dark);font-weight:700;background:#fff}.logout button{padding:10px 14px;border:none;border-radius:999px;background:#e5fffb;color:var(--primary-dark);font-weight:800}.hero,.table-card{background:var(--card);border:1px solid var(--line);border-radius:24px;box-shadow:0 12px 32px rgba(15,23,42,.08)}.hero{padding:26px;margin-bottom:18px}.hero h1{margin:0 0 8px;color:var(--primary-dark)}.hero p{margin:0;color:var(--sub);line-height:1.7}.badge{display:inline-flex;padding:7px 11px;border-radius:999px;background:rgba(46,196,182,.14);color:var(--primary-dark);font-weight:700;font-size:13px;margin-bottom:12px}.table-card{overflow:auto}.msg{margin:0 0 16px;padding:12px 14px;border-radius:12px;font-weight:700}.msg.ok{border:1px solid #bbf7d0;background:var(--ok-bg);color:var(--ok)}.msg.err{border:1px solid #fecaca;background:var(--danger-bg);color:var(--danger)} table{width:100%;border-collapse:collapse;min-width:980px} th,td{padding:14px 16px;border-bottom:1px solid #e5f2f1;vertical-align:top;text-align:left} th{font-size:13px;color:var(--sub);background:#fbfffe} .name a{text-decoration:none;color:var(--primary-dark);font-weight:800}.sub{color:var(--sub);font-size:13px;margin-top:4px}.pill{display:inline-flex;padding:6px 10px;border-radius:999px;background:#eefcf9;color:var(--primary-dark);font-weight:700;font-size:12px}.muted{color:var(--sub);font-size:13px}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="links"><a href="/">トップ</a><a href="/signup">新規店舗登録</a><a href="/platform/shops">登録店舗管理</a><a href="/platform/templates">テンプレート管理</a><a href="/platform/settings/mail">送信元メール設定</a></div>
+    <form class="logout" method="post" action="/platform/logout"><button type="submit">ログアウト</button></form>
+  </div>
+  {% if message %}<div class="msg ok">{{ message }}</div>{% endif %}
+  {% if error_message %}<div class="msg err">{{ error_message }}</div>{% endif %}
+  <section class="hero"><div class="badge">運営管理者: {{ current_admin_name }}</div><h1>登録店舗の管理画面</h1><p>登録済み店舗を一覧で確認し、各店舗の基本情報や現在プランを個別に管理できます。</p></section>
+  <section class="table-card">
+    <table>
+      <thead><tr><th>店舗</th><th>現在プラン</th><th>契約状態</th><th>管理ユーザー</th><th>顧客数</th><th>予約数</th><th>作成日</th><th>操作</th></tr></thead>
+      <tbody>
+      {% for shop in shops %}
+        <tr>
+          <td class="name"><a href="/platform/shops/{{ shop.shop_id }}/edit">{{ shop.shop_name }}</a><div class="sub">shop_id: {{ shop.shop_id }}</div><div class="sub">{{ shop.phone or '電話番号未設定' }}</div></td>
+          <td><span class="pill">{{ shop.plan_name }}</span><div class="sub">{{ shop.plan_code }}</div></td>
+          <td>{{ shop.subscription_status }}</td>
+          <td>{{ shop.admin_user_count }}人</td>
+          <td>{{ shop.customer_count }}件</td>
+          <td>{{ shop.reservation_count }}件</td>
+          <td class="muted">{{ shop.created_at[:10] if shop.created_at else '' }}</td>
+          <td><a href="/platform/shops/{{ shop.shop_id }}/edit">編集</a><div class="sub"><a href="/admin/login/{{ shop.shop_id }}">店舗管理へ</a> / <a href="/shop/{{ shop.shop_id }}" target="_blank">予約ページ</a> / <a href="/site/{{ shop.shop_id if shop is defined else shop.shop_id }}" target="_blank">店舗HP</a></div></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+</body>
+</html>

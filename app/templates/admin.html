@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ shop.shop_name }} 管理画面</title>
+  <style>
+    :root {
+      --primary: {{ shop.primary_color }};
+      --primary-dark: {{ shop.primary_dark }};
+      --bg-soft: {{ shop.accent_bg }};
+      --text: #1f2937;
+      --subtext: #6b7280;
+      --line: #d8efec;
+      --line-strong: #b7e3de;
+      --card: #ffffff;
+      --done: #2563eb;
+      --done-soft: rgba(37, 99, 235, 0.12);
+      --danger: #ef4444;
+      --danger-dark: #dc2626;
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #ffffff 0%, var(--bg-soft) 100%);
+      color: var(--text);
+      margin: 0;
+      padding: 24px;
+    }
+
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #ffffff 0%, #ecfffc 100%);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 28px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: 30px;
+      color: var(--primary-dark);
+      letter-spacing: 0.02em;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--subtext);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .summary-card {
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .summary-label {
+      font-size: 13px;
+      color: var(--subtext);
+      margin-bottom: 8px;
+    }
+
+    .summary-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--primary-dark);
+      line-height: 1.2;
+    }
+
+    .summary-sub {
+      margin-top: 6px;
+      font-size: 13px;
+      color: var(--subtext);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 22px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .card h2 {
+      margin: 0 0 16px;
+      font-size: 20px;
+      color: var(--primary-dark);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(46, 196, 182, 0.14);
+      color: var(--primary-dark);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .error-box {
+      margin-bottom: 14px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(239, 68, 68, 0.10);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      color: #b91c1c;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    form {
+      display: grid;
+      gap: 12px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    input,
+    select,
+    button {
+      width: 100%;
+      min-height: 44px;
+      padding: 12px 14px;
+      font-size: 16px;
+      border-radius: 12px;
+    }
+
+    input,
+    select {
+      background: #ffffff;
+      border: 1px solid var(--line-strong);
+      color: var(--text);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(46, 196, 182, 0.14);
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      background: var(--primary);
+      color: #ffffff;
+      font-weight: 700;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+
+    button:hover {
+      opacity: 0.95;
+      transform: translateY(-1px);
+    }
+
+    .action-buttons {
+      display: grid;
+      gap: 8px;
+    }
+
+    .done-button {
+      background: var(--done);
+      min-height: 38px;
+      padding: 8px 12px;
+      font-size: 14px;
+      border-radius: 10px;
+    }
+
+    .danger-button {
+      background: var(--danger);
+      min-height: 38px;
+      padding: 8px 12px;
+      font-size: 14px;
+      border-radius: 10px;
+    }
+
+    .danger-button:hover {
+      background: var(--danger-dark);
+      opacity: 1;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #ffffff;
+      min-width: 1100px;
+    }
+
+    th {
+      background: #f2fffd;
+      color: var(--primary-dark);
+      font-size: 13px;
+      font-weight: 700;
+      border-bottom: 1px solid var(--line);
+      padding: 14px 12px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    td {
+      border-bottom: 1px solid #edf4f3;
+      padding: 14px 12px;
+      text-align: left;
+      font-size: 14px;
+      vertical-align: middle;
+    }
+
+    .price {
+      font-weight: 700;
+      color: var(--primary-dark);
+      white-space: nowrap;
+    }
+
+    .empty {
+      margin: 0;
+      padding: 18px;
+      border-radius: 12px;
+      background: #f9fffe;
+      border: 1px dashed var(--line-strong);
+      color: var(--subtext);
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .status-reserved {
+      background: rgba(46, 196, 182, 0.14);
+      color: var(--primary-dark);
+    }
+
+    .status-done {
+      background: var(--done-soft);
+      color: var(--done);
+    }
+
+    .status-cancelled {
+      background: rgba(239, 68, 68, 0.12);
+      color: var(--danger-dark);
+    }
+
+    @media (max-width: 1000px) {
+      .summary-grid,
+      .grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 900px) {
+      body {
+        padding: 16px;
+      }
+
+      .summary-grid,
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 12px;
+        overflow-x: hidden;
+      }
+
+      .hero,
+      .card,
+      .summary-card {
+        padding: 16px;
+      }
+
+      h1 {
+        font-size: 24px;
+        line-height: 1.35;
+      }
+
+      .table-wrap {
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <h1>{{ shop.shop_name }} 管理画面</h1>
+      <p>{{ shop.description }}</p>
+    </div>
+
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-label">本日の売上</div>
+        <div class="summary-value">¥{{ sales_summary.today_sales }}</div>
+        <div class="summary-sub">来店済み {{ sales_summary.today_completed_count }}件</div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-label">累計売上</div>
+        <div class="summary-value">¥{{ sales_summary.total_sales }}</div>
+        <div class="summary-sub">来店済み合計 {{ sales_summary.completed_count }}件</div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-label">顧客数</div>
+        <div class="summary-value">{{ customers|length }}</div>
+        <div class="summary-sub">登録済み顧客</div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-label">予約件数</div>
+        <div class="summary-value">{{ reservations|length }}</div>
+        <div class="summary-sub">全ステータス合計</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="card-header">
+          <h2>顧客登録</h2>
+          <span class="badge">顧客</span>
+        </div>
+
+        <form method="post" action="/admin/{{ shop_id }}/customers">
+          <label>
+            顧客名
+            <input type="text" name="name" placeholder="例：山田 花子" required>
+          </label>
+
+          <label>
+            電話番号
+            <input type="text" name="phone" placeholder="例：090-1234-5678">
+          </label>
+
+          <button type="submit">顧客を登録する</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>予約登録</h2>
+          <span class="badge">予約</span>
+        </div>
+
+        {% if error_message %}
+        <div class="error-box">{{ error_message }}</div>
+        {% endif %}
+
+        <form method="post" action="/admin/{{ shop_id }}/reservations">
+          <label>
+            顧客
+            <select name="customer_id" required>
+              <option value="">顧客を選んでください</option>
+              {% for customer in customers %}
+              <option value="{{ customer.id }}">{{ customer.name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+
+          <label>
+            スタッフ
+            <select name="staff_id" required>
+              <option value="">スタッフを選んでください</option>
+              {% for staff in staff_list %}
+              <option value="{{ staff.id }}">{{ staff.name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+
+          <label>
+            メニュー
+            <select name="menu_id" required>
+              <option value="">メニューを選んでください</option>
+              {% for menu in menus %}
+              <option value="{{ menu.id }}">
+                {{ menu.name }}（{{ menu.duration }}分 / ¥{{ menu.price }}）
+              </option>
+              {% endfor %}
+            </select>
+          </label>
+
+          <label>
+            日付
+            <input type="date" name="reservation_date" value="{{ today }}" required>
+          </label>
+
+          <label>
+            開始時間
+            <input type="time" name="start_time" required>
+          </label>
+
+          <button type="submit">予約を登録する</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>顧客一覧</h2>
+        <span class="badge">{{ customers|length }}件</span>
+      </div>
+
+      {% if customers %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>名前</th>
+              <th>電話番号</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for customer in customers %}
+            <tr>
+              <td>{{ customer.id }}</td>
+              <td>{{ customer.name }}</td>
+              <td>{{ customer.phone }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="empty">まだ顧客が登録されていません。</p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>予約一覧</h2>
+        <span class="badge">{{ reservations|length }}件</span>
+      </div>
+
+      {% if reservations %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>日付</th>
+              <th>開始</th>
+              <th>終了</th>
+              <th>所要時間</th>
+              <th>料金</th>
+              <th>顧客</th>
+              <th>スタッフ</th>
+              <th>メニュー</th>
+              <th>状態</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for reservation in reservations %}
+            <tr>
+              <td>{{ reservation.id }}</td>
+              <td>{{ reservation.reservation_date }}</td>
+              <td>{{ reservation.start_time }}</td>
+              <td>{{ reservation.end_time }}</td>
+              <td>{{ reservation.duration }}分</td>
+              <td class="price">¥{{ reservation.price }}</td>
+              <td>{{ reservation.customer_name }}</td>
+              <td>{{ reservation.staff_name }}</td>
+              <td>{{ reservation.menu_name }}</td>
+              <td>
+                {% if reservation.status == "キャンセル" %}
+                <span class="status status-cancelled">キャンセル</span>
+                {% elif reservation.status == "来店済み" %}
+                <span class="status status-done">来店済み</span>
+                {% else %}
+                <span class="status status-reserved">予約済み</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="action-buttons">
+                  {% if reservation.status == "予約済み" %}
+                  <form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/done">
+                    <button type="submit" class="done-button">来店済みにする</button>
+                  </form>
+
+                  <form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/cancel">
+                    <button type="submit" class="danger-button">キャンセル</button>
+                  </form>
+                  {% elif reservation.status == "来店済み" %}
+                  <span>対応済み</span>
+                  {% else %}
+                  <span>キャンセル済み</span>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="empty">まだ予約が登録されていません。</p>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>

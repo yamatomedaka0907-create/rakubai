@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang='ja'>
+<head>
+  <meta charset='UTF-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+  <title>らくばい | 予約管理システム</title>
+  <meta name='description' content='オンラインで予約が完結。予約の管理が楽になる予約システム「らくばい」'>
+  <link rel='preconnect' href='https://fonts.googleapis.com'>
+  <link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>
+  <link href='https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&display=swap' rel='stylesheet'>
+  <link rel='stylesheet' href='/static/top_lp/style.css'>
+</head>
+<body>
+  <header class='site-header'>
+    <div class='header-inner'>
+      <a href='/' class='header-logo' aria-label='TOPページへ戻る'>
+        <img src='/static/top_lp/logo.png' alt='らくばいロゴ'>
+      </a>
+      <nav class='pc-nav' aria-label='グローバルナビゲーション'>
+        <a href='/'>ホーム</a>
+        <a href='#system'>システム紹介</a>
+        <a href='#price'>料金</a>
+        <a href='/signup' class='nav-cta'>無料ではじめる</a>
+        <a href='/store-login'>店舗ログイン</a>
+        <a href='#contact'>お問合せ</a>
+      </nav>
+      <button class='menu-toggle' id='menuToggle' aria-label='メニューを開く' aria-expanded='false' aria-controls='mobileMenu'>☰ MENU</button>
+    </div>
+    <nav class='mobile-nav' id='mobileMenu' aria-label='モバイルメニュー'>
+      <a href='/'>ホーム</a>
+      <a href='#system'>システム紹介</a>
+      <a href='#price'>料金</a>
+      <a href='/signup'>無料ではじめる</a>
+      <a href='/store-login'>店舗ログイン</a>
+      <a href='#contact'>お問合せ</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class='hero'>
+      <div class='hero-inner'>
+        <div class='hero-copy-wrap'>
+          <p class='hero-lead'>オンラインで予約をスマートに</p>
+          <h1 class='hero-title'>らくばい</h1>
+          <p class='hero-catch'>予約業務、<br>もっとラクにせんね？</p>
+          <p class='hero-copy'>オンラインで予約が完結。<br>予約の管理が楽になる予約システム</p>
+          <p class='hero-note'>らく ＋ 博多弁の「ばい」</p>
+          <div class='hero-buttons'>
+            <a href='/signup' class='btn btn-primary'>無料ではじめる</a>
+            <a href='/store-login' class='btn btn-secondary'>店舗ログイン</a>
+          </div>
+        </div>
+        <div class='hero-visual'>
+          <img src='/static/top_lp/workers.png' alt='美容師、ネイリスト、パン屋、喫茶店スタッフ、ペットトリマーなどのスタッフイラスト'>
+        </div>
+      </div>
+    </section>
+
+    <section id='system' class='system-section'>
+      <div class='section-inner'>
+        <p class='section-label'>SYSTEM</p>
+        <h2 class='system-title'>システム紹介</h2>
+        <p class='system-lead'>予約受付から管理まで、ひとつでラクに。</p>
+        <p class='system-text'>らくばいは、予約の受付・確認・管理をまとめて行える予約システムです。<br>毎日の予約業務をシンプルにして、スタッフの負担を減らします。</p>
+        <div class='system-grid'>
+          <article class='system-card'><div class='system-image'><img src='/static/top_lp/feature01_booking.png' alt='24時間オンライン予約'></div></article>
+          <article class='system-card'><div class='system-image'><img src='/static/top_lp/feature02_schedule.png' alt='予約状況をひと目で確認'></div></article>
+          <article class='system-card'><div class='system-image'><img src='/static/top_lp/feature03_customer.png' alt='顧客情報をまとめて管理'></div></article>
+          <article class='system-card'><div class='system-image'><img src='/static/top_lp/feature04_remind.png' alt='リマインド対応'></div></article>
+          <article class='system-card'><div class='system-image'><img src='/static/top_lp/feature05_industry.png' alt='さまざまな業種に対応'></div></article>
+          <article class='system-card'><div class='system-image'><img src='/static/top_lp/feature06_mobile.png' alt='スマホでも使いやすい'></div></article>
+          <article class='system-card'><div class='system-image'><img src='/static/top_lp/feature07_line.png' alt='LINE公式アカウント連携'></div></article>
+          <article class='system-card'><div class='system-image'><img src='/static/top_lp/feature08_photos.png' alt='顧客ごとの写真を保存・管理'></div></article>
+        </div>
+      </div>
+    </section>
+
+    <section id='price' class='price-section'>
+      <div class='section-inner'>
+        <p class='section-label'>PRICE</p>
+        <h2 class='price-title'>料金プラン</h2>
+        <p class='price-lead'>規模や使い方に合わせて選べる、<br>シンプルで分かりやすい料金体系です。</p>
+        <div class='price-grid'>
+          <article class='price-card'>
+            <div class='price-card-top'>
+              <p class='plan-name'>フリー</p>
+              <p class='plan-target'>まず試したい方向け</p>
+              <p class='plan-price'><span>月額</span> 0円</p>
+            </div>
+            <ul class='plan-features'>
+              <li>初期費用 0円</li>
+              <li>予約受付数に上限あり（月50件）</li>
+              <li>顧客管理（50人まで）</li>
+              <li>顧客1人につき写真1枚まで保存可</li>
+              <li>登録スタッフ 3人まで</li>
+              <li>リマインド対応</li>
+              <li>LINE連携</li>
+              <li>売上管理</li>
+              <li>オリジナルホームページ作成</li>
+              <li>チャット機能</li>
+            </ul>
+            <a href='/signup' class='plan-button plan-button-sub'>無料ではじめる</a>
+          </article>
+          <article class='price-card featured'>
+            <p class='plan-badge'>おすすめ</p>
+            <div class='price-card-top'>
+              <p class='plan-name'>スタンダード</p>
+              <p class='plan-target'>しっかり運用したい方向け</p>
+              <p class='plan-price'><span>月額</span> 1,650円(税込)</p>
+            </div>
+            <ul class='plan-features'>
+              <li>初期費用 0円</li>
+              <li>予約数無制限</li>
+              <li>顧客管理（300人まで）</li>
+              <li>顧客1人につき写真10枚まで保存可</li>
+              <li>登録スタッフ 10人まで</li>
+              <li>リマインド対応</li>
+              <li>LINE連携</li>
+              <li>売上管理</li>
+              <li>オリジナルホームページ作成</li>
+              <li>チャット機能</li>
+            </ul>
+            <a href='/signup' class='plan-button'>無料ではじめる</a>
+          </article>
+          <article class='price-card'>
+            <div class='price-card-top'>
+              <p class='plan-name'>プレミアム</p>
+              <p class='plan-target'>複数店舗・本格運用向け</p>
+              <p class='plan-price'><span>月額</span> 3,300円(税込)</p>
+            </div>
+            <ul class='plan-features'>
+              <li>初期費用 0円</li>
+              <li>予約数無制限</li>
+              <li>顧客管理（無制限）</li>
+              <li>顧客1人につき写真50枚まで保存可</li>
+              <li>登録スタッフ 30人まで</li>
+              <li>リマインド対応</li>
+              <li>LINE連携</li>
+              <li>売上管理</li>
+              <li>複数拠点対応</li>
+              <li>詳細分析</li>
+              <li>優先サポート</li>
+              <li>オリジナルホームページ作成</li>
+              <li>チャット機能</li>
+            </ul>
+            <a href='#contact' class='plan-button plan-button-sub'>お問合せ</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id='start' class='dummy-section'><div class='section-inner small'><h2>無料ではじめる</h2><p><a href='/signup'>新規店舗登録はこちら</a></p></div></section>
+    <section id='contact' class='dummy-section white'><div class='section-inner small'><h2>お問合せ</h2><p>必要に応じてお問い合わせ導線をここに追加してください。</p></div></section>
+  </main>
+
+  <script>
+    const menuToggle = document.getElementById('menuToggle');
+    const mobileMenu = document.getElementById('mobileMenu');
+    if (menuToggle && mobileMenu) {
+      menuToggle.addEventListener('click', function () {
+        mobileMenu.classList.toggle('open');
+        const isOpen = mobileMenu.classList.contains('open');
+        menuToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      });
+    }
+  </script>
+</body>
+</html>

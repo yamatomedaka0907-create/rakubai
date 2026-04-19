@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ja"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ sample["name"] }} | {{ sample["category_name"] }}サンプル</title>
+<link rel="stylesheet" href="/static/sample_variants.css">
+<style>:root{--bg:{{ sample["theme"]["bg"] }};--surface:{{ sample["theme"]["surface"] }};--text:{{ sample["theme"]["text"] }};--sub:{{ sample["theme"]["sub"] }};--line:{{ sample["theme"]["line"] }};--primary:{{ sample["theme"]["primary"] }};--accent:{{ sample["theme"]["accent"] }};--accent-text:{{ sample["theme"]["accent_text"] }};}</style>
+<style>
+.split-hero{display:grid;grid-template-columns:1.06fr .94fr;gap:28px;align-items:center;padding:28px 0 12px}
+.split-copy h1{font-size:clamp(42px,7vw,82px);line-height:1.02;letter-spacing:-.04em;margin:12px 0 18px;white-space:pre-line}
+.split-copy p{max-width:560px}
+.split-panel{padding:22px;background:var(--surface);border:1px solid var(--line);border-radius:30px}
+.split-panel img{height:560px;object-fit:cover;border-radius:24px}
+.split-side{display:grid;gap:18px}
+</style></head><body>
+<a class="back-link" href="/samples">← サンプル一覧へ</a>
+<div class="wrap">
+<header class="top-nav"><div><div class="eyebrow">{{ sample["category_name"] }} template</div><strong style="font-size:26px">{{ sample["brand"] }}</strong></div><nav>{% for item in sample["copy"]["nav"] %}<a href="#">{{ item }}</a>{% endfor %}</nav></header>
+<section class="split-hero">
+<div class="split-copy">
+<div class="eyebrow">{{ sample["copy"]["hero_kicker"] }}</div>
+<h1>{{ sample["copy"]["hero_title"] }}</h1>
+<p class="muted">{{ sample["copy"]["hero_text"] }}</p>
+<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:24px"><a class="btn" href="#menu">{{ sample["copy"]["primary_cta"] }}</a><a class="btn outline" href="#story">{{ sample["copy"]["secondary_cta"] }}</a></div>
+<div class="badges">{% for _,label in sample["copy"]["stats"] %}<span class="badge">{{ label }}</span>{% endfor %}</div>
+</div>
+<div class="split-side">
+<div class="split-panel"><img src="{{ sample["assets"][0] }}" alt="{{ sample["thumb_image_alt"] }}"></div>
+<div class="quote-box">{{ sample["copy"]["quote"] }}</div>
+</div>
+</section>
+<section class="section"><div class="stat-grid">{% for value,label in sample["copy"]["stats"] %}<div class="stat-card"><strong>{{ value }}</strong><span class="muted">{{ label }}</span></div>{% endfor %}</div></section>
+<section class="section" id="menu"><div class="grid-3">{% for item in sample["copy"]["menu"] %}<div class="menu-card"><strong>{{ item.title }}</strong><div class="price">{{ item.price }}</div><div class="muted">{{ item.desc }}</div></div>{% endfor %}</div></section>
+<section class="section grid-2" id="story"><div class="image-box"><img class="hero-image" style="height:460px" src="{{ sample["assets"][1] }}" alt="sub image"></div><div><div class="eyebrow">Story</div>{% for line in sample["copy"]["story"] %}<p class="muted">{{ line }}</p>{% endfor %}<div class="grid-1" style="display:grid;gap:14px;margin-top:22px">{% for item in sample["copy"]["features"] %}<div class="feature-card"><strong>{{ item.title }}</strong><div class="muted">{{ item.desc }}</div></div>{% endfor %}</div></div></section>
+<section class="section"><div class="grid-3">{% for date,title in sample["copy"]["news"] %}<div class="news-card"><div class="eyebrow">{{ date }}</div><strong style="display:block;margin-top:8px">{{ title }}</strong></div>{% endfor %}</div></section>
+<div class="footer-cta"><div class="card"><div><div class="eyebrow">Sample CTA</div><h2 style="margin:10px 0 0;font-size:clamp(28px,4vw,44px)">{{ sample["name"] }}</h2></div><a class="btn" href="#">{{ sample["copy"]["primary_cta"] }}</a></div></div>
+</div>
+{% if request.query_params.get("applied") %}
+<div style="position:fixed;right:20px;top:20px;z-index:40;padding:12px 16px;border-radius:16px;background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;font-weight:800;box-shadow:0 12px 30px rgba(6,95,70,.12)">このサンプルを反映しました</div>
+{% endif %}
+<div style="position:fixed;right:18px;bottom:18px;z-index:30;display:grid;gap:10px;max-width:min(92vw,360px)">
+  {% if current_admin_shop_id %}
+  <form method="post" action="/admin/{{ current_admin_shop_id }}/website/apply-sample" style="margin:0">
+    <input type="hidden" name="sample_code" value="{{ sample.code }}">
+    <input type="hidden" name="return_to" value="{{ return_to }}">
+    <button type="submit" style="width:100%;border:none;border-radius:999px;padding:14px 18px;background:#111827;color:#fff;font-weight:800;box-shadow:0 16px 30px rgba(17,24,39,.22);cursor:pointer">このデザインを {{ current_admin_shop.shop_name if current_admin_shop else current_admin_shop_id }} に反映</button>
+  </form>
+  <a href="/admin/{{ current_admin_shop_id }}/website" style="text-align:center;padding:12px 16px;border-radius:999px;background:rgba(255,255,255,.92);border:1px solid rgba(0,0,0,.08);backdrop-filter:blur(10px);font-weight:800">ホームページ設定を開く</a>
+  {% else %}
+  <a href="/samples" style="display:none"></a>
+  {% endif %}
+</div>
+
+</body></html>

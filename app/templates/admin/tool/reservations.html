@@ -1,0 +1,144 @@
+{% extends "admin/tool/base.html" %}
+{% block page_title %}予約管理{% endblock %}
+{% block page_subtitle %}月間カレンダー、日別詳細、一覧を業務ツール風の画面で管理します。{% endblock %}
+{% block content %}
+<div class="tool-grid">
+  {% if error_message %}<div class="tool-alert is-danger">{{ error_message }}</div>{% endif %}
+
+  <section class="tool-kpi-grid">
+    <div class="tool-kpi-card"><div class="tool-kpi-title">表示中の累計売上</div><div class="tool-kpi-number">¥{{ view_sales_summary.total_sales }}</div><div class="tool-kpi-meta">来店済みの合計</div></div>
+    <div class="tool-kpi-card"><div class="tool-kpi-title">表示中の来店済み</div><div class="tool-kpi-number">{{ view_sales_summary.completed_count }}件</div><div class="tool-kpi-meta">スタッフ絞り込み反映済み</div></div>
+    <div class="tool-kpi-card"><div class="tool-kpi-title">{{ selected_date }} の売上</div><div class="tool-kpi-number">¥{{ selected_day_sales }}</div><div class="tool-kpi-meta">選択日のみ</div></div>
+    <div class="tool-kpi-card"><div class="tool-kpi-title">{{ selected_date }} の来店済み</div><div class="tool-kpi-number">{{ selected_day_completed_count }}件</div><div class="tool-kpi-meta">選択日のみ</div></div>
+  </section>
+
+  <section class="tool-grid cols-2-compact">
+    <div class="tool-panel">
+      <div class="tool-panel-head"><h2>新規予約登録</h2><div class="tool-note">顧客・スタッフ・メニューを選んで即登録</div></div>
+      <div class="tool-panel-body">
+        <form method="post" action="/admin/{{ shop_id }}/reservations">
+          <div class="tool-form-grid">
+            <div class="tool-field"><label class="tool-label">顧客</label><select class="tool-select" name="customer_id" required>{% for customer in customers %}<option value="{{ customer.id }}">{{ customer.name }}{% if customer.phone %} / {{ customer.phone }}{% endif %}</option>{% endfor %}</select></div>
+            <div class="tool-field"><label class="tool-label">スタッフ</label><select class="tool-select" name="staff_id" required>{% for staff in staff_list %}<option value="{{ staff.id }}">{{ staff.name }}</option>{% endfor %}</select></div>
+            <div class="tool-field"><label class="tool-label">メニュー</label><select class="tool-select" name="menu_id" required>{% for menu in menus %}<option value="{{ menu.id }}">{{ menu.name }} / {{ menu.duration }}分 / ¥{{ menu.price }}</option>{% endfor %}</select></div>
+            <div class="tool-field"><label class="tool-label">日付</label><input class="tool-input" type="date" name="reservation_date" value="{{ filter_date or today }}" required></div>
+            <div class="tool-field"><label class="tool-label">開始時間</label><input class="tool-input" type="time" name="start_time" value="10:00" required></div>
+          </div>
+          <div class="tool-actions with-top-gap"><button class="tool-btn is-primary" type="submit">予約を登録する</button></div>
+        </form>
+      </div>
+    </div>
+
+    <div class="tool-panel">
+      <div class="tool-panel-head"><h2>絞り込み</h2><div class="tool-note">表示月と日別表示を切り替え</div></div>
+      <div class="tool-panel-body">
+        <form method="get" action="/admin/{{ shop_id }}/reservations">
+          <input type="hidden" name="month" value="{{ calendar_month_value }}">
+          <div class="tool-form-grid">
+            <div class="tool-field"><label class="tool-label">日付</label><input class="tool-input" type="date" name="date" value="{{ filter_date }}"></div>
+            <div class="tool-field"><label class="tool-label">スタッフ</label><select class="tool-select" name="staff_id"><option value="">すべて</option>{% for staff in staff_list %}<option value="{{ staff.id }}" {% if filter_staff == staff.id|string %}selected{% endif %}>{{ staff.name }}</option>{% endfor %}</select></div>
+          </div>
+          <div class="tool-actions with-top-gap"><button class="tool-btn is-primary" type="submit">絞り込む</button><a class="tool-btn" href="/admin/{{ shop_id }}/reservations">リセット</a></div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section class="tool-calendar-layout">
+    <div class="tool-panel">
+      <div class="tool-panel-head is-wide">
+        <div>
+          <h2>予約カレンダー</h2>
+          <div class="tool-note">日付を押すと、その日の詳細が右に表示されます。{% if selected_staff %}現在は {{ selected_staff.name }} のみ表示中。{% endif %}</div>
+        </div>
+        <div class="tool-calendar-nav">
+          <a class="tool-btn" href="/admin/{{ shop_id }}/reservations?month={{ calendar_prev_month }}{% if filter_staff %}&staff_id={{ filter_staff }}{% endif %}{% if filter_date %}&date={{ filter_date }}{% endif %}">← 前月</a>
+          <div class="tool-month-label">{{ calendar_month_label }}</div>
+          <a class="tool-btn" href="/admin/{{ shop_id }}/reservations?month={{ calendar_next_month }}{% if filter_staff %}&staff_id={{ filter_staff }}{% endif %}{% if filter_date %}&date={{ filter_date }}{% endif %}">次月 →</a>
+        </div>
+      </div>
+      <div class="tool-panel-body">
+        <div class="tool-weekdays"><div class="tool-weekday">日</div><div class="tool-weekday">月</div><div class="tool-weekday">火</div><div class="tool-weekday">水</div><div class="tool-weekday">木</div><div class="tool-weekday">金</div><div class="tool-weekday">土</div></div>
+        <div class="tool-calendar-grid">
+          {% for day in calendar_days %}
+          <a href="/admin/{{ shop_id }}/reservations?month={{ calendar_month_value }}&date={{ day.date }}{% if filter_staff %}&staff_id={{ filter_staff }}{% endif %}" class="tool-calendar-day{% if not day.is_current_month %} is-outside{% endif %}{% if day.is_today %} is-today{% endif %}{% if selected_date == day.date %} is-selected{% endif %}{% if day.is_holiday %} is-holiday{% endif %}">
+            <div class="tool-calendar-top"><span class="tool-calendar-number">{{ day.day }}</span><span class="tool-calendar-count">{{ day.count }}</span></div>
+            <div class="tool-calendar-meta">{% if day.count > 0 %}予約あり{% else %}予約なし{% endif %}</div>
+            {% if day.is_holiday %}<div class="tool-holiday-label">定休日</div>{% endif %}
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="tool-panel">
+      <div class="tool-panel-head">
+        <div>
+          <h2>{{ selected_date }} の予約詳細</h2>
+          <div class="tool-note">{% if selected_staff %}{{ selected_staff.name }}{% else %}店舗全体{% endif %}の予約 {{ selected_day_count }}件</div>
+        </div>
+        <a class="tool-btn" href="/admin/{{ shop_id }}/reservations?month={{ calendar_month_value }}&date={{ today }}{% if filter_staff %}&staff_id={{ filter_staff }}{% endif %}">今日を見る</a>
+      </div>
+      <div class="tool-panel-body">
+        {% if selected_day_schedule %}
+        <div class="tool-list">
+          {% for item in selected_day_schedule %}
+          <div class="tool-item">
+            <div class="tool-item-head">
+              <div class="tool-item-time">{{ item.start_time }}〜{{ item.end_time }}</div>
+              <span class="tool-status {% if item.status == '来店済み' %}is-done{% elif item.status == 'キャンセル' %}is-cancelled{% else %}is-reserved{% endif %}">{{ item.status }}</span>
+            </div>
+            <div class="tool-inline-meta">
+              <div><strong>顧客:</strong> {{ item.customer_name }}</div>
+              <div><strong>スタッフ:</strong> {{ item.staff_name }}</div>
+              <div><strong>メニュー:</strong> {{ item.menu_name }} / {{ item.duration }}分 / ¥{{ item.price }}</div>
+            </div>
+            {% if item.status == '予約済み' %}
+            <div class="tool-actions with-top-gap">
+              <form method="post" action="/admin/{{ shop_id }}/reservations/{{ item.id }}/done"><input type="hidden" name="next_url" value="{{ request.url }}"><button class="tool-btn is-primary" type="submit">来店済みにする</button></form>
+              <form method="post" action="/admin/{{ shop_id }}/reservations/{{ item.id }}/cancel"><input type="hidden" name="next_url" value="{{ request.url }}"><button class="tool-btn is-danger" type="submit">キャンセルにする</button></form>
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}<div class="tool-empty">この日の予約はありません。</div>{% endif %}
+      </div>
+    </div>
+  </section>
+
+  <section class="tool-panel">
+    <div class="tool-panel-head"><h2>予約一覧</h2><div class="tool-note">{{ reservation_items|length }} 件</div></div>
+    <div class="tool-panel-body">
+      {% if reservation_items %}
+      <div class="tool-table-wrap">
+        <table class="tool-table is-dense">
+          <thead><tr><th>日付</th><th>時間</th><th>顧客</th><th>スタッフ</th><th>メニュー</th><th>料金</th><th>状態</th><th>操作</th></tr></thead>
+          <tbody>
+            {% for item in reservation_items %}
+            <tr>
+              <td>{{ item.reservation_date }}</td>
+              <td>{{ item.start_time }}〜{{ item.end_time }}</td>
+              <td>{{ item.customer_name }}</td>
+              <td>{{ item.staff_name }}</td>
+              <td>{{ item.menu_name }}</td>
+              <td>¥{{ item.price }}</td>
+              <td><span class="tool-status {% if item.status == '来店済み' %}is-done{% elif item.status == 'キャンセル' %}is-cancelled{% else %}is-reserved{% endif %}">{{ item.status }}</span></td>
+              <td>
+                {% if item.status == '予約済み' %}
+                <div class="tool-actions">
+                  <form method="post" action="/admin/{{ shop_id }}/reservations/{{ item.id }}/done"><input type="hidden" name="next_url" value="{{ request.url }}"><button class="tool-btn is-primary" type="submit">来店済み</button></form>
+                  <form method="post" action="/admin/{{ shop_id }}/reservations/{{ item.id }}/cancel"><input type="hidden" name="next_url" value="{{ request.url }}"><button class="tool-btn is-danger" type="submit">キャンセル</button></form>
+                </div>
+                {% else %}<span class="tool-note">-</span>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}<div class="tool-empty">条件に合う予約はありません。</div>{% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ homepage.site_title or shop.shop_name }}</title>
+<style>
+:root{--primary:{{ theme.primary or '#2563eb' }};--bg:{{ theme.background or '#f8fafc' }};--surface:{{ theme.surface or '#ffffff' }};--accent:{{ theme.accent or '#dbeafe' }};--text:{{ theme.text or '#111827' }};--sub:{{ theme.subtext or '#6b7280' }};--font:{{ theme.font_family or "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:var(--font);background:var(--bg);color:var(--text)}a{text-decoration:none;color:inherit}img{max-width:100%;display:block}.wrap{max-width:1180px;margin:0 auto;padding:0 20px}.topbar{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.82);backdrop-filter:blur(14px);border-bottom:1px solid rgba(15,23,42,.08)}.topbar-inner{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:68px}.brand{display:flex;align-items:center;gap:12px;font-weight:800}.brand-logo{width:42px;height:42px;border-radius:12px;object-fit:cover;background:#e5e7eb}.brand-mark{width:42px;height:42px;border-radius:12px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:var(--primary);font-weight:900}.nav{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;color:var(--sub)}.nav a:hover{color:var(--text)}.hero{position:relative;padding:84px 0 56px;overflow:hidden;{% if theme.hero_style == 'dark' %}background:linear-gradient(135deg,#111827 0%,var(--primary) 100%);color:#fff;{% elif theme.hero_style == 'gradient' %}background:linear-gradient(135deg,var(--accent) 0%,var(--bg) 100%);{% elif theme.hero_style == 'split' %}background:linear-gradient(90deg,var(--surface) 0%,var(--accent) 100%);{% elif theme.hero_style == 'soft' %}background:linear-gradient(180deg,var(--surface) 0%,var(--bg) 100%);{% else %}background:var(--surface);{% endif %}}.hero.has-image::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(15,23,42,.72),rgba(15,23,42,.3))}.hero-media-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.hero-inner{position:relative;z-index:1;display:grid;grid-template-columns:1.15fr .85fr;gap:28px;align-items:center}.hero-copy.center{text-align:center;grid-column:1 / -1;max-width:860px;margin:0 auto}.eyebrow{display:inline-flex;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.24);font-size:13px;font-weight:800;backdrop-filter:blur(6px)}.hero-title{font-size:clamp(34px,5vw,64px);line-height:1.06;margin:18px 0 14px}.hero-subtitle{font-size:18px;line-height:1.9;margin:0 0 20px;color:inherit;opacity:.94}.cta{display:flex;gap:12px;flex-wrap:wrap}.cta.center{justify-content:center}.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 18px;background:var(--primary);color:#fff;font-weight:800;border:1px solid var(--primary);{% if theme.button_style == 'pill' %}border-radius:999px{% else %}border-radius:12px{% endif %}}.btn.alt{background:transparent;color:inherit;border-color:currentColor}.hero-card,.panel{background:var(--surface);{% if theme.section_style == 'line' %}border:1px solid #dbe2ea;box-shadow:none;{% elif theme.section_style == 'dark' %}background:#111827;color:#f8fafc;border:1px solid rgba(255,255,255,.08);{% else %}border:1px solid rgba(15,23,42,.08);box-shadow:0 12px 32px rgba(15,23,42,.06);{% endif %}border-radius:24px;padding:24px}.hero-card{backdrop-filter:blur(10px)}.section{padding:28px 0}.section-head{display:flex;justify-content:space-between;gap:16px;align-items:end;margin-bottom:14px}.section-head h2{margin:0;font-size:28px}.section-head p{margin:0;color:var(--sub)}.muted{color:var(--sub);line-height:1.9;white-space:pre-line}.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}.card-lite{padding:18px;border-radius:18px;background:rgba(148,163,184,.08)}.menu-card strong,.feature-card strong,.news-card strong,.gallery-cap{display:block;margin-bottom:8px}.price{font-weight:800;margin-bottom:8px}.gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.gallery-item{position:relative;overflow:hidden;border-radius:18px;min-height:220px;background:#ddd}.gallery-item img{width:100%;height:100%;object-fit:cover}.gallery-item span{position:absolute;left:12px;bottom:12px;background:rgba(15,23,42,.64);color:#fff;padding:6px 10px;border-radius:999px;font-size:12px}.image-text{display:grid;grid-template-columns:.95fr 1.05fr;gap:20px;align-items:center}.image-text.reverse .image-wrap{order:2}.image-wrap img{width:100%;height:100%;min-height:320px;object-fit:cover;border-radius:20px}.footer{padding:36px 0 56px;color:var(--sub)}
+.public-calendar{margin-top:18px;display:grid;gap:16px;padding:18px;border-radius:24px;background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(248,250,252,.98));border:1px solid rgba(15,23,42,.1);box-shadow:0 18px 36px rgba(15,23,42,.08)}.public-calendar-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.public-calendar-nav{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.public-calendar-nav a{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 14px;border-radius:999px;background:#fff;border:1px solid rgba(15,23,42,.08);font-weight:800;color:#0f172a;box-shadow:0 6px 18px rgba(15,23,42,.06)}.public-calendar-month{font-weight:900;font-size:18px;color:#0f172a}.public-calendar-note{color:#dc2626;font-size:13px;font-weight:800}.public-weekdays,.public-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}.public-weekday{text-align:center;font-size:12px;font-weight:800;color:#64748b}.public-calendar-day{min-height:104px;padding:12px;border-radius:18px;border:1px solid rgba(15,23,42,.08);background:#fff;display:grid;align-content:space-between;gap:8px;box-shadow:0 8px 18px rgba(15,23,42,.05)}.public-calendar-day.is-outside{opacity:.55;background:#f8fafc}.public-calendar-day.is-today{border-color:var(--primary);box-shadow:inset 0 0 0 1px var(--primary),0 8px 18px rgba(15,23,42,.05)}.public-calendar-day.is-holiday{background:#fff1f2;border-color:#fecdd3}.public-calendar-day.is-holiday .public-calendar-number,.public-calendar-day.is-holiday .public-calendar-meta{color:#dc2626}.public-calendar-number{font-size:16px;font-weight:900;color:#111827}.public-calendar-meta{font-size:12px;color:#64748b;line-height:1.5}.public-calendar-link{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:0 10px;border-radius:999px;background:var(--primary);color:#fff;font-size:12px;font-weight:800}.public-calendar-day.is-holiday .public-calendar-link{background:#ef4444}.public-calendar-cta{display:flex;justify-content:flex-end}@media(max-width:900px){.public-calendar{padding:14px}.public-weekdays,.public-calendar-grid{gap:6px}.public-calendar-day{min-height:88px;padding:10px}.public-calendar-cta{justify-content:stretch}.public-calendar-cta a{width:100%}}
+{% if homepage.custom_css %}{{ homepage.custom_css|safe }}{% endif %}
+{% if edit_mode %}
+body{padding-top:72px}.editable{outline:1px dashed transparent;outline-offset:4px;cursor:text;transition:.2s}.editable:hover{outline-color:rgba(37,99,235,.55);background:rgba(37,99,235,.06)}.editable-image{cursor:pointer;position:relative}.editable-image:hover{box-shadow:0 0 0 4px rgba(37,99,235,.18)}.editor-shell{position:fixed;inset:0 0 auto 0;z-index:9999;background:#111827;color:#fff;border-bottom:1px solid rgba(255,255,255,.08)}.editor-shell .bar{max-width:1280px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}.editor-shell .editor-spacer{flex:1}.editor-shell .editor-btn,.section-controls button,.item-actions button,.editor-panel button{border:0;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer}.editor-shell .editor-btn{background:#2563eb;color:#fff}.editor-shell .editor-btn.secondary{background:#1f2937;color:#fff;border:1px solid rgba(255,255,255,.12)}.editor-shell .editor-note{font-size:13px;color:#cbd5e1}.editor-panel{position:fixed;top:84px;right:20px;z-index:9998;width:min(360px,calc(100vw - 32px));max-height:calc(100vh - 100px);overflow:auto;background:#fff;color:#111827;border:1px solid rgba(15,23,42,.08);border-radius:24px;box-shadow:0 20px 50px rgba(15,23,42,.16);padding:18px}.editor-panel h3{margin:0 0 12px;font-size:16px}.editor-panel .group{display:grid;gap:10px;margin-bottom:16px}.editor-panel label{font-size:12px;font-weight:800;color:#475569}.editor-panel input,.editor-panel textarea,.editor-panel select{width:100%;border:1px solid #d7dde7;border-radius:12px;padding:10px 12px;font:inherit}.editor-panel textarea{min-height:90px;resize:vertical}.section-editing{position:relative}.section-controls{position:absolute;top:12px;right:12px;display:flex;gap:6px;z-index:3;flex-wrap:wrap}.section-controls button,.item-actions button{background:#111827;color:#fff;padding:8px 10px;border-radius:10px;font-size:12px}.section-is-hidden{opacity:.55}.item-actions{display:flex;gap:6px;justify-content:flex-end;margin-bottom:10px}.add-item-row{margin-top:14px;display:flex;justify-content:flex-end}.add-item-row button{background:#2563eb;color:#fff}.editor-toast{position:fixed;left:20px;bottom:20px;z-index:10000;background:#111827;color:#fff;padding:12px 14px;border-radius:14px;box-shadow:0 10px 24px rgba(15,23,42,.22);opacity:0;transform:translateY(8px);transition:.2s}.editor-toast.show{opacity:1;transform:translateY(0)}.edit-region{position:relative}.edit-region:hover{box-shadow:inset 0 0 0 3px rgba(37,99,235,.14)}.edit-region::after{content:attr(data-edit-label);position:absolute;left:14px;top:14px;padding:6px 10px;border-radius:999px;background:rgba(17,24,39,.82);color:#fff;font-size:12px;font-weight:800;letter-spacing:.02em;opacity:0;transform:translateY(-4px);transition:.18s;pointer-events:none;z-index:4}.edit-region:hover::after{opacity:1;transform:translateY(0)}.editor-popover{position:fixed;z-index:10001;min-width:240px;max-width:min(92vw,320px);background:#fff;color:#111827;border:1px solid rgba(15,23,42,.08);border-radius:20px;box-shadow:0 24px 60px rgba(15,23,42,.2);padding:12px;display:grid;gap:8px}.editor-popover[hidden]{display:none}.editor-popover-title{font-size:13px;font-weight:900;color:#475569;padding:4px 6px 6px}.editor-popover button{width:100%;text-align:left;border:0;background:#f8fafc;border-radius:14px;padding:12px 14px;font-weight:800;cursor:pointer}.editor-popover button:hover{background:#eff6ff}.editor-popover .danger{background:#fff1f2;color:#9f1239}.editor-color-picker{position:fixed;opacity:0;pointer-events:none;width:1px;height:1px}
+{% endif %}
+@media(max-width:900px){.hero-inner,.grid-3,.grid-2,.gallery,.image-text{grid-template-columns:1fr}.hero{padding-top:54px}.hero-copy.center,.hero-copy{text-align:left}.cta.center{justify-content:flex-start}.hero-card{display:none}.topbar-inner{align-items:flex-start;padding:12px 0}.nav{gap:10px}{% if edit_mode %}.editor-panel{position:static;width:auto;max-height:none;margin:12px 20px 0}.section-controls{position:static;margin-bottom:12px}.editor-shell .bar{padding:12px}{% endif %}}
+</style>
+</head>
+<body {% if edit_mode %}data-editor-shop-id="{{ shop_id }}"{% endif %}>
+{% if template_preview %}
+<div style="position:fixed;right:18px;bottom:18px;z-index:40;display:grid;gap:10px;max-width:min(92vw,420px)">
+  {% if template_preview.applied %}<div style="padding:12px 16px;border-radius:16px;background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;font-weight:800;box-shadow:0 12px 30px rgba(6,95,70,.12)">保存しました。テンプレートをサイトへ反映済みです。</div>{% endif %}
+  <div style="padding:16px 18px;border-radius:24px;background:rgba(255,255,255,.94);border:1px solid rgba(0,0,0,.08);backdrop-filter:blur(12px);box-shadow:0 16px 30px rgba(17,24,39,.12)">
+    <div style="font-weight:900;font-size:16px;margin-bottom:8px">{{ template_preview.name }} をこのサイトに反映</div>
+    <div style="color:#4b5563;line-height:1.7;font-size:14px;margin-bottom:14px">タイトルや画像は引き継いだまま、配色とテンプレート構成をこのプレビューどおりに保存します。</div>
+    <form method="post" action="/admin/{{ shop_id }}/website/apply-template" style="margin:0;display:grid;gap:10px">
+      <input type="hidden" name="template_id" value="{{ template_preview.id }}">
+      <input type="hidden" name="return_to" value="{{ template_preview.return_to }}">
+      <button type="submit" style="width:100%;border:none;border-radius:999px;padding:14px 18px;background:#111827;color:#fff;font-weight:800;box-shadow:0 16px 30px rgba(17,24,39,.22);cursor:pointer">このプレビューを反映して保存</button>
+    </form>
+    <a href="/admin/{{ shop_id }}/website/editor" style="display:block;text-align:center;margin-top:10px;padding:12px 16px;border-radius:999px;background:#fff;border:1px solid rgba(0,0,0,.08);font-weight:800">直接編集へ戻る</a>
+  </div>
+</div>
+{% endif %}
+{% if edit_mode %}
+<div class="editor-shell">
+  <div class="bar">
+    <strong>直接編集モード</strong>
+    <span class="editor-note">文字はそのまま入力。画像はクリックで直接アップロード。ボタン・順番は各ブロックの操作から変更。</span>
+    <div class="editor-spacer"></div>
+    <button class="editor-btn secondary" type="button" data-editor-action="add-section">セクション追加</button>
+    <button class="editor-btn" type="button" data-editor-action="save">保存</button>
+    <a class="editor-btn secondary" href="/admin/{{ shop_id }}">管理トップへ</a>
+  </div>
+</div>
+<div class="editor-toast" id="editor-toast"></div>
+<div class="editor-popover" id="editor-popover" hidden></div>
+<input id="editor-color-picker" class="editor-color-picker" type="color" value="#2563eb">
+{% endif %}
+<header class="topbar edit-region" data-edit-region="topbar" data-edit-label="ヘッダーを編集">
+  <div class="wrap topbar-inner">
+    <div class="brand">
+      {% if homepage.logo_image_url %}<img class="brand-logo editable-image" src="{{ homepage.logo_image_url }}" alt="{{ shop.shop_name }} logo" {% if edit_mode %}data-homepage-image="logo_image_url"{% endif %}>{% else %}<div class="brand-mark {% if edit_mode %}editable-image{% endif %}" {% if edit_mode %}data-homepage-image="logo_image_url"{% endif %}>{{ shop.shop_name[:1] }}</div>{% endif %}
+      <div>
+        <div {% if edit_mode %}contenteditable="true" class="editable" data-homepage-field="shop_name_display" data-readonly="true"{% endif %}>{{ shop.shop_name }}</div>
+        <div style="font-size:12px;color:var(--sub);" {% if edit_mode %}contenteditable="true" class="editable" data-homepage-field="site_title"{% endif %}>{{ homepage.site_title or shop.shop_name }}</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <a href="#top">トップ</a>
+      {% for section in sections if section.section_type != 'hero' %}<a href="#section-{{ section.id }}">{{ section.title or section.section_type }}</a>{% endfor %}
+      <a href="#reserve-calendar">予約カレンダー</a>
+      <a href="{{ homepage.reserve_button_url or '/shop/' ~ shop_id }}" {% if edit_mode %}data-homepage-link="reserve_button"{% endif %}>{{ homepage.reserve_button_label or '予約する' }}</a>
+    </nav>
+  </div>
+</header>
+
+{% set has_top_hero = sections and sections[0].section_type == 'hero' %}
+<section id="top" class="hero {% if homepage.hero_image_url %}has-image{% endif %} {% if edit_mode %}edit-region{% endif %}" {% if edit_mode %}data-edit-region="hero" data-edit-label="メインビジュアルを編集"{% endif %}>
+  {% if homepage.hero_image_url %}<img class="hero-media-bg editable-image" src="{{ homepage.hero_image_url }}" alt="hero image" {% if edit_mode %}data-homepage-image="hero_image_url"{% endif %}>{% endif %}
+  <div class="wrap hero-inner">
+    <div class="hero-copy {% if homepage.hero_align == 'center' %}center{% endif %}">
+      <div class="eyebrow">{{ shop.shop_name }}</div>
+      <h1 class="hero-title {% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-homepage-field="hero_title"{% endif %}>{{ homepage.hero_title or shop.shop_name }}</h1>
+      <p class="hero-subtitle {% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-homepage-field="hero_subtitle"{% endif %}>{{ homepage.hero_subtitle or shop.catch_copy }}</p>
+      <div class="cta {% if homepage.hero_align == 'center' %}center{% endif %}"><a class="btn" href="{{ homepage.reserve_button_url or '/shop/' ~ shop_id }}" {% if edit_mode %}data-homepage-link="reserve_button"{% endif %}>{{ homepage.reserve_button_label or '予約する' }}</a><a class="btn alt" href="#section-{{ sections[1].id if has_top_hero and sections|length > 1 else (sections[0].id if sections else 'info') }}">詳しく見る</a></div>
+    </div>
+    {% if homepage.hero_align != 'center' %}
+    <div class="hero-card"><strong>店舗情報</strong><div style="margin-top:10px;line-height:1.9;white-space:pre-line;" class="{% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-homepage-field="access_info"{% endif %}>{{ homepage.access_info }}</div></div>
+    {% endif %}
+  </div>
+</section>
+
+<div class="wrap">
+  {% for section in sections %}
+    {% if section.section_type != 'hero' %}
+    <section id="section-{{ section.id }}" class="section {% if edit_mode %}section-editing{% endif %} {% if not section.is_visible %}section-is-hidden{% endif %}" data-section-id="{{ section.id }}" data-section-type="{{ section.section_type }}" data-section-visible="{{ 1 if section.is_visible else 0 }}">
+      <div class="panel {% if edit_mode %}edit-region{% endif %}" {% if edit_mode %}data-edit-region="section" data-edit-label="このセクションを編集"{% endif %}>
+        {% if edit_mode %}
+        <div class="section-controls">
+          <button type="button" data-section-action="up">↑</button>
+          <button type="button" data-section-action="down">↓</button>
+          <button type="button" data-section-action="toggle">{% if section.is_visible %}非表示{% else %}表示{% endif %}</button>
+          <button type="button" data-section-action="button">ボタン</button>
+          <button type="button" data-section-action="image">画像</button>
+          <button type="button" data-section-action="delete">削除</button>
+        </div>
+        {% endif %}
+        <div class="section-head">
+          <div>
+            <h2 class="{% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-section-field="title"{% endif %}>{{ section.title or 'Section' }}</h2>
+            {% if section.subtitle or edit_mode %}<p class="{% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-section-field="subtitle"{% endif %}>{{ section.subtitle }}</p>{% endif %}
+          </div>
+        </div>
+
+        {% if section.section_type in ['about', 'text', 'contact', 'cta'] %}
+          <div class="muted {% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-section-field="body_text"{% endif %}>{{ section.body_text or (homepage.access_info if section.section_type == 'contact' and not section.body_text else '') }}</div>
+          {% if section.button_label or section.button_url or edit_mode %}<div class="cta" style="margin-top:18px;"><a class="btn" href="{{ section.button_url or '#' }}" {% if edit_mode %}data-section-link="true"{% endif %}>{{ section.button_label or 'ボタンを編集' }}</a></div>{% endif %}
+
+        {% elif section.section_type == 'image_text' %}
+          <div class="image-text {% if loop.index is even %}reverse{% endif %}">
+            <div class="image-wrap">{% if section.image_url %}<img src="{{ section.image_url }}" alt="{{ section.title }}" class="editable-image" {% if edit_mode %}data-section-image="true"{% endif %}>{% elif edit_mode %}<div class="card-lite editable-image" data-section-image="true" style="min-height:320px;display:grid;place-items:center;">画像を追加</div>{% endif %}</div>
+            <div>
+              <div class="muted {% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-section-field="body_text"{% endif %}>{{ section.body_text }}</div>
+              {% if section.button_label or section.button_url or edit_mode %}<div class="cta" style="margin-top:18px;"><a class="btn" href="{{ section.button_url or '#' }}" {% if edit_mode %}data-section-link="true"{% endif %}>{{ section.button_label or 'ボタンを編集' }}</a></div>{% endif %}
+            </div>
+          </div>
+
+        {% elif section.section_type == 'menu' %}
+          <div class="grid-3">
+            {% for item in section['items'] %}
+            <div class="card-lite menu-card" data-item-index="{{ loop.index0 }}">
+              {% if edit_mode %}<div class="item-actions"><button type="button" data-item-action="edit">項目編集</button><button type="button" data-item-action="up">↑</button><button type="button" data-item-action="down">↓</button><button type="button" data-item-action="delete">削除</button></div>{% endif %}
+              <strong class="{% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-item-field="title"{% endif %}>{{ item.title }}</strong>
+              <div class="price {% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-item-field="price"{% endif %}>{{ item.price }}</div>
+              <div class="muted {% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-item-field="description"{% endif %}>{{ item.description }}</div>
+            </div>
+            {% endfor %}
+          </div>
+          {% if edit_mode %}<div class="add-item-row"><button type="button" data-add-item="menu">メニュー追加</button></div>{% endif %}
+
+        {% elif section.section_type == 'features' %}
+          <div class="grid-3">
+            {% for item in section['items'] %}
+            <div class="card-lite feature-card" data-item-index="{{ loop.index0 }}">
+              {% if edit_mode %}<div class="item-actions"><button type="button" data-item-action="edit">項目編集</button><button type="button" data-item-action="up">↑</button><button type="button" data-item-action="down">↓</button><button type="button" data-item-action="delete">削除</button></div>{% endif %}
+              <strong class="{% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-item-field="title"{% endif %}>{{ item.title }}</strong>
+              <div class="muted {% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-item-field="description"{% endif %}>{{ item.description }}</div>
+            </div>
+            {% endfor %}
+          </div>
+          {% if edit_mode %}<div class="add-item-row"><button type="button" data-add-item="features">特徴追加</button></div>{% endif %}
+
+        {% elif section.section_type == 'gallery' %}
+          <div class="gallery">
+            {% for item in section['items'] %}
+            <div class="gallery-item" data-item-index="{{ loop.index0 }}">
+              {% if item.url %}<img src="{{ item.url }}" alt="{{ item.label }}" class="editable-image" {% if edit_mode %}data-item-image="true"{% endif %}>{% endif %}
+              <span class="{% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-item-field="label"{% endif %}>{{ item.label }}</span>
+              {% if edit_mode %}<div class="item-actions" style="position:absolute;right:8px;top:8px;"><button type="button" data-item-action="image">画像</button><button type="button" data-item-action="up">↑</button><button type="button" data-item-action="down">↓</button><button type="button" data-item-action="delete">削除</button></div>{% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% if edit_mode %}<div class="add-item-row"><button type="button" data-add-item="gallery">画像追加</button></div>{% endif %}
+
+        {% elif section.section_type == 'news' %}
+          <div class="grid-3">
+            {% for item in section['items'] %}
+            <div class="card-lite news-card" data-item-index="{{ loop.index0 }}">
+              {% if edit_mode %}<div class="item-actions"><button type="button" data-item-action="edit">項目編集</button><button type="button" data-item-action="up">↑</button><button type="button" data-item-action="down">↓</button><button type="button" data-item-action="delete">削除</button></div>{% endif %}
+              <strong class="{% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-item-field="date"{% endif %}>{{ item.date }}</strong>
+              <div class="{% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-item-field="title"{% endif %}>{{ item.title }}</div>
+            </div>
+            {% endfor %}
+          </div>
+          {% if edit_mode %}<div class="add-item-row"><button type="button" data-add-item="news">お知らせ追加</button></div>{% endif %}
+
+        {% else %}
+          <div class="grid-2">{% if section.image_url %}<div class="image-wrap"><img src="{{ section.image_url }}" alt="{{ section.title }}" class="editable-image" {% if edit_mode %}data-section-image="true"{% endif %}></div>{% elif edit_mode %}<div class="image-wrap"><div class="card-lite editable-image" data-section-image="true" style="min-height:320px;display:grid;place-items:center;">画像を追加</div></div>{% endif %}<div><div class="muted {% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-section-field="body_text"{% endif %}>{{ section.body_text }}</div>{% if section['items'] %}<div style="margin-top:18px;display:grid;gap:12px;">{% for item in section['items'] %}<div class="card-lite" data-item-index="{{ loop.index0 }}">{% if edit_mode %}<div class="item-actions"><button type="button" data-item-action="edit">項目編集</button><button type="button" data-item-action="up">↑</button><button type="button" data-item-action="down">↓</button><button type="button" data-item-action="delete">削除</button></div>{% endif %}<strong class="{% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-item-field="title"{% endif %}>{{ item.title }}</strong><div class="muted {% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-item-field="description"{% endif %}>{{ item.description }}</div></div>{% endfor %}</div>{% if edit_mode %}<div class="add-item-row"><button type="button" data-add-item="generic">項目追加</button></div>{% endif %}{% endif %}{% if section.button_label or section.button_url or edit_mode %}<div class="cta" style="margin-top:18px;"><a class="btn" href="{{ section.button_url or '#' }}" {% if edit_mode %}data-section-link="true"{% endif %}>{{ section.button_label or 'ボタンを編集' }}</a></div>{% endif %}</div></div>
+        {% endif %}
+      </div>
+    </section>
+    {% endif %}
+  {% endfor %}
+
+  <section id="reserve-calendar" class="section">
+    <div class="panel">
+      <div class="section-head">
+        <div>
+          <h2>予約カレンダー</h2>
+          <p>ご希望日を確認して、そのまま予約ページへ進めます。</p>
+        </div>
+      </div>
+      <div class="public-calendar">
+        <div class="public-calendar-head">
+          <div class="public-calendar-nav">
+            <a href="{{ calendar_base_path }}?calendar_month={{ calendar_prev_month }}#reserve-calendar">← 前月</a>
+            <div class="public-calendar-month">{{ calendar_month_label }}</div>
+            <a href="{{ calendar_base_path }}?calendar_month={{ calendar_next_month }}#reserve-calendar">次月 →</a>
+          </div>
+          <div class="public-calendar-note">定休日は赤で表示</div>
+        </div>
+        <div class="public-weekdays"><div class="public-weekday">日</div><div class="public-weekday">月</div><div class="public-weekday">火</div><div class="public-weekday">水</div><div class="public-weekday">木</div><div class="public-weekday">金</div><div class="public-weekday">土</div></div>
+        <div class="public-calendar-grid">
+          {% for day in calendar_days %}
+          <div class="public-calendar-day{% if not day.is_current_month %} is-outside{% endif %}{% if day.is_today %} is-today{% endif %}{% if day.is_holiday %} is-holiday{% endif %}">
+            <div class="public-calendar-number">{{ day.day }}</div>
+            <div class="public-calendar-meta">{% if day.is_holiday %}定休日{% elif day.is_current_month %}予約受付中{% else %}&nbsp;{% endif %}</div>
+            {% if day.is_current_month and not day.is_holiday %}<a class="public-calendar-link" href="/shop/{{ shop_id }}?reservation_date={{ day.date }}#reserve-form">この日で予約</a>{% elif day.is_holiday %}<span class="public-calendar-link">お休み</span>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer">{{ homepage.site_title or shop.shop_name }} / powered by salon platform</div>
+</div>
+{% if edit_mode %}
+<script>
+window.SITE_EDITOR_BOOTSTRAP = {
+  shopId: {{ shop_id|tojson }},
+  homepage: {{ homepage|tojson }},
+  sections: {{ sections|tojson }},
+  sectionTypes: {{ section_type_options|tojson }}
+};
+</script>
+<script src="/static/site_editor.js"></script>
+{% endif %}
+</body></html>

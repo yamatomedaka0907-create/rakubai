@@ -1,0 +1,97 @@
+{% extends "admin/tool/base.html" %}
+{% block page_title %}顧客編集{% endblock %}
+{% block page_subtitle %}基本情報、追加メモ、写真をこの画面で一括管理します。{% endblock %}
+{% block content %}
+<div class="tool-grid">
+  {% if success_message %}<div class="tool-alert is-success">{{ success_message }}</div>{% endif %}
+  {% if error_message %}<div class="tool-alert is-danger">{{ error_message }}</div>{% endif %}
+
+  <section class="tool-panel">
+    <div class="tool-panel-head">
+      <h2>基本情報</h2>
+      <div class="tool-actions"><a class="tool-btn" href="/admin/{{ shop_id }}/customers">一覧へ戻る</a></div>
+    </div>
+    <div class="tool-panel-body">
+      <form method="post" action="/admin/{{ shop_id }}/customers/{{ customer.id }}/update">
+        <div class="tool-form-grid">
+          <div class="tool-field"><label class="tool-label">名前</label><input class="tool-input" type="text" name="name" value="{{ customer.name }}" required></div>
+          <div class="tool-field"><label class="tool-label">電話番号</label><input class="tool-input" type="text" name="phone" value="{{ customer.phone or '' }}"></div>
+          <div class="tool-field full"><label class="tool-label">メールアドレス</label><input class="tool-input" type="email" name="email" value="{{ customer.email or '' }}"></div>
+        </div>
+        <div class="tool-actions with-top-gap"><button class="tool-btn is-primary" type="submit">顧客情報を更新</button></div>
+      </form>
+      <form method="post" action="/admin/{{ shop_id }}/customers/{{ customer.id }}/delete" onsubmit="return confirm('この顧客を削除しますか？登録済みの追加情報と写真も削除されます。');" class="tool-form-inline">
+        <button class="tool-btn is-danger" type="submit">顧客を削除</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="tool-grid cols-2">
+    <div class="tool-panel">
+      <div class="tool-panel-head"><h2>追加情報</h2></div>
+      <div class="tool-panel-body">
+        <form method="post" action="/admin/{{ shop_id }}/customers/{{ customer.id }}/notes">
+          <div class="tool-field"><label class="tool-label">タイトル</label><input class="tool-input" type="text" name="title" required></div>
+          <div class="tool-field"><label class="tool-label">内容</label><textarea class="tool-textarea" name="content" rows="4" required></textarea></div>
+          <div class="tool-actions with-top-gap"><button class="tool-btn is-primary" type="submit">顧客情報追加</button></div>
+        </form>
+
+        <div class="tool-card-stack">
+          {% for note in customer_notes %}
+          <div class="tool-card-lite">
+            <div class="tool-card-lite-head">
+              <div>
+                <div class="tool-card-lite-title">{{ note.title }}</div>
+                <div class="tool-note">{{ note.created_at[:16] if note.created_at else '' }}</div>
+              </div>
+              <form method="post" action="/admin/{{ shop_id }}/customers/{{ customer.id }}/notes/{{ note.id }}/delete" onsubmit="return confirm('この追加情報を削除しますか？');">
+                <button class="tool-btn" type="submit">削除</button>
+              </form>
+            </div>
+            <div class="tool-card-lite-body">{{ note.content }}</div>
+          </div>
+          {% else %}
+          <div class="tool-empty">追加情報はまだありません。</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="tool-panel">
+      <div class="tool-panel-head"><h2>顧客写真</h2></div>
+      <div class="tool-panel-body">
+        <div class="tool-note with-bottom-gap">
+          {% if customer_photo_policy.enabled %}
+            {{ customer_photo_policy.label }} /
+            {% if customer_photo_policy.max_photos is none %}
+              保存枚数制限なし
+            {% else %}
+              保存上限 {{ customer_photo_policy.max_photos }} 枚 / 残り {{ customer_photo_remaining }} 枚
+            {% endif %}
+          {% else %}
+            {{ customer_photo_policy.label }}では顧客写真を保存できません。
+          {% endif %}
+        </div>
+        <form method="post" action="/admin/{{ shop_id }}/customers/{{ customer.id }}/photos" enctype="multipart/form-data">
+          <div class="tool-field"><label class="tool-label">写真を撮影・保存</label><input class="tool-input" type="file" name="photo" accept="image/*" capture="environment" {% if not customer_photo_policy.enabled %}disabled{% endif %} required></div>
+          <div class="tool-actions with-top-gap"><button class="tool-btn is-primary" type="submit" {% if not customer_photo_policy.enabled %}disabled{% endif %}>写真を保存</button></div>
+        </form>
+
+        <div class="tool-photo-grid">
+          {% for photo in customer_photos %}
+          <div class="tool-photo-card">
+            <a href="{{ photo.image_url }}" target="_blank" rel="noopener noreferrer" style="display:block;"><img src="{{ photo.image_url }}" alt="顧客写真" style="cursor:zoom-in;"></a>
+            <div class="tool-note">{{ photo.created_at[:16] if photo.created_at else '' }}</div>
+            <form method="post" action="/admin/{{ shop_id }}/customers/{{ customer.id }}/photos/{{ photo.id }}/delete" onsubmit="return confirm('この写真を削除しますか？S3上の画像も削除されます。');">
+              <button class="tool-btn" type="submit">削除</button>
+            </form>
+          </div>
+          {% else %}
+          <div class="tool-empty">写真はまだありません。</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

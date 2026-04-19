@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>運営ログイン</title>
+  <style>
+    :root{--primary:#2ec4b6;--primary-dark:#159a90;--bg:#f7fffe;--line:#d8efec;--text:#1f2937;--sub:#6b7280;--danger:#b91c1c;--danger-bg:#fef2f2}
+    *{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#fff 0%,var(--bg) 100%);color:var(--text);padding:24px}
+    .wrap{max-width:560px;margin:0 auto}.card{background:#fff;border:1px solid var(--line);border-radius:24px;padding:28px;box-shadow:0 12px 32px rgba(15,23,42,.08)}
+    .top{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}.top a{display:inline-flex;padding:10px 14px;border-radius:999px;border:1px solid var(--line);text-decoration:none;color:var(--primary-dark);font-weight:700;background:#fff}
+    .eyebrow{display:inline-flex;padding:8px 12px;border-radius:999px;background:rgba(46,196,182,.14);color:var(--primary-dark);font-weight:700;font-size:13px;margin-bottom:14px}
+    h1{margin:0 0 8px;color:var(--primary-dark)} p{color:var(--sub);line-height:1.7} label{display:block;font-size:14px;font-weight:700;margin-top:16px} input{width:100%;margin-top:8px;padding:14px;border:1px solid var(--line);border-radius:12px} button{width:100%;margin-top:18px;min-height:48px;border:none;border-radius:12px;background:var(--primary);color:#fff;font-weight:800;font-size:15px} .msg{margin-top:16px;padding:12px 14px;border:1px solid #fecaca;background:var(--danger-bg);color:var(--danger);border-radius:12px;font-weight:700}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="top"><a href="/">トップ</a><a href="/signup">新規店舗登録</a></nav>
+  <div class="card">
+    <div class="eyebrow">運営管理画面</div>
+    <h1>登録店舗を管理</h1>
+    <p>登録された店舗一覧、現在プラン、利用状況をまとめて確認できます。</p>
+    <form method="post" action="/platform/login">
+      <label>ログインID<input type="text" name="login_id" placeholder="platform_admin" required></label>
+      <label>パスワード<input type="password" name="password" placeholder="password" required></label>
+      <button type="submit">運営管理画面に入る</button>
+    </form>
+    {% if error_message %}<div class="msg">{{ error_message }}</div>{% endif %}
+    <p>初期ログイン情報: <strong>platform_admin / platform1234</strong></p>
+  </div>
+</div>
+</body>
+</html>

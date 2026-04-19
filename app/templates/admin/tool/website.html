@@ -1,0 +1,57 @@
+{% extends "admin/tool/base.html" %}
+{% block page_title %}ホームページ設定{% endblock %}
+{% block page_subtitle %}テンプレート選択と直接編集の導線を、業務ツール風の画面に整理しています。{% endblock %}
+{% block content %}
+<div class="tool-grid">
+  {% if success_message %}<div class="tool-alert is-success">{{ success_message }}</div>{% endif %}
+
+  <section class="tool-kpi-grid">
+    <div class="tool-kpi-card"><div class="tool-kpi-title">公開URL</div><div class="tool-kpi-number tool-kpi-path">/p/{{ homepage_settings.public_path if homepage_settings else shop_id }}</div><div class="tool-kpi-meta">メインサイト配下で公開</div></div>
+    <div class="tool-kpi-card"><div class="tool-kpi-title">公開状態</div><div class="tool-kpi-number">{% if homepage_settings and homepage_settings.is_published %}公開中{% else %}下書き{% endif %}</div><div class="tool-kpi-meta">テンプレ反映後も編集可能</div></div>
+    <div class="tool-kpi-card"><div class="tool-kpi-title">テンプレート</div><div class="tool-kpi-number">{{ homepage_samples|length if homepage_samples is defined else 0 }}種</div><div class="tool-kpi-meta">プレビューして即反映</div></div>
+    <div class="tool-kpi-card"><div class="tool-kpi-title">セクション数</div><div class="tool-kpi-number">{{ homepage_sections|length }}</div><div class="tool-kpi-meta">直接編集モードで管理</div></div>
+  </section>
+
+  <section class="tool-panel">
+    <div class="tool-panel-head">
+      <h2>運用フロー</h2>
+      <div class="tool-note">サンプル選択と直接編集の二段階に絞っています。</div>
+    </div>
+    <div class="tool-panel-body">
+      <div class="tool-process-box">1. テンプレートを選ぶ → 2. プレビューで確認 → 3. 反映して保存 → 4. 直接編集モードで微調整</div>
+      <div class="tool-actions with-top-gap">
+        <a class="tool-btn is-primary" href="/admin/{{ shop_id }}/website/editor">直接編集モードを開く</a>
+        <a class="tool-btn" target="_blank" href="/site/{{ shop_id }}">現在のプレビュー</a>
+        <a class="tool-btn" target="_blank" href="/p/{{ homepage_settings.public_path if homepage_settings else shop_id }}">公開URLを開く</a>
+      </div>
+      {% if homepage_settings and homepage_settings.is_published %}
+      <form method="post" action="/admin/{{ shop_id }}/website/unpublish" class="tool-actions with-top-gap">
+        <button type="submit" class="tool-btn">下書きに戻す</button>
+      </form>
+      {% else %}
+      <form method="post" action="/admin/{{ shop_id }}/website/publish" class="tool-actions with-top-gap">
+        <button type="submit" class="tool-btn is-primary">公開する</button>
+      </form>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="tool-panel">
+    <div class="tool-panel-head">
+      <h2>サンプルホームページ</h2>
+      <div class="tool-note">一覧ページからカテゴリやキーワードで探して選ぶ構成です。</div>
+    </div>
+    <div class="tool-panel-body">
+      <div class="tool-card-lite is-large">
+        <div class="tool-card-lite-title">サンプルホームページを見る</div>
+        <div class="tool-note">実際のサンプルHPを見ながら選べます。反映時はサンプルのデザイン設定を使い、写真や文言は今の内容を引き継ぎます。</div>
+        <div class="tool-actions with-top-gap">
+          <a class="tool-btn is-primary" href="/samples">サンプルホームページを見る</a>
+          <a class="tool-btn" target="_blank" href="/samples">別タブで開く</a>
+          <a class="tool-btn" href="/admin/{{ shop_id }}/website/editor">直接編集へ</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

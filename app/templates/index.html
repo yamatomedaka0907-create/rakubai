@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ shop.shop_name }}</title>
+  <style>
+    :root {
+      --primary: {{ shop.primary_color }};
+      --primary-dark: {{ shop.primary_dark }};
+      --bg-soft: {{ shop.accent_bg }};
+      --text: #1f2937;
+      --subtext: #6b7280;
+      --line: #d8efec;
+      --card: #ffffff;
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+      --radius: 20px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #ffffff 0%, var(--bg-soft) 100%);
+    }
+
+    .wrap {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 20px;
+      align-items: stretch;
+      margin-bottom: 24px;
+    }
+
+    .hero-main,
+    .hero-side,
+    .section-card,
+    .menu-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-main {
+      padding: 32px;
+      background: linear-gradient(135deg, #ffffff 0%, #ecfffc 100%);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(46, 196, 182, 0.14);
+      color: var(--primary-dark);
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: 36px;
+      color: var(--primary-dark);
+      line-height: 1.25;
+    }
+
+    .lead {
+      margin: 0 0 18px;
+      font-size: 16px;
+      color: var(--subtext);
+      line-height: 1.8;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      padding: 0 18px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #ffffff;
+    }
+
+    .btn-secondary {
+      border: 1px solid var(--line);
+      color: var(--primary-dark);
+      background: #ffffff;
+    }
+
+    .hero-side {
+      padding: 24px;
+    }
+
+    .info-list {
+      display: grid;
+      gap: 16px;
+    }
+
+    .info-item {
+      border-bottom: 1px solid #edf4f3;
+      padding-bottom: 12px;
+    }
+
+    .info-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .info-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--subtext);
+      margin-bottom: 6px;
+    }
+
+    .info-value {
+      font-size: 15px;
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    .section-card {
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      margin: 0 0 8px;
+      font-size: 24px;
+      color: var(--primary-dark);
+    }
+
+    .section-text {
+      margin: 0;
+      color: var(--subtext);
+      line-height: 1.8;
+    }
+
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      margin-top: 20px;
+    }
+
+    .menu-card {
+      padding: 22px;
+    }
+
+    .menu-name {
+      margin: 0 0 8px;
+      font-size: 20px;
+      color: var(--primary-dark);
+    }
+
+    .menu-meta {
+      margin: 0 0 12px;
+      font-size: 14px;
+      color: var(--subtext);
+    }
+
+    .menu-desc {
+      margin: 0 0 18px;
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.8;
+    }
+
+    .menu-price {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--primary-dark);
+    }
+
+    .flow-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .flow-card {
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    .flow-step {
+      display: inline-flex;
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      align-items: center;
+      justify-content: center;
+      background: rgba(46, 196, 182, 0.14);
+      color: var(--primary-dark);
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+
+    .flow-title {
+      margin: 0 0 8px;
+      font-size: 18px;
+      color: var(--text);
+    }
+
+    .flow-desc {
+      margin: 0;
+      font-size: 14px;
+      color: var(--subtext);
+      line-height: 1.7;
+    }
+
+    .footer-note {
+      margin-top: 24px;
+      font-size: 13px;
+      color: var(--subtext);
+      text-align: center;
+    }
+
+    @media (max-width: 960px) {
+      .hero,
+      .menu-grid,
+      .flow-grid {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 30px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      body {
+        overflow-x: hidden;
+      }
+
+      .wrap {
+        padding: 16px;
+      }
+
+      .hero-main,
+      .hero-side,
+      .section-card,
+      .menu-card,
+      .flow-card {
+        padding: 20px;
+      }
+
+      .hero-actions {
+        gap: 10px;
+      }
+
+      .hero-actions .btn {
+        width: 100%;
+      }
+
+      h1 {
+        font-size: 26px;
+        line-height: 1.35;
+      }
+
+      .section-title {
+        font-size: 22px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="hero-main">
+        <div class="eyebrow">ご予約受付中</div>
+        <h1>{{ shop.shop_name }}</h1>
+        <p class="lead">{{ shop.catch_copy }}</p>
+        <p class="lead">{{ shop.description }}</p>
+
+        <div class="hero-actions">
+          <a href="#menus" class="btn btn-primary">メニューを見る</a>
+          <a href="#reservation" class="btn btn-secondary">予約の流れを見る</a>
+        </div>
+      </div>
+
+      <div class="hero-side">
+        <div class="info-list">
+          <div class="info-item">
+            <div class="info-label">営業時間</div>
+            <div class="info-value">{{ shop.business_hours }}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">定休日</div>
+            <div class="info-value">{{ shop.holiday }}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">電話番号</div>
+            <div class="info-value">{{ shop.phone }}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">住所</div>
+            <div class="info-value">{{ shop.address }}</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="menus" class="section-card">
+      <h2 class="section-title">メニュー</h2>
+      <p class="section-text">店舗設定から内容を差し替えられる前提で、メニュー一覧を表示しています。</p>
+
+      <div class="menu-grid">
+        {% for menu in menus %}
+        <article class="menu-card">
+          <h3 class="menu-name">{{ menu.name }}</h3>
+          <p class="menu-meta">{{ menu.duration }}分</p>
+          <p class="menu-desc">{{ menu.description }}</p>
+          <div class="menu-price">¥{{ menu.price }}</div>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section id="reservation" class="section-card">
+      <h2 class="section-title">ご予約の流れ</h2>
+      <p class="section-text">今は予約導線の土台ページです。後でWeb予約フォームやLINE連携につなげられます。</p>
+
+      <div class="flow-grid">
+        <div class="flow-card">
+          <div class="flow-step">1</div>
+          <h3 class="flow-title">メニューを選ぶ</h3>
+          <p class="flow-desc">ご希望の施術内容と料金を確認します。</p>
+        </div>
+
+        <div class="flow-card">
+          <div class="flow-step">2</div>
+          <h3 class="flow-title">日時を選ぶ</h3>
+          <p class="flow-desc">後でカレンダーや空き時間表示につなげる想定です。</p>
+        </div>
+
+        <div class="flow-card">
+          <div class="flow-step">3</div>
+          <h3 class="flow-title">予約を確定する</h3>
+          <p class="flow-desc">お客様情報を入力して、予約内容を確定します。</p>
+        </div>
+      </div>
+    </section>
+
+    <p class="footer-note">このページの文言・色・メニュー・店舗情報は、今後ユーザーが変更できる前提の構成です。</p>
+  </div>
+</body>
+</html>

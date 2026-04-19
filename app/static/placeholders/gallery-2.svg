@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<rect width="1600" height="900" fill="#eff6ff"/>
+<rect x="70" y="70" width="1460" height="760" rx="40" fill="none" stroke="#2563eb" stroke-width="8" opacity="0.25"/>
+<text x="800" y="430" text-anchor="middle" fill="#2563eb" font-size="84" font-family="Arial, Helvetica, sans-serif" font-weight="700">GALLERY 2</text>
+<text x="800" y="520" text-anchor="middle" fill="#2563eb" font-size="28" font-family="Arial, Helvetica, sans-serif" opacity="0.7">replace with your own photo</text>
+</svg>

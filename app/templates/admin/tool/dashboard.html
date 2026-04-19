@@ -1,0 +1,176 @@
+{% extends "admin/tool/base.html" %}
+{% block page_title %}ダッシュボード{% endblock %}
+{% block page_subtitle %}業務ツール風のトップ画面で、今日の運用状況と主要導線をまとめて確認できます。{% endblock %}
+{% block content %}
+<div class="tool-grid">
+  <section class="tool-panel is-hero-panel">
+    <div class="tool-panel-head is-wide">
+      <div>
+        <h2>店舗運用サマリー</h2>
+        <div class="tool-note">予約・顧客・売上を上から確認できる管理トップです。</div>
+      </div>
+      <div class="tool-inline-tools">
+        <a class="tool-btn is-primary" href="/admin/{{ shop_id }}/reservations">予約管理を開く</a>
+        <a class="tool-btn" href="/admin/{{ shop_id }}/customers">顧客一覧を開く</a>
+      </div>
+    </div>
+    <div class="tool-dashboard-layout">
+      <div class="tool-dashboard-main">
+        <div class="tool-kpi-grid">
+          <div class="tool-kpi-card">
+            <div class="tool-kpi-title">本日の予約</div>
+            <div class="tool-kpi-number">{{ today_reservations|length }}</div>
+            <div class="tool-kpi-meta">今日の予約件数</div>
+          </div>
+          <div class="tool-kpi-card">
+            <div class="tool-kpi-title">未対応予約</div>
+            <div class="tool-kpi-number">{{ pending_reservations|length }}</div>
+            <div class="tool-kpi-meta">来店済み前の予約</div>
+          </div>
+          <div class="tool-kpi-card">
+            <div class="tool-kpi-title">累計顧客</div>
+            <div class="tool-kpi-number">{{ customers|length }}</div>
+            <div class="tool-kpi-meta">登録済み顧客数</div>
+          </div>
+          <div class="tool-kpi-card">
+            <div class="tool-kpi-title">本日売上</div>
+            <div class="tool-kpi-number">¥{{ sales_summary.today_sales }}</div>
+            <div class="tool-kpi-meta">来店済み分のみ反映</div>
+          </div>
+        </div>
+
+        <div class="tool-panel is-subpanel">
+          <div class="tool-panel-head">
+            <h2>主要メニュー</h2>
+            <div class="tool-note">日常運用で使う機能を上段に集約しています。</div>
+          </div>
+          <div class="tool-shortcut-grid">
+            <a class="tool-shortcut-card is-active" href="/admin/{{ shop_id }}/dashboard"><strong>ダッシュボード</strong><span>運用状況を見る</span></a>
+            <a class="tool-shortcut-card" href="/admin/{{ shop_id }}/reservations"><strong>予約管理</strong><span>登録・来店処理</span></a>
+            <a class="tool-shortcut-card" href="/admin/{{ shop_id }}/customers"><strong>顧客管理</strong><span>顧客情報の確認</span></a>
+            <a class="tool-shortcut-card" href="/admin/{{ shop_id }}/settings"><strong>店舗設定</strong><span>店舗情報の更新</span></a>
+            <a class="tool-shortcut-card" href="/admin/{{ shop_id }}/website"><strong>ホームページ設定</strong><span>公開導線の管理</span></a>
+          </div>
+        </div>
+
+        <div class="tool-grid cols-2">
+          <section class="tool-panel is-subpanel">
+            <div class="tool-panel-head">
+              <h2>今日の予約</h2>
+              <a class="tool-btn" href="/admin/{{ shop_id }}/reservations?date={{ today }}">予約管理へ</a>
+            </div>
+            <div class="tool-panel-body">
+              {% if today_reservations %}
+              <div class="tool-table-wrap">
+                <table class="tool-table">
+                  <thead><tr><th>時間</th><th>顧客</th><th>スタッフ</th><th>メニュー</th><th>状態</th></tr></thead>
+                  <tbody>
+                    {% for item in today_reservations|sort(attribute='start_time') %}
+                    <tr>
+                      <td>{{ item.start_time }}〜{{ item.end_time }}</td>
+                      <td>{{ item.customer_name }}</td>
+                      <td>{{ item.staff_name }}</td>
+                      <td>{{ item.menu_name }}</td>
+                      <td><span class="tool-status {% if item.status == '来店済み' %}is-done{% elif item.status == 'キャンセル' %}is-cancelled{% else %}is-reserved{% endif %}">{{ item.status }}</span></td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              {% else %}<div class="tool-empty">本日の予約はまだありません。</div>{% endif %}
+            </div>
+          </section>
+
+          <section class="tool-panel is-subpanel">
+            <div class="tool-panel-head"><h2>店舗情報</h2></div>
+            <div class="tool-system-list">
+              <div class="tool-system-row"><span>営業時間</span><strong>{{ shop.business_hours or '未設定' }}</strong></div>
+              <div class="tool-system-row"><span>定休日</span><strong>{{ shop.holiday or '未設定' }}</strong></div>
+              <div class="tool-system-row"><span>電話番号</span><strong>{{ shop.phone or '未設定' }}</strong></div>
+              <div class="tool-system-row"><span>住所</span><strong>{{ shop.address or '未設定' }}</strong></div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <aside class="tool-dashboard-side">
+        <section class="tool-panel is-sidepanel">
+          <div class="tool-panel-head"><h2>クイック操作</h2></div>
+          <div class="tool-vertical-actions">
+            <a class="tool-btn is-primary" href="/admin/{{ shop_id }}/reservations">予約を登録</a>
+            <a class="tool-btn" href="/admin/{{ shop_id }}/customers">顧客を登録</a>
+            <a class="tool-btn" href="/admin/{{ shop_id }}/settings">店舗情報を編集</a>
+            <a class="tool-btn" href="/admin/{{ shop_id }}/website">ホームページを編集</a>
+          </div>
+        </section>
+
+        <section class="tool-panel is-sidepanel">
+          <div class="tool-panel-head"><h2>運用メモ</h2></div>
+          <div class="tool-mini-stack">
+            <div class="tool-mini-card"><strong>本日の予約件数</strong><span>{{ today_reservations|length }} 件</span></div>
+            <div class="tool-mini-card"><strong>未対応件数</strong><span>{{ pending_reservations|length }} 件</span></div>
+            <div class="tool-mini-card"><strong>本日売上</strong><span>¥{{ sales_summary.today_sales }}</span></div>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </section>
+
+  <section class="tool-panel">
+    <div class="tool-panel-head">
+      <h2>予約推移イメージ</h2>
+      <div class="tool-chart-tabs">
+        <div class="tool-tab is-active">予約</div>
+        <div class="tool-tab">売上</div>
+        <div class="tool-tab">顧客</div>
+      </div>
+    </div>
+    <div class="tool-panel-body">
+      <div class="tool-graph-board">
+        <div class="tool-graph-header">
+          <span>月間推移</span>
+          <span>予約</span>
+        </div>
+        <div class="tool-chart-placeholder is-dark">
+          <div class="tool-chart-line">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              <polyline fill="none" stroke="#f3b313" stroke-width="2.4" points="0,78 10,76 20,76 30,70 40,70 50,66 60,64 70,58 80,52 90,48 100,42"></polyline>
+              <g fill="#f3b313">
+                <circle cx="0" cy="78" r="2.2"></circle><circle cx="10" cy="76" r="2.2"></circle><circle cx="20" cy="76" r="2.2"></circle><circle cx="30" cy="70" r="2.2"></circle><circle cx="40" cy="70" r="2.2"></circle><circle cx="50" cy="66" r="2.2"></circle><circle cx="60" cy="64" r="2.2"></circle><circle cx="70" cy="58" r="2.2"></circle><circle cx="80" cy="52" r="2.2"></circle><circle cx="90" cy="48" r="2.2"></circle><circle cx="100" cy="42" r="2.2"></circle>
+              </g>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tool-panel">
+    <div class="tool-panel-head">
+      <h2>直近の予約一覧</h2>
+      <div class="tool-note">新しい順に8件</div>
+    </div>
+    <div class="tool-panel-body">
+      {% if recent_reservations %}
+      <div class="tool-table-wrap">
+        <table class="tool-table">
+          <thead><tr><th>日付</th><th>時間</th><th>顧客</th><th>スタッフ</th><th>メニュー</th><th>状態</th></tr></thead>
+          <tbody>
+            {% for item in recent_reservations %}
+            <tr>
+              <td>{{ item.reservation_date }}</td>
+              <td>{{ item.start_time }}</td>
+              <td>{{ item.customer_name }}</td>
+              <td>{{ item.staff_name }}</td>
+              <td>{{ item.menu_name }}</td>
+              <td><span class="tool-status {% if item.status == '来店済み' %}is-done{% elif item.status == 'キャンセル' %}is-cancelled{% else %}is-reserved{% endif %}">{{ item.status }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}<div class="tool-empty">予約データはまだありません。</div>{% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

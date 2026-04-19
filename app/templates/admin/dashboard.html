@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ shop.shop_name }} 管理画面</title>
+  <style>
+    :root {
+      --primary: {{ shop.primary_color }};
+      --primary-dark: {{ shop.primary_dark }};
+      --bg-soft: {{ shop.accent_bg }};
+      --text: #1f2937;
+      --subtext: #6b7280;
+      --line: #d8efec;
+      --line-strong: #b9e4df;
+      --card: #ffffff;
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+      --danger: #dc2626;
+      --danger-dark: #991b1b;
+      --done: #15803d;
+      --done-soft: #dcfce7;
+      --reserved-soft: rgba(46, 196, 182, 0.14);
+      --holiday-soft: #fef2f2;
+      --holiday-line: #fecaca;
+      --holiday-text: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #ffffff 0%, var(--bg-soft) 100%);
+    }
+    a { color: inherit; }
+    .wrap { max-width: 1240px; margin: 0 auto; }
+    .top-nav {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .top-nav a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid var(--line);
+      text-decoration: none;
+      font-weight: 700;
+      color: var(--primary-dark);
+    }
+    .top-nav a.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .hero {
+      background: linear-gradient(135deg, #ffffff 0%, #ecfffc 100%);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 28px;
+      margin-bottom: 20px;
+    }
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .hero h1 { margin: 0 0 8px; color: var(--primary-dark); }
+    .hero p { margin: 0; color: var(--subtext); line-height: 1.8; }
+    .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .hero-actions a, .hero-actions button {
+      min-height: 44px;
+      padding: 0 16px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--primary-dark);
+      text-decoration: none;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .hero-actions .primary-link { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .hero-actions form { margin: 0; }
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+    .summary-card, .card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); }
+    .summary-card { padding: 20px; }
+    .summary-label { font-size: 13px; font-weight: 700; color: var(--subtext); margin-bottom: 12px; }
+    .summary-value { font-size: 28px; font-weight: 800; color: var(--primary-dark); }
+    .summary-sub { margin-top: 8px; font-size: 13px; color: var(--subtext); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    .calendar-layout { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 16px; margin-bottom: 20px; align-items: start; }
+    .card { padding: 22px; margin-bottom: 20px; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+    .card-header h2 { margin: 0; font-size: 20px; color: var(--primary-dark); }
+    .badge { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; padding: 7px 12px; background: rgba(46, 196, 182, 0.14); color: var(--primary-dark); font-size: 12px; font-weight: 800; }
+    .holiday-badge { background: var(--holiday-soft); color: var(--holiday-text); }
+    label { display: block; font-size: 14px; font-weight: 700; margin-top: 14px; }
+    input, select { width: 100%; margin-top: 8px; border: 1px solid var(--line); border-radius: 12px; padding: 14px; font-size: 15px; background: #fff; }
+    button[type="submit"] { min-height: 48px; border: none; border-radius: 12px; padding: 0 18px; background: var(--primary); color: #fff; font-weight: 800; cursor: pointer; margin-top: 18px; }
+    .error-box { margin-bottom: 14px; padding: 12px 14px; border-radius: 12px; border: 1px solid #fecaca; background: #fef2f2; color: #b91c1c; font-size: 14px; font-weight: 700; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th { font-size: 12px; color: var(--subtext); border-bottom: 1px solid var(--line); padding: 14px 12px; text-align: left; white-space: nowrap; }
+    td { border-bottom: 1px solid #edf4f3; padding: 14px 12px; text-align: left; font-size: 14px; vertical-align: middle; white-space: nowrap; }
+    .price { font-weight: 700; color: var(--primary-dark); }
+    .empty { margin: 0; padding: 18px; border-radius: 12px; background: #f9fffe; border: 1px dashed var(--line-strong); color: var(--subtext); }
+    .status { display: inline-flex; align-items: center; justify-content: center; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .status-reserved { background: var(--reserved-soft); color: var(--primary-dark); }
+    .status-done { background: var(--done-soft); color: var(--done); }
+    .status-cancelled { background: rgba(239, 68, 68, 0.12); color: var(--danger-dark); }
+    .action-buttons { display: flex; gap: 8px; }
+    .action-buttons form { margin: 0; }
+    .done-button { background: #16a34a !important; }
+    .danger-button { background: #dc2626 !important; }
+    .calendar-nav { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .calendar-nav a { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 14px; border-radius: 10px; text-decoration: none; font-weight: 700; border: 1px solid var(--line); background: #fff; color: var(--primary-dark); }
+    .calendar-nav .month-label { min-width: 108px; text-align: center; font-weight: 800; color: var(--primary-dark); }
+    .calendar-weekdays, .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
+    .calendar-weekdays { margin-bottom: 10px; padding: 0 2px; }
+    .calendar-weekday { text-align: center; font-size: 12px; font-weight: 800; color: var(--subtext); }
+    .calendar-day { display: block; min-height: 110px; padding: 12px; border-radius: 16px; border: 1px solid var(--line); background: #fff; text-decoration: none; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+    .calendar-day:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06); }
+    .calendar-day.is-outside { opacity: 0.5; background: #fbfdfd; }
+    .calendar-day.is-today { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
+    .calendar-day.is-selected { background: linear-gradient(180deg, #ffffff 0%, #eefdfa 100%); border-color: var(--primary); }
+    .calendar-day.is-holiday { background: var(--holiday-soft); border-color: var(--holiday-line); }
+    .calendar-day.is-holiday .calendar-day-number, .calendar-day.is-holiday .calendar-meta, .calendar-day.is-holiday .holiday-label { color: var(--holiday-text); }
+    .calendar-day-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px; }
+    .calendar-day-number { font-size: 15px; font-weight: 800; color: var(--text); }
+    .calendar-count { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--reserved-soft); color: var(--primary-dark); font-size: 12px; font-weight: 800; }
+    .calendar-meta { font-size: 12px; color: var(--subtext); line-height: 1.6; }
+    .holiday-label { display: block; margin-top: 6px; font-size: 11px; font-weight: 800; }
+    .day-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .day-title { margin: 0; font-size: 22px; color: var(--primary-dark); }
+    .day-sub { margin: 6px 0 0; color: var(--subtext); font-size: 14px; }
+    .timeline { display: grid; gap: 12px; }
+    .timeline-item { border: 1px solid var(--line); border-radius: 16px; padding: 14px; background: #fff; }
+    .timeline-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+    .timeline-time { font-size: 18px; font-weight: 800; color: var(--primary-dark); }
+    .timeline-main { display: grid; gap: 6px; font-size: 14px; }
+    .timeline-main strong { color: var(--text); }
+    .section-note { margin-top: 12px; font-size: 13px; color: var(--subtext); }
+    .staff-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    .staff-link { display: block; text-decoration: none; border: 1px solid var(--line); border-radius: 16px; padding: 16px; background: #fff; }
+    .staff-link:hover { border-color: var(--primary); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06); }
+    .staff-link-name { font-size: 16px; font-weight: 800; color: var(--primary-dark); margin-bottom: 6px; }
+    .staff-link-sub { font-size: 13px; color: var(--subtext); }
+    @media (max-width: 1100px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } .calendar-layout, .grid { grid-template-columns: 1fr; } }
+    @media (max-width: 900px) { body { padding: 16px; } .summary-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 640px) { .calendar-grid { gap: 8px; } .calendar-day { min-height: 92px; padding: 10px; } .calendar-day-number { font-size: 14px; } .calendar-count { min-width: 22px; height: 22px; font-size: 11px; } .timeline-top { align-items: flex-start; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav class="top-nav">
+      <a href="/shop/{{ shop_id }}" target="_blank">予約サイト</a>
+      <a href="/admin/login/{{ shop_id }}">ログイン</a>
+      <a href="/admin/{{ shop_id }}" class="active">管理トップ</a>
+      {% for staff in staff_list %}
+      <a href="/admin/{{ shop_id }}/staff/{{ staff.id }}">{{ staff.name }}</a>
+      {% endfor %}
+    </nav>
+
+    <div class="hero">
+      <div class="hero-top">
+        <div>
+          <h1>{{ shop.shop_name }} 管理画面</h1>
+          <p>{{ shop.description }}</p>
+          <p style="margin-top:10px;"><strong>現在のプラン:</strong> {{ subscription.plan_name }} / ステータス: {{ subscription.status }}</p>
+        </div>
+        <div class="hero-actions"><a href="/admin/{{ shop_id }}/settings">店舗設定</a>
+          <a href="/shop/{{ shop_id }}" target="_blank" class="primary-link">自分の予約サイトを見る</a>
+          <a href="/admin/login/{{ shop_id }}">ログイン画面へ</a>
+          <form method="post" action="/admin/logout/{{ shop_id }}">
+            <button type="submit">ログアウト</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="summary-grid">
+      <div class="summary-card"><div class="summary-label">本日の売上</div><div class="summary-value">¥{{ sales_summary.today_sales }}</div><div class="summary-sub">来店済み {{ sales_summary.today_completed_count }}件</div></div>
+      <div class="summary-card"><div class="summary-label">累計売上</div><div class="summary-value">¥{{ sales_summary.total_sales }}</div><div class="summary-sub">来店済み合計 {{ sales_summary.completed_count }}件</div></div>
+      <div class="summary-card"><div class="summary-label">顧客数</div><div class="summary-value">{{ customers|length }}</div><div class="summary-sub">登録済み顧客</div></div>
+      <div class="summary-card"><div class="summary-label">予約件数</div><div class="summary-value">{{ reservations|length }}</div><div class="summary-sub">全ステータス合計</div></div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="card-header"><h2>管理ユーザー</h2><span class="badge">新規登録対応</span></div>
+        <p class="section-note" style="margin-top:0;">現在ログイン中: {{ current_admin_name or "未取得" }}</p>
+        <div class="table-wrap"><table><thead><tr><th>名前</th><th>ログインID</th><th>権限</th><th>状態</th></tr></thead><tbody>
+          {% for user in admin_users %}
+          <tr>
+            <td>{{ user.name }}</td>
+            <td>{{ user.login_id }}</td>
+            <td>{% if user.is_owner %}owner{% else %}staff{% endif %}</td>
+            <td>{% if user.is_active %}有効{% else %}停止{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody></table></div>
+        <div style="margin-top:14px;"><a href="/admin/register/{{ shop_id }}" class="primary-link">新規ユーザー登録</a></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2>契約プランの土台</h2><span class="badge">後から有料化対応</span></div>
+        <p class="section-note" style="margin-top:0;">今は決済連携なしで、店舗ごとの契約プランだけ切り替えられるようにしています。後から無料/有料プラン追加、広告ON/OFF、機能制限の拡張に使えます。</p>
+        <form method="post" action="/admin/{{ shop_id }}/subscription">
+          <label>現在のプラン
+            <select name="plan_id">
+              {% for plan in available_plans %}
+              <option value="{{ plan.id }}" {% if subscription.plan_id == plan.id %}selected{% endif %}>{{ plan.name }} / ¥{{ plan.monthly_price }} / code: {{ plan.code }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>契約状態
+            <select name="status">
+              <option value="active" {% if subscription.status == "active" %}selected{% endif %}>active</option>
+              <option value="trial" {% if subscription.status == "trial" %}selected{% endif %}>trial</option>
+              <option value="canceled" {% if subscription.status == "canceled" %}selected{% endif %}>canceled</option>
+            </select>
+          </label>
+          <button type="submit">プラン設定を保存する</button>
+        </form>
+        <div class="section-note">広告表示: {% if subscription.show_ads %}あり{% else %}なし{% endif %} / LINE: {% if subscription.can_use_line %}利用可{% else %}停止{% endif %} / レポート: {% if subscription.can_use_reports %}利用可{% else %}停止{% endif %}</div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2>プラン上限の見え方</h2><span class="badge">将来の制限制御用</span></div>
+        <div class="table-wrap"><table><thead><tr><th>項目</th><th>現在値</th><th>プラン上限</th></tr></thead><tbody>
+          <tr><td>スタッフ数</td><td>{{ staff_list|length }}</td><td>{{ subscription.max_staff }}</td></tr>
+          <tr><td>顧客数</td><td>{{ customers|length }}</td><td>{{ subscription.max_customers }}</td></tr>
+          <tr><td>予約件数</td><td>{{ reservations|length }}</td><td>{{ subscription.max_reservations_per_month }}</td></tr>
+        </tbody></table></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>スタッフ一覧</h2>
+        <span class="badge">押すと個別の予約状況へ</span>
+      </div>
+      <div class="staff-grid">
+        {% for staff in staff_list %}
+        <a href="/admin/{{ shop_id }}/staff/{{ staff.id }}" class="staff-link">
+          <div class="staff-link-name">{{ staff.name }}</div>
+          <div class="staff-link-sub">このスタッフのカレンダーと日別スケジュールを見る</div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="calendar-layout">
+      <div class="card">
+        <div class="card-header">
+          <h2>予約カレンダー</h2>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <span class="badge holiday-badge">{{ shop.holiday }} は赤表示</span>
+            <div class="calendar-nav">
+              <a href="/admin/{{ shop_id }}?month={{ calendar_prev_month }}&date={{ selected_date }}">← 前月</a>
+              <div class="month-label">{{ calendar_month_label }}</div>
+              <a href="/admin/{{ shop_id }}?month={{ calendar_next_month }}&date={{ selected_date }}">次月 →</a>
+            </div>
+          </div>
+        </div>
+        <div class="calendar-weekdays"><div class="calendar-weekday">日</div><div class="calendar-weekday">月</div><div class="calendar-weekday">火</div><div class="calendar-weekday">水</div><div class="calendar-weekday">木</div><div class="calendar-weekday">金</div><div class="calendar-weekday">土</div></div>
+        <div class="calendar-grid">
+          {% for day in calendar_days %}
+          <a href="/admin/{{ shop_id }}?month={{ calendar_month_value }}&date={{ day.date }}" class="calendar-day{% if not day.is_current_month %} is-outside{% endif %}{% if day.is_today %} is-today{% endif %}{% if selected_date == day.date %} is-selected{% endif %}{% if day.is_holiday %} is-holiday{% endif %}">
+            <div class="calendar-day-top"><span class="calendar-day-number">{{ day.day }}</span><span class="calendar-count">{{ day.count }}人</span></div>
+            <div class="calendar-meta">{% if day.count > 0 %}予約あり{% else %}予約なし{% endif %}</div>
+            {% if day.is_holiday %}<span class="holiday-label">定休日</span>{% endif %}
+          </a>
+          {% endfor %}
+        </div>
+        <p class="section-note">日付を押すと、その日のタイムスケジュールを右側で確認できます。人数はキャンセル以外の予約数です。</p>
+      </div>
+
+      <div class="card">
+        <div class="day-header">
+          <div>
+            <h2 class="day-title">{{ selected_date }} のタイムスケジュール</h2>
+            <p class="day-sub">予約 {{ selected_day_count }}件</p>
+          </div>
+          <a href="/admin/{{ shop_id }}?month={{ calendar_month_value }}&date={{ today }}" class="badge" style="text-decoration:none;">今日を見る</a>
+        </div>
+        {% if selected_day_schedule %}
+        <div class="timeline">
+          {% for reservation in selected_day_schedule %}
+          <div class="timeline-item">
+            <div class="timeline-top">
+              <div class="timeline-time">{{ reservation.start_time }} - {{ reservation.end_time }}</div>
+              {% if reservation.status == "キャンセル" %}<span class="status status-cancelled">キャンセル</span>{% elif reservation.status == "来店済み" %}<span class="status status-done">来店済み</span>{% else %}<span class="status status-reserved">予約済み</span>{% endif %}
+            </div>
+            <div class="timeline-main">
+              <div><strong>顧客:</strong> {{ reservation.customer_name }}</div>
+              <div><strong>スタッフ:</strong> <a href="/admin/{{ shop_id }}/staff/{{ reservation.staff_id }}?month={{ calendar_month_value }}&date={{ reservation.reservation_date }}">{{ reservation.staff_name }}</a></div>
+              <div><strong>メニュー:</strong> {{ reservation.menu_name }} / {{ reservation.duration }}分 / ¥{{ reservation.price }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty">この日の予約はまだありません。</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="card-header"><h2>顧客登録</h2><span class="badge">顧客</span></div>
+        <form method="post" action="/admin/{{ shop_id }}/customers">
+          <label>顧客名<input type="text" name="name" placeholder="例：山田 花子" required></label>
+          <label>電話番号<input type="text" name="phone" placeholder="例：090-1234-5678"></label>
+          <button type="submit">顧客を登録する</button>
+        </form>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2>予約登録</h2><span class="badge">予約</span></div>
+        {% if error_message %}<div class="error-box">{{ error_message }}</div>{% endif %}
+        <form method="post" action="/admin/{{ shop_id }}/reservations">
+          <label>顧客<select name="customer_id" required><option value="">顧客を選んでください</option>{% for customer in customers %}<option value="{{ customer.id }}">{{ customer.name }}</option>{% endfor %}</select></label>
+          <label>スタッフ<select name="staff_id" required><option value="">スタッフを選んでください</option>{% for staff in staff_list %}<option value="{{ staff.id }}">{{ staff.name }}</option>{% endfor %}</select></label>
+          <label>メニュー<select name="menu_id" required><option value="">メニューを選んでください</option>{% for menu in menus %}<option value="{{ menu.id }}">{{ menu.name }}（{{ menu.duration }}分 / ¥{{ menu.price }}）</option>{% endfor %}</select></label>
+          <label>日付<input type="date" name="reservation_date" value="{{ today }}" required></label>
+          <label>開始時間<input type="time" name="start_time" required></label>
+          <button type="submit">予約を登録する</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2>顧客一覧</h2><span class="badge">{{ customers|length }}件</span></div>
+      {% if customers %}
+      <div class="table-wrap"><table><thead><tr><th>ID</th><th>名前</th><th>電話番号</th></tr></thead><tbody>{% for customer in customers %}<tr><td>{{ customer.id }}</td><td>{{ customer.name }}</td><td>{{ customer.phone }}</td></tr>{% endfor %}</tbody></table></div>
+      {% else %}<p class="empty">まだ顧客が登録されていません。</p>{% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2>予約一覧</h2><span class="badge">{{ reservations|length }}件</span></div>
+      {% if reservations %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>ID</th><th>日付</th><th>開始</th><th>終了</th><th>所要時間</th><th>料金</th><th>顧客</th><th>スタッフ</th><th>メニュー</th><th>状態</th><th>操作</th></tr></thead>
+          <tbody>
+            {% for reservation in reservations %}
+            <tr>
+              <td>{{ reservation.id }}</td><td>{{ reservation.reservation_date }}</td><td>{{ reservation.start_time }}</td><td>{{ reservation.end_time }}</td><td>{{ reservation.duration }}分</td><td class="price">¥{{ reservation.price }}</td><td>{{ reservation.customer_name }}</td>
+              <td><a href="/admin/{{ shop_id }}/staff/{{ reservation.staff_id }}?month={{ reservation.reservation_date[:7] }}&date={{ reservation.reservation_date }}">{{ reservation.staff_name }}</a></td>
+              <td>{{ reservation.menu_name }}</td>
+              <td>{% if reservation.status == "キャンセル" %}<span class="status status-cancelled">キャンセル</span>{% elif reservation.status == "来店済み" %}<span class="status status-done">来店済み</span>{% else %}<span class="status status-reserved">予約済み</span>{% endif %}</td>
+              <td><div class="action-buttons">{% if reservation.status == "予約済み" %}<form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/done"><button type="submit" class="done-button">来店済み</button></form><form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/cancel"><button type="submit" class="danger-button">キャンセル</button></form>{% else %}<span>-</span>{% endif %}</div></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}<p class="empty">まだ予約が登録されていません。</p>{% endif %}
+    </div>
+  </div>
+</body>
+</html>

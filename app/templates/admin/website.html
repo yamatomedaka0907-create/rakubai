@@ -1,0 +1,87 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<div class="hero">
+  <div class="hero-top">
+    <div>
+      <h1>ホームページ設定</h1>
+      <p>テンプレート選択と直接編集の導線を、WEB風でも他メニューと同じ見た目・同じ情報量で扱えるように統一しています。</p>
+    </div>
+    <div class="hero-actions">
+      <a href="/admin/{{ shop_id }}/website/editor" class="primary-link">直接編集モードを開く</a>
+      <a href="/site/{{ shop_id }}" target="_blank">現在のプレビュー</a>
+      <a href="/p/{{ homepage_settings.public_path if homepage_settings else shop_id }}" target="_blank">公開URLを開く</a>
+    </div>
+  </div>
+</div>
+
+{% if success_message %}
+<div class="error-box" style="background:#ecfdf5;color:#166534;border-color:#bbf7d0;">{{ success_message }}</div>
+{% endif %}
+
+<div class="summary-grid">
+  <div class="summary-card">
+    <div class="summary-label">公開URL</div>
+    <div class="summary-value" style="font-size:22px;">/p/{{ homepage_settings.public_path if homepage_settings else shop_id }}</div>
+    <div class="summary-sub">メインサイト配下で公開</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">公開状態</div>
+    <div class="summary-value">{% if homepage_settings and homepage_settings.is_published %}公開中{% else %}下書き{% endif %}</div>
+    <div class="summary-sub">テンプレ反映後も編集可能</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">テンプレート</div>
+    <div class="summary-value">{{ homepage_samples|length if homepage_samples is defined else 0 }}種</div>
+    <div class="summary-sub">プレビューして即反映</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">セクション数</div>
+    <div class="summary-value">{{ homepage_sections|length }}</div>
+    <div class="summary-sub">直接編集モードで管理</div>
+  </div>
+</div>
+
+<div class="grid">
+  <section class="card">
+    <div class="card-header">
+      <h2>運用フロー</h2>
+      <span class="badge">WEB風</span>
+    </div>
+    <p class="section-note">サンプル選択と直接編集の二段階に絞っています。</p>
+    <div class="nav-card" style="margin-top:16px;">
+      <strong>1. テンプレートを選ぶ → 2. プレビューで確認 → 3. 反映して保存 → 4. 直接編集モードで微調整</strong>
+    </div>
+    <div class="hero-actions" style="margin-top:16px;">
+      <a href="/admin/{{ shop_id }}/website/editor" class="primary-link">直接編集モードを開く</a>
+      <a href="/site/{{ shop_id }}" target="_blank">現在のプレビュー</a>
+      <a href="/p/{{ homepage_settings.public_path if homepage_settings else shop_id }}" target="_blank">公開URLを開く</a>
+    </div>
+    {% if homepage_settings and homepage_settings.is_published %}
+    <form method="post" action="/admin/{{ shop_id }}/website/unpublish">
+      <button type="submit" style="margin-top:16px;">下書きに戻す</button>
+    </form>
+    {% else %}
+    <form method="post" action="/admin/{{ shop_id }}/website/publish">
+      <button type="submit" style="margin-top:16px;">公開する</button>
+    </form>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <div class="card-header">
+      <h2>サンプルホームページ</h2>
+      <span class="badge">共通内容</span>
+    </div>
+    <p class="section-note">一覧ページからカテゴリやキーワードで探して選ぶ構成です。</p>
+    <div class="nav-card" style="margin-top:16px;">
+      <h2 style="margin:0;font-size:18px;">サンプルホームページを見る</h2>
+      <p>実際のサンプルHPを見ながら選べます。反映時はサンプルのデザイン設定を使い、写真や文言は今の内容を引き継ぎます。</p>
+      <div class="hero-actions" style="margin-top:16px;">
+        <a href="/samples" class="primary-link">サンプルホームページを見る</a>
+        <a href="/samples" target="_blank">別タブで開く</a>
+        <a href="/admin/{{ shop_id }}/website/editor">直接編集へ</a>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

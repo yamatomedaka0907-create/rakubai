@@ -1,0 +1,98 @@
+{
+  "demo-salon": {
+    "shop_id": "demo-salon",
+    "shop_name": "サンプル美容室",
+    "catch_copy": "LINE予約もできる、やさしく使いやすい美容室予約システム",
+    "description": "初めての方も常連のお客様も、かんたんに予約できる店舗ページのサンプルです。",
+    "phone": "03-1234-5678",
+    "address": "東京都渋谷区サンプル1-2-3",
+    "business_hours": "10:00〜19:00",
+    "holiday": "火曜日",
+    "primary_color": "#2ec4b6",
+    "primary_dark": "#159a90",
+    "accent_bg": "#f7fffe",
+    "admin_login_id": "demo_admin",
+    "admin_password": "demo1234",
+    "menus": [
+      {
+        "id": 1,
+        "name": "カット",
+        "duration": 60,
+        "price": 4000,
+        "description": "似合わせカットで、扱いやすいスタイルに整えます。"
+      },
+      {
+        "id": 2,
+        "name": "カット+カラー",
+        "duration": 120,
+        "price": 9000,
+        "description": "カットとカラーをまとめて施術する人気メニューです。"
+      },
+      {
+        "id": 3,
+        "name": "縮毛矯正",
+        "duration": 180,
+        "price": 15000,
+        "description": "広がりやうねりを抑えて、まとまりのある髪へ整えます。"
+      }
+    ],
+    "staff_list": [
+      {
+        "id": 1,
+        "name": "オーナー"
+      },
+      {
+        "id": 2,
+        "name": "スタイリストA"
+      }
+    ]
+  },
+  "blue-hair": {
+    "shop_id": "blue-hair",
+    "shop_name": "Blue Hair",
+    "catch_copy": "落ち着いた空間で、髪も気分も整うヘアサロン",
+    "description": "大人女性向けの上質な施術を提供する、2店舗目サンプルです。",
+    "phone": "06-9876-5432",
+    "address": "大阪府大阪市サンプル4-5-6",
+    "business_hours": "09:00〜18:00",
+    "holiday": "月曜日",
+    "primary_color": "#4f46e5",
+    "primary_dark": "#312e81",
+    "accent_bg": "#f7f7ff",
+    "admin_login_id": "blue_admin",
+    "admin_password": "blue1234",
+    "menus": [
+      {
+        "id": 1,
+        "name": "カット",
+        "duration": 60,
+        "price": 5000,
+        "description": "骨格や髪質に合わせた丁寧なカットです。"
+      },
+      {
+        "id": 2,
+        "name": "カラー",
+        "duration": 90,
+        "price": 7000,
+        "description": "艶と透明感を大切にしたカラー施術です。"
+      },
+      {
+        "id": 3,
+        "name": "カット+トリートメント",
+        "duration": 90,
+        "price": 8500,
+        "description": "髪を整えながら質感ケアまで行います。"
+      }
+    ],
+    "staff_list": [
+      {
+        "id": 1,
+        "name": "店長"
+      },
+      {
+        "id": 2,
+        "name": "スタイリストB"
+      }
+    ]
+  }
+}

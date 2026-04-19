@@ -1,0 +1,124 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<div class="hero"><div class="hero-top"><div><h1>店舗情報編集</h1><p>予約ページに表示する店舗情報をここで変更します。</p></div><div class="hero-actions"><a href="/shop/{{ shop_id }}" target="_blank" class="primary-link">予約サイトを確認</a><a href="/admin/{{ shop_id }}">管理トップへ</a></div></div></div>
+<div class="card">
+  <div class="card-header"><h2>ショップ設定</h2><span class="badge">公開ページに反映</span></div>
+  <form method="post" action="/admin/{{ shop_id }}/settings" id="shop-settings-form">
+    <label>店舗名<input type="text" name="shop_name" value="{{ shop.shop_name }}" required></label>
+    <label>キャッチコピー<input type="text" name="catch_copy" value="{{ shop.catch_copy }}"></label>
+    <label>説明文<textarea name="description">{{ shop.description }}</textarea></label>
+    <label>電話番号<input type="text" name="phone" value="{{ shop.phone }}"></label>
+    <label>住所<input type="text" name="address" value="{{ shop.address }}"></label>
+    <div class="grid">
+      <div><label>営業時間<input type="text" name="business_hours" value="{{ shop.business_hours }}" placeholder="10:00〜19:00"></label></div>
+      <div><label>定休日<select name="holiday">{% for day_name in ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日", "日曜日"] %}<option value="{{ day_name }}" {% if shop.holiday == day_name %}selected{% endif %}>{{ day_name }}</option>{% endfor %}</select></label></div>
+    </div>
+    <div class="grid">
+      <div><label>管理画面タイプ<select name="admin_ui_mode"><option value="web" {% if shop.admin_ui_mode != "tool" %}selected{% endif %}>WEB風</option><option value="tool" {% if shop.admin_ui_mode == "tool" %}selected{% endif %}>ツール風</option></select></label></div>
+      <div></div>
+    </div>
+    <div class="grid">
+      <div><label>メインカラー<select name="primary_color" id="primary_color" class="color-select">
+        <option value="#2ec4b6" {% if shop.primary_color == '#2ec4b6' %}selected{% endif %} style="background:#2ec4b6;color:#ffffff;">ターコイズ</option>
+        <option value="#3b82f6" {% if shop.primary_color == '#3b82f6' %}selected{% endif %} style="background:#3b82f6;color:#ffffff;">ブルー</option>
+        <option value="#ef4444" {% if shop.primary_color == '#ef4444' %}selected{% endif %} style="background:#ef4444;color:#ffffff;">レッド</option>
+        <option value="#22c55e" {% if shop.primary_color == '#22c55e' %}selected{% endif %} style="background:#22c55e;color:#ffffff;">グリーン</option>
+        <option value="#a855f7" {% if shop.primary_color == '#a855f7' %}selected{% endif %} style="background:#a855f7;color:#ffffff;">パープル</option>
+        <option value="#f97316" {% if shop.primary_color == '#f97316' %}selected{% endif %} style="background:#f97316;color:#ffffff;">オレンジ</option>
+        <option value="#ec4899" {% if shop.primary_color == '#ec4899' %}selected{% endif %} style="background:#ec4899;color:#ffffff;">ピンク</option>
+        <option value="#eab308" {% if shop.primary_color == '#eab308' %}selected{% endif %} style="background:#eab308;color:#111827;">イエロー</option>
+      </select></label></div>
+      <div><label>濃いめカラー<select name="primary_dark" id="primary_dark" class="color-select">
+        <option value="#159a90" {% if shop.primary_dark == '#159a90' %}selected{% endif %} style="background:#159a90;color:#ffffff;">ターコイズ濃</option>
+        <option value="#1d4ed8" {% if shop.primary_dark == '#1d4ed8' %}selected{% endif %} style="background:#1d4ed8;color:#ffffff;">ブルー濃</option>
+        <option value="#b91c1c" {% if shop.primary_dark == '#b91c1c' %}selected{% endif %} style="background:#b91c1c;color:#ffffff;">レッド濃</option>
+        <option value="#166534" {% if shop.primary_dark == '#166534' %}selected{% endif %} style="background:#166534;color:#ffffff;">グリーン濃</option>
+        <option value="#6b21a8" {% if shop.primary_dark == '#6b21a8' %}selected{% endif %} style="background:#6b21a8;color:#ffffff;">パープル濃</option>
+        <option value="#c2410c" {% if shop.primary_dark == '#c2410c' %}selected{% endif %} style="background:#c2410c;color:#ffffff;">オレンジ濃</option>
+        <option value="#be185d" {% if shop.primary_dark == '#be185d' %}selected{% endif %} style="background:#be185d;color:#ffffff;">ピンク濃</option>
+        <option value="#a16207" {% if shop.primary_dark == '#a16207' %}selected{% endif %} style="background:#a16207;color:#ffffff;">イエロー濃</option>
+      </select></label></div>
+    </div>
+    <label>背景カラー<select name="accent_bg" id="accent_bg" class="color-select">
+      <option value="#f7fffe" {% if shop.accent_bg == '#f7fffe' %}selected{% endif %} style="background:#f7fffe;color:#111827;">薄ミント</option>
+      <option value="#eff6ff" {% if shop.accent_bg == '#eff6ff' %}selected{% endif %} style="background:#eff6ff;color:#111827;">薄ブルー</option>
+      <option value="#fef2f2" {% if shop.accent_bg == '#fef2f2' %}selected{% endif %} style="background:#fef2f2;color:#111827;">薄レッド</option>
+      <option value="#f0fdf4" {% if shop.accent_bg == '#f0fdf4' %}selected{% endif %} style="background:#f0fdf4;color:#111827;">薄グリーン</option>
+      <option value="#faf5ff" {% if shop.accent_bg == '#faf5ff' %}selected{% endif %} style="background:#faf5ff;color:#111827;">薄パープル</option>
+      <option value="#fff7ed" {% if shop.accent_bg == '#fff7ed' %}selected{% endif %} style="background:#fff7ed;color:#111827;">薄オレンジ</option>
+      <option value="#fdf2f8" {% if shop.accent_bg == '#fdf2f8' %}selected{% endif %} style="background:#fdf2f8;color:#111827;">薄ピンク</option>
+      <option value="#fefce8" {% if shop.accent_bg == '#fefce8' %}selected{% endif %} style="background:#fefce8;color:#111827;">薄イエロー</option>
+    </select></label>
+
+    <div style="margin-top:24px; border:1px solid var(--line); border-radius:18px; padding:18px; background:#fcfffe;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
+        <div>
+          <div style="font-size:18px; font-weight:800; color:var(--primary-dark);">予約ページのメニュー</div>
+          <div style="color:var(--subtext); font-size:14px; line-height:1.7; margin-top:4px;">ここで追加・削除した内容が予約ページのメニュー一覧と選択肢に反映されます。</div>
+        </div>
+        <button type="button" id="add-menu-row" style="width:auto; margin-top:0; padding:0 16px; min-height:42px;">メニューを追加</button>
+      </div>
+      <div id="menu-editor" style="display:grid; gap:12px;">
+        {% for menu in shop.menus %}
+        <div class="menu-editor-row" style="border:1px solid var(--line); border-radius:16px; padding:14px; background:#ffffff;">
+          <div style="display:grid; grid-template-columns:1.5fr 0.7fr 0.9fr auto; gap:12px; align-items:end;">
+            <label style="margin-top:0;">メニュー名<input type="text" name="menu_name" value="{{ menu.name }}" placeholder="例: カット" required></label>
+            <label style="margin-top:0;">時間<input type="number" name="menu_duration" value="{{ menu.duration }}" min="0" step="1" placeholder="60"></label>
+            <label style="margin-top:0;">料金<input type="number" name="menu_price" value="{{ menu.price }}" min="0" step="1" placeholder="4000"></label>
+            <button type="button" class="remove-menu-row" style="width:auto; margin-top:0; padding:0 14px; min-height:46px; background:#ffffff; color:var(--primary-dark); border:1px solid var(--line);">削除</button>
+          </div>
+          <label>説明文<textarea name="menu_description" placeholder="例: 基本のカットメニューです。">{{ menu.description }}</textarea></label>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <button type="submit">店舗情報を保存する</button>
+  </form>
+</div>
+<template id="menu-row-template">
+  <div class="menu-editor-row" style="border:1px solid var(--line); border-radius:16px; padding:14px; background:#ffffff;">
+    <div style="display:grid; grid-template-columns:1.5fr 0.7fr 0.9fr auto; gap:12px; align-items:end;">
+      <label style="margin-top:0;">メニュー名<input type="text" name="menu_name" placeholder="例: カット" required></label>
+      <label style="margin-top:0;">時間<input type="number" name="menu_duration" min="0" step="1" placeholder="60"></label>
+      <label style="margin-top:0;">料金<input type="number" name="menu_price" min="0" step="1" placeholder="4000"></label>
+      <button type="button" class="remove-menu-row" style="width:auto; margin-top:0; padding:0 14px; min-height:46px; background:#ffffff; color:var(--primary-dark); border:1px solid var(--line);">削除</button>
+    </div>
+    <label>説明文<textarea name="menu_description" placeholder="例: 基本のカットメニューです。"></textarea></label>
+  </div>
+</template>
+<script>
+(function () {
+  function paint(selectEl) {
+    if (!selectEl) return;
+    const option = selectEl.options[selectEl.selectedIndex];
+    const value = (option && option.value ? option.value : '').toLowerCase();
+    selectEl.style.backgroundColor = value;
+    selectEl.style.color = ['#f7fffe','#eff6ff','#fef2f2','#f0fdf4','#faf5ff','#fff7ed','#fdf2f8','#fefce8','#eab308'].includes(value) ? '#111827' : '#ffffff';
+  }
+  ['primary_color','primary_dark','accent_bg'].forEach(function(id){
+    const el = document.getElementById(id);
+    if (!el) return;
+    paint(el);
+    el.addEventListener('change', function(){ paint(el); });
+  });
+
+  const editor = document.getElementById('menu-editor');
+  const template = document.getElementById('menu-row-template');
+  const addButton = document.getElementById('add-menu-row');
+  function bindRemove(root) {
+    const btn = root.querySelector('.remove-menu-row');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      root.remove();
+    });
+  }
+  editor.querySelectorAll('.menu-editor-row').forEach(bindRemove);
+  addButton.addEventListener('click', function () {
+    const node = template.content.firstElementChild.cloneNode(true);
+    editor.appendChild(node);
+    bindRemove(node);
+  });
+})();
+</script>
+{% endblock %}

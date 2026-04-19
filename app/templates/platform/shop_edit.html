@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ shop.shop_name }} | 登録店舗管理</title>
+  <style>
+    :root{--primary:#2ec4b6;--primary-dark:#159a90;--bg:#f7fffe;--line:#d8efec;--text:#1f2937;--sub:#6b7280;--card:#fff;--ok:#166534;--ok-bg:#f0fdf4;--danger:#b91c1c;--danger-bg:#fef2f2}
+    *{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#fff 0%,var(--bg) 100%);color:var(--text);padding:24px}.wrap{max-width:980px;margin:0 auto}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:18px}.links{display:flex;gap:10px;flex-wrap:wrap}.links a{display:inline-flex;padding:10px 14px;border-radius:999px;border:1px solid var(--line);text-decoration:none;color:var(--primary-dark);font-weight:700;background:#fff}.logout button{padding:10px 14px;border:none;border-radius:999px;background:#e5fffb;color:var(--primary-dark);font-weight:800}.card{background:#fff;border:1px solid var(--line);border-radius:24px;padding:28px;box-shadow:0 12px 32px rgba(15,23,42,.08)}.badge{display:inline-flex;padding:8px 12px;border-radius:999px;background:rgba(46,196,182,.14);color:var(--primary-dark);font-weight:700;font-size:13px;margin-bottom:14px}h1{margin:0 0 8px;color:var(--primary-dark)}.lead{color:var(--sub);line-height:1.7}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.full{grid-column:1 / -1}label{display:block;font-size:14px;font-weight:700;margin-top:16px}input,select,textarea{width:100%;margin-top:8px;padding:14px;border:1px solid var(--line);border-radius:12px;font:inherit} select.color-select{font-weight:700} select.color-select option{font-weight:700}textarea{min-height:120px;resize:vertical}button{margin-top:20px;min-height:48px;padding:0 18px;border:none;border-radius:12px;background:var(--primary);color:#fff;font-weight:800;font-size:15px}.msg{margin:0 0 16px;padding:12px 14px;border-radius:12px;font-weight:700}.ok{border:1px solid #bbf7d0;background:var(--ok-bg);color:var(--ok)}.err{border:1px solid #fecaca;background:var(--danger-bg);color:var(--danger)}.meta{margin-top:14px;color:var(--sub);font-size:13px}
+    @media (max-width: 820px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><div class="links"><a href="/platform/shops">登録店舗一覧へ戻る</a><a href="/admin/login/{{ shop.shop_id }}">店舗管理へ</a><a href="/shop/{{ shop.shop_id }}" target="_blank">予約ページを見る</a></div><form class="logout" method="post" action="/platform/logout"><button type="submit">ログアウト</button></form></div>
+  {% if message %}<div class="msg ok">{{ message }}</div>{% endif %}
+  {% if error_message %}<div class="msg err">{{ error_message }}</div>{% endif %}
+  <div class="card">
+    <div class="badge">運営管理者: {{ current_admin_name }}</div>
+    <h1>{{ shop.shop_name }}</h1>
+    <p class="lead">登録店舗の基本情報と現在プランを管理できます。店舗ごとの詳しい予約管理は各店舗の管理画面から行います。</p>
+    <form method="post" action="/platform/shops/{{ shop.shop_id }}/edit">
+      <div class="grid">
+        <label>店舗名<input type="text" name="shop_name" value="{{ shop.shop_name }}" required></label>
+        <label>shop_id<input type="text" value="{{ shop.shop_id }}" disabled></label>
+        <label>電話番号<input type="text" name="phone" value="{{ shop.phone }}"></label>
+        <label>定休日<input type="text" name="holiday" value="{{ shop.holiday }}"></label>
+        <label>営業時間<input type="text" name="business_hours" value="{{ shop.business_hours }}"></label>
+        <label>返信先メールアドレス<input type="email" name="reply_to_email" value="{{ shop.reply_to_email or "" }}" placeholder="店舗で返信を受けるメール"></label>
+        <label>契約状態<select name="subscription_status">{% for item in ['active','trialing','past_due','canceled'] %}<option value="{{ item }}" {% if shop.subscription_status == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
+        <label class="full">住所<input type="text" name="address" value="{{ shop.address }}"></label>
+        <label class="full">キャッチコピー<input type="text" name="catch_copy" value="{{ shop.catch_copy }}"></label>
+        <label class="full">説明文<textarea name="description">{{ shop.description }}</textarea></label>
+
+        <label>メインカラー
+          <select name="primary_color" id="primary_color" class="color-select">
+            <option value="#2ec4b6" style="background:#2ec4b6;color:#ffffff;">ターコイズ</option>
+            <option value="#3b82f6" style="background:#3b82f6;color:#ffffff;">ブルー</option>
+            <option value="#ef4444" style="background:#ef4444;color:#ffffff;">レッド</option>
+            <option value="#22c55e" style="background:#22c55e;color:#ffffff;">グリーン</option>
+            <option value="#a855f7" style="background:#a855f7;color:#ffffff;">パープル</option>
+          </select>
+        </label>
+        <label>濃いめカラー
+          <select name="primary_dark" id="primary_dark" class="color-select">
+            <option value="#159a90" style="background:#159a90;color:#ffffff;">ターコイズ濃</option>
+            <option value="#1d4ed8" style="background:#1d4ed8;color:#ffffff;">ブルー濃</option>
+            <option value="#b91c1c" style="background:#b91c1c;color:#ffffff;">レッド濃</option>
+            <option value="#166534" style="background:#166534;color:#ffffff;">グリーン濃</option>
+            <option value="#6b21a8" style="background:#6b21a8;color:#ffffff;">パープル濃</option>
+          </select>
+        </label>
+        <label class="full">背景カラー
+          <select name="bg_color" id="bg_color" class="color-select">
+            <option value="#f7fffe" style="background:#f7fffe;color:#111827;">薄ミント</option>
+            <option value="#eff6ff" style="background:#eff6ff;color:#111827;">薄ブルー</option>
+            <option value="#fef2f2" style="background:#fef2f2;color:#111827;">薄レッド</option>
+            <option value="#f0fdf4" style="background:#f0fdf4;color:#111827;">薄グリーン</option>
+            <option value="#faf5ff" style="background:#faf5ff;color:#111827;">薄パープル</option>
+          </select>
+        </label>
+        <label class="full">現在プラン<select name="plan_id">{% for plan in available_plans %}<option value="{{ plan.id }}" {% if plan.id == shop.plan_id %}selected{% endif %}>{{ plan.name }} ({{ plan.code }})</option>{% endfor %}</select></label>
+      </div>
+      <button type="submit">店舗情報を保存する</button>
+    </form>
+    <div class="meta">作成日: {{ shop.created_at[:10] if shop.created_at else '' }}</div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const root = document.documentElement;
+    const bindColorPreview = (id, cssVar) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const apply = () => root.style.setProperty(cssVar, el.value);
+      el.addEventListener('change', apply);
+      apply();
+    };
+    bindColorPreview('primary_color', '--primary');
+    bindColorPreview('primary_dark', '--primary-dark');
+    bindColorPreview('bg_color', '--bg');
+  })();
+</script>
+
+</body>
+</html>
