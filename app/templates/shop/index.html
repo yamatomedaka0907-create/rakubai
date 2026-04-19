@@ -55,11 +55,11 @@
     .week-board-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:16px 0 12px; flex-wrap:wrap; }
     .week-board-title { font-weight:800; color:var(--primary-dark); }
     .week-next-link { display:inline-flex; align-items:center; justify-content:center; min-height:38px; padding:0 14px; border-radius:999px; border:1px solid var(--line); background:#fff; color:var(--primary-dark); text-decoration:none; font-weight:800; }
-    .week-board-wrap { overflow:auto; border:1px solid var(--line); border-radius:18px; background:#fff; }
+    .week-board-wrap { overflow:auto; -webkit-overflow-scrolling:touch; border:1px solid var(--line); border-radius:18px; background:#fff; max-width:100%; position:relative; max-height:min(70vh, 720px); }
     .week-board { width:100%; min-width:720px; border-collapse:separate; border-spacing:0; table-layout:fixed; }
     .week-board th, .week-board td { padding:10px 8px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); text-align:center; vertical-align:middle; background:#fff; }
-    .week-board thead th { position:sticky; top:0; z-index:2; background:#f8fffd; }
-    .week-board .time-col { position:sticky; left:0; z-index:3; min-width:82px; background:#f8fffd; font-weight:800; color:var(--text); white-space:nowrap; }
+    .week-board thead th { position:sticky; top:0; z-index:2; background:#f8fffd; box-shadow:0 1px 0 var(--line); }
+    .week-board .time-col { position:sticky; left:0; z-index:3; min-width:82px; background:#f8fffd; font-weight:800; color:var(--text); white-space:nowrap; box-shadow:1px 0 0 var(--line); }
     .week-board thead .time-col { z-index:4; }
     .day-head { display:grid; gap:4px; justify-items:center; }
     .day-head strong { color:var(--text); }
@@ -68,6 +68,7 @@
     .slot-mark { display:flex; align-items:center; justify-content:center; min-height:42px; border-radius:12px; text-decoration:none; font-size:22px; font-weight:900; }
     .slot-mark.is-open { background:var(--open-bg); color:var(--open-text); }
     .slot-mark.is-booked { background:var(--booked-bg); color:var(--booked-text); }
+    .slot-mark.is-closed { background:#fff1f2; color:var(--danger); }
     .slot-cell.is-selected, .day-head.is-selected { background:rgba(46, 196, 182, 0.08); }
     .slot-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
     .slot-item input { display:none; }
@@ -106,10 +107,14 @@
       h1 { font-size:26px; line-height:1.35; }
       .section-title { font-size:22px; }
       .grid-2, .slot-grid, .menu-grid, .menu-grid.compact, .menu-grid.tight { grid-template-columns:1fr; }
-      .week-board { min-width:620px; }
-      .week-board th, .week-board td { padding:8px 6px; }
-      .week-board .time-col { min-width:76px; }
-      .slot-mark { min-height:38px; font-size:20px; }
+      .week-board-wrap { overflow-x:hidden; max-height:min(68vh, 560px); }
+      .week-board { min-width:0; width:100%; }
+      .week-board th, .week-board td { padding:6px 2px; font-size:11px; }
+      .week-board .time-col { min-width:48px; width:48px; font-size:10px; }
+      .day-head { gap:2px; }
+      .day-head strong { font-size:12px; }
+      .day-head span { font-size:10px; }
+      .slot-mark { min-height:34px; font-size:17px; border-radius:10px; }
       .submit-button { width:100%; }
     }
   </style>
@@ -162,7 +167,7 @@
 
     <section id="reserve-form" class="section-card">
       <h2 class="section-title">Web予約フォーム</h2>
-      <p class="section-text">週間表で空き状況を見ながら予約できます。◎ が空き、× が予約済み・受付終了です。</p>
+      <p class="section-text">週間表で空き状況を見ながら予約できます。◎ が空き、× が予約済み・受付終了、休 が定休日です。</p>
       {% if error_message %}<div class="error-box">{{ error_message }}</div>{% endif %}
 
       <div class="reserve-layout">
@@ -226,9 +231,11 @@
                 <tr>
                   <th class="time-col">{{ row.time }}</th>
                   {% for cell in row.cells %}
-                  <td class="slot-cell {% if cell.is_selected %}is-selected{% endif %}">
+                  <td class="slot-cell {% if cell.is_selected %}is-selected{% endif %} {% if cell.is_closed %}is-closed{% endif %}">
                     {% if cell.is_available %}
                     <a class="slot-mark is-open" href="/shop/{{ shop_id }}?staff_id={{ selected_staff_id or '' }}&menu_id={{ selected_menu_id or '' }}&reservation_date={{ cell.date }}&start_time={{ cell.time }}&week_start={{ week_start }}#customer-info">◎</a>
+                    {% elif cell.is_closed %}
+                    <span class="slot-mark is-closed">休</span>
                     {% else %}
                     <span class="slot-mark is-booked">×</span>
                     {% endif %}
@@ -239,7 +246,7 @@
               </tbody>
             </table>
           </div>
-          <div class="summary-box">× は予約済み・受付終了・定休日を含みます。{{ selected_staff and selected_menu and '◎ を押すとその日付と時間が選択されます。' or '先にスタッフとメニューを選んでください。' }}</div>
+          <div class="summary-box">× は予約済み・受付終了です。休 は定休日です。{{ selected_staff and selected_menu and '◎ を押すとその日付と時間が選択されます。' or '先にスタッフとメニューを選んでください。' }}</div>
         </div>
 
         <div class="panel" id="customer-info">

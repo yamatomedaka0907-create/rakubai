@@ -242,7 +242,8 @@ def _build_public_week_availability_matrix(*, shop: dict, reservations: list[dic
         cells = []
         for day in week_days:
             is_available = False
-            if selected_staff_id and selected_menu and not day['is_holiday']:
+            is_closed = bool(day['is_holiday'])
+            if selected_staff_id and selected_menu and not is_closed:
                 slot_is_past = day['date'] < today_obj.isoformat() or (day['date'] == today_obj.isoformat() and start_dt.time() <= now_dt.time())
                 day_reservations = reservations_by_date.get((day['date'], str(selected_staff_id)), [])
                 slot_is_conflict = any(
@@ -250,12 +251,15 @@ def _build_public_week_availability_matrix(*, shop: dict, reservations: list[dic
                     for r in day_reservations
                 )
                 is_available = not slot_is_past and not slot_is_conflict
+            symbol = '休' if is_closed else ('◎' if is_available else '×')
+            cell_class = 'is-holiday' if is_closed else ('is-open' if is_available else 'is-booked')
             cells.append({
                 'date': day['date'],
                 'time': slot,
-                'symbol': '◎' if is_available else '×',
-                'cell_class': 'is-open' if is_available else 'is-booked',
-                'is_available': is_available,
+                'symbol': symbol,
+                'cell_class': cell_class,
+                'is_available': is_available and not is_closed,
+                'is_closed': is_closed,
                 'is_selected': day['is_selected'],
             })
         weekly_rows.append({'time': slot, 'cells': cells})

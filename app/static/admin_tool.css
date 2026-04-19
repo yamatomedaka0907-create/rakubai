@@ -326,6 +326,7 @@ button, input, select, textarea { font: inherit; }
   display: grid;
   align-content: space-between;
   gap: 8px;
+  min-width: 0;
 }
 .tool-calendar-day.is-selected { border-color: #e1b64f; box-shadow: inset 0 0 0 2px rgba(232,164,22,.2); }
 .tool-calendar-day.is-today { background: linear-gradient(180deg, #fff6df 0%, #fff 100%); }
@@ -421,4 +422,11 @@ button, input, select, textarea { font: inherit; }
   .tool-topbar-name { font-size: 20px; }
   .tool-page-head h1 { font-size: 26px; }
   .tool-kpi-grid, .tool-shortcut-grid, .tool-form-grid { grid-template-columns: 1fr; }
+  .tool-weekdays, .tool-calendar-grid { gap: 4px; }
+  .tool-weekday { font-size: 10px; padding: 4px 0; }
+  .tool-calendar-day { min-height: auto; aspect-ratio: 1 / 1; padding: 6px; gap: 4px; border-radius: 12px; }
+  .tool-calendar-top { align-items: flex-start; gap: 4px; flex-direction: column; }
+  .tool-calendar-number { font-size: 13px; line-height: 1; }
+  .tool-calendar-count { min-width: 20px; min-height: 20px; padding: 0 6px; font-size: 10px; }
+  .tool-calendar-meta, .tool-holiday-label { font-size: 9px; line-height: 1.2; }
 }
