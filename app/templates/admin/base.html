@@ -135,6 +135,8 @@
       padding: 24px;
     }
     .mobile-shop-link { display: none; }
+    .sidebar-toggle { display:none; }
+    .sidebar-backdrop { display:none; }
     .topbar {
       display: flex;
       justify-content: space-between;
@@ -337,11 +339,27 @@
     @media (max-width: 980px) {
       .admin-shell { grid-template-columns: 1fr; }
       .sidebar {
-        position: static;
-        height: auto;
-        padding-bottom: 14px;
-        border-right: 0;
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: min(86vw, 320px);
+        height: 100vh;
+        transform: translateX(-105%);
+        transition: transform .24s ease;
+        z-index: 40;
+        border-right: 1px solid rgba(255,255,255,0.08);
       }
+      body.menu-open .sidebar { transform: translateX(0); }
+      .sidebar-toggle {
+        display:inline-flex; align-items:center; justify-content:center; gap:10px;
+        min-height:40px; padding:0 14px; border-radius:999px; border:1px solid var(--line);
+        background:#fff; font-size:13px; font-weight:800; color:var(--text); cursor:pointer;
+      }
+      .sidebar-backdrop {
+        display:block; position:fixed; inset:0; background:rgba(15,23,42,0.34); opacity:0; pointer-events:none; transition:opacity .2s ease; z-index:30;
+      }
+      body.menu-open .sidebar-backdrop { opacity:1; pointer-events:auto; }
       .mobile-shop-link { display: inline-flex; }
       .main { padding-top: 16px; }
     }
@@ -387,6 +405,7 @@
     <main class="main">
       <div class="topbar">
         <div>
+          <button type="button" class="sidebar-toggle" onclick="document.body.classList.toggle('menu-open')">☰ MENU</button>
           <div class="topbar-kicker">{{ page_title or '管理画面' }}</div>
           <div class="topbar-title">
             {% if active_page == 'dashboard' %}ダッシュボード{% elif active_page == 'reservations' %}予約管理{% elif active_page == 'customers' %}顧客管理{% elif active_page == 'settings' %}店舗情報{% elif active_page == 'staff' %}スタッフ予約{% else %}管理画面{% endif %}
@@ -400,6 +419,7 @@
       </div>
       {% block content %}{% endblock %}
     </main>
+    <div class="sidebar-backdrop" onclick="document.body.classList.remove('menu-open')"></div>
   </div>
 </body>
 </html>

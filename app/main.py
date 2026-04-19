@@ -9,8 +9,9 @@ import smtplib
 from email.mime.text import MIMEText
 from email.utils import formataddr
 from pathlib import Path
+import secrets
 
-from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -29,6 +30,15 @@ from app.db import (
     create_reservation,
     find_customer,
     update_customer_contact,
+    update_customer,
+    delete_customer,
+    get_customer_by_id,
+    get_customer_notes,
+    add_customer_note,
+    delete_customer_note,
+    get_customer_photos,
+    add_customer_photo,
+    delete_customer_photo,
     get_reservations,
     get_customers,
     update_reservation_status,
@@ -63,6 +73,37 @@ PLATFORM_ADMIN = get_platform_admin()
 
 
 WEEKDAY_MAP = {"月曜日": 0, "火曜日": 1, "水曜日": 2, "木曜日": 3, "金曜日": 4, "土曜日": 5, "日曜日": 6}
+
+
+def _get_customer_photo_policy(subscription: dict | None) -> dict:
+    label = str((subscription or {}).get("plan_name") or "現在のプラン")
+    return {"enabled": True, "label": label, "max_photos": None}
+
+
+def _save_customer_photo_file(shop_id: str, customer_id: int, upload: UploadFile) -> str:
+    suffix = Path(upload.filename or "photo.jpg").suffix or ".jpg"
+    customer_dir = Path("data/uploads/shops") / shop_id / "customers" / str(customer_id)
+    customer_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(4)}{suffix.lower()}"
+    save_path = customer_dir / filename
+    with save_path.open("wb") as fh:
+        fh.write(upload.file.read())
+    relative = save_path.relative_to(Path("data"))
+    return "/uploads/" + str(relative).replace("\\", "/")
+
+
+def _delete_local_upload_from_url(image_url: str) -> None:
+    if not image_url:
+        return
+    cleaned = image_url.split("?", 1)[0]
+    if not cleaned.startswith("/uploads/"):
+        return
+    target = Path("data") / cleaned.lstrip("/")
+    try:
+        if target.exists():
+            target.unlink()
+    except OSError:
+        pass
 
 
 def _safe_parse_date(value: str | None, fallback: date | None = None) -> date:
@@ -843,7 +884,7 @@ def admin_page(request: Request, shop_id: str, error_message: str = ""):
             "selected_date": selected_date,
             "selected_day_schedule": selected_day_schedule,
             "selected_day_count": selected_day_count,
-            "active_page": "overview",
+            "active_page": "dashboard",
         },
     )
 
@@ -990,6 +1031,150 @@ def admin_customers_page(request: Request, shop_id: str, error_message: str = ""
     )
 
 
+@app.get("/admin/{shop_id}/customers/{customer_id}", response_class=HTMLResponse)
+def admin_customer_detail_page(request: Request, shop_id: str, customer_id: int, error_message: str = ""):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+
+    shop_id, shop, reservations, customers, admin_users, subscription, available_plans, current_admin_name = _build_admin_common_context(request, shop_id)
+    customer = get_customer_by_id(shop_id, customer_id)
+    if customer is None:
+        raise HTTPException(status_code=404, detail="顧客が見つかりません")
+    customer_notes = get_customer_notes(shop_id, customer_id)
+    customer_photos = get_customer_photos(shop_id, customer_id)
+    customer_photo_policy = _get_customer_photo_policy(subscription)
+    max_photos = customer_photo_policy.get("max_photos")
+    customer_photo_remaining = None if max_photos is None else max(int(max_photos) - len(customer_photos), 0)
+    template_name = "admin/tool/customer_detail.html" if shop.get("admin_ui_mode") == "tool" else "admin/customer_detail.html"
+    return templates.TemplateResponse(
+        request=request,
+        name=template_name,
+        context={
+            "request": request,
+            "shop": shop,
+            "shop_id": shop_id,
+            "customer": customer,
+            "customer_notes": customer_notes,
+            "customer_photos": customer_photos,
+            "customer_photo_policy": customer_photo_policy,
+            "customer_photo_remaining": customer_photo_remaining,
+            "customers": customers,
+            "reservations": reservations,
+            "staff_list": shop.get("staff_list", []),
+            "subscription": subscription,
+            "available_plans": available_plans,
+            "admin_users": admin_users,
+            "current_admin_name": current_admin_name,
+            "error_message": error_message,
+            "success_message": request.query_params.get("saved", ""),
+            "active_page": "customers",
+        },
+    )
+
+
+@app.post("/admin/{shop_id}/customers/{customer_id}/update")
+def admin_update_customer(
+    request: Request,
+    shop_id: str,
+    customer_id: int,
+    name: str = Form(...),
+    phone: str = Form(""),
+    email: str = Form(""),
+):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+    if get_customer_by_id(shop_id, customer_id) is None:
+        raise HTTPException(status_code=404, detail="顧客が見つかりません")
+    name = (name or "").strip()
+    if not name:
+        return admin_customer_detail_page(request, shop_id, customer_id, error_message="顧客名を入力してください。")
+    update_customer(shop_id, customer_id, name, (phone or "").strip(), (email or "").strip().lower())
+    return RedirectResponse(f"/admin/{shop_id}/customers/{customer_id}?saved=顧客情報を更新しました", status_code=303)
+
+
+@app.post("/admin/{shop_id}/customers/{customer_id}/delete")
+def admin_delete_customer_route(request: Request, shop_id: str, customer_id: int):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+    customer = get_customer_by_id(shop_id, customer_id)
+    if customer is None:
+        raise HTTPException(status_code=404, detail="顧客が見つかりません")
+    for photo in get_customer_photos(shop_id, customer_id):
+        _delete_local_upload_from_url(str(photo.get("image_url") or ""))
+    delete_customer(shop_id, customer_id)
+    return RedirectResponse(f"/admin/{shop_id}/customers?saved=顧客を削除しました", status_code=303)
+
+
+@app.post("/admin/{shop_id}/customers/{customer_id}/notes")
+def admin_add_customer_note_route(
+    request: Request,
+    shop_id: str,
+    customer_id: int,
+    title: str = Form(...),
+    content: str = Form(...),
+):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+    if get_customer_by_id(shop_id, customer_id) is None:
+        raise HTTPException(status_code=404, detail="顧客が見つかりません")
+    title = (title or "").strip()
+    content = (content or "").strip()
+    if not title or not content:
+        return admin_customer_detail_page(request, shop_id, customer_id, error_message="タイトルと内容を入力してください。")
+    add_customer_note(shop_id, customer_id, title, content)
+    return RedirectResponse(f"/admin/{shop_id}/customers/{customer_id}?saved=追加情報を保存しました", status_code=303)
+
+
+@app.post("/admin/{shop_id}/customers/{customer_id}/notes/{note_id}/delete")
+def admin_delete_customer_note_route(request: Request, shop_id: str, customer_id: int, note_id: int):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+    delete_customer_note(shop_id, customer_id, note_id)
+    return RedirectResponse(f"/admin/{shop_id}/customers/{customer_id}?saved=追加情報を削除しました", status_code=303)
+
+
+@app.post("/admin/{shop_id}/customers/{customer_id}/photos")
+def admin_add_customer_photo_route(
+    request: Request,
+    shop_id: str,
+    customer_id: int,
+    photo: UploadFile = File(...),
+):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+    if get_customer_by_id(shop_id, customer_id) is None:
+        raise HTTPException(status_code=404, detail="顧客が見つかりません")
+    customer_photos = get_customer_photos(shop_id, customer_id)
+    customer_photo_policy = _get_customer_photo_policy(get_shop_subscription(shop_id))
+    max_photos = customer_photo_policy.get("max_photos")
+    if not customer_photo_policy.get("enabled"):
+        return admin_customer_detail_page(request, shop_id, customer_id, error_message="現在のプランでは顧客写真を保存できません。")
+    if max_photos is not None and len(customer_photos) >= int(max_photos):
+        return admin_customer_detail_page(request, shop_id, customer_id, error_message="顧客写真の保存上限に達しています。")
+    if not (photo.filename or "").strip():
+        return admin_customer_detail_page(request, shop_id, customer_id, error_message="写真ファイルを選択してください。")
+    image_url = _save_customer_photo_file(shop_id, customer_id, photo)
+    add_customer_photo(shop_id, customer_id, image_url)
+    return RedirectResponse(f"/admin/{shop_id}/customers/{customer_id}?saved=写真を保存しました", status_code=303)
+
+
+@app.post("/admin/{shop_id}/customers/{customer_id}/photos/{photo_id}/delete")
+def admin_delete_customer_photo_route(request: Request, shop_id: str, customer_id: int, photo_id: int):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+    deleted = delete_customer_photo(shop_id, customer_id, photo_id)
+    if deleted is not None:
+        _delete_local_upload_from_url(str(deleted.get("image_url") or ""))
+    return RedirectResponse(f"/admin/{shop_id}/customers/{customer_id}?saved=写真を削除しました", status_code=303)
+
+
 @app.get("/admin/{shop_id}/website", response_class=HTMLResponse)
 def admin_website_page(request: Request, shop_id: str):
     redirect = require_store_login(request, shop_id)
@@ -1054,16 +1239,18 @@ def admin_create_customer(
     shop_id: str,
     name: str = Form(...),
     phone: str = Form(""),
+    email: str = Form(""),
 ):
     redirect = require_store_login(request, shop_id)
     if redirect:
         return redirect
     name = (name or "").strip()
     phone = (phone or "").strip()
+    email = (email or "").strip().lower()
     if not name:
-        return admin_page(request, shop_id, error_message="顧客名を入力してください。")
-    create_customer(shop_id, name, phone)
-    return RedirectResponse(f"/admin/{shop_id}", status_code=303)
+        return admin_customers_page(request, shop_id, error_message="顧客名を入力してください。")
+    create_customer(shop_id, name, phone, email)
+    return RedirectResponse(f"/admin/{shop_id}/customers?saved=顧客を追加しました", status_code=303)
 
 
 @app.post("/admin/{shop_id}/reservations")
