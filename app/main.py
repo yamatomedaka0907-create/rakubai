@@ -738,22 +738,29 @@ def admin_settings_save(
     return RedirectResponse(f"/admin/{normalized_shop_id}/settings?saved=店舗設定を保存しました。", status_code=303)
 
 
+def _build_admin_common_context(request: Request, shop_id: str) -> tuple[str, dict, list, list, list, dict, list, str]:
+    normalized_shop_id = (shop_id or "").strip().lower()
+    shop = get_shop_management_data(normalized_shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="見つかりません")
+
+    reservations = get_reservations(normalized_shop_id)
+    customers = get_customers(normalized_shop_id)
+    admin_users = get_admin_users(normalized_shop_id)
+    subscription = get_shop_subscription(normalized_shop_id) or {}
+    available_plans = get_plans(active_only=True)
+    current_admin_name = request.session.get("store_logged_in_admin_name") or (admin_users[0].get("name") if admin_users else "")
+    return normalized_shop_id, shop, reservations, customers, admin_users, subscription, available_plans, current_admin_name
+
+
 @app.get("/admin/{shop_id}", response_class=HTMLResponse)
+@app.get("/admin/{shop_id}/dashboard", response_class=HTMLResponse)
 def admin_page(request: Request, shop_id: str, error_message: str = ""):
     redirect = require_store_login(request, shop_id)
     if redirect:
         return redirect
 
-    shop_id = (shop_id or "").strip().lower()
-    shop = get_shop_management_data(shop_id)
-    if not shop:
-        raise HTTPException(status_code=404, detail="見つかりません")
-
-    reservations = get_reservations(shop_id)
-    customers = get_customers(shop_id)
-    admin_users = get_admin_users(shop_id)
-    subscription = get_shop_subscription(shop_id) or {}
-    available_plans = get_plans(active_only=True)
+    shop_id, shop, reservations, customers, admin_users, subscription, available_plans, current_admin_name = _build_admin_common_context(request, shop_id)
 
     month_value = request.query_params.get("month") or date.today().strftime("%Y-%m")
     try:
@@ -803,10 +810,11 @@ def admin_page(request: Request, shop_id: str, error_message: str = ""):
     today_completed_count = sum(1 for item in reservations if item.get("reservation_date") == today and item.get("status") == "来店済み")
     total_sales = sum(int(item.get("price") or 0) for item in reservations if item.get("status") == "来店済み")
     completed_count = sum(1 for item in reservations if item.get("status") == "来店済み")
+    template_name = "admin/tool/dashboard.html" if shop.get("admin_ui_mode") == "tool" else "admin/dashboard.html"
 
     return templates.TemplateResponse(
         request=request,
-        name="admin/dashboard.html",
+        name=template_name,
         context={
             "request": request,
             "shop": shop,
@@ -826,7 +834,7 @@ def admin_page(request: Request, shop_id: str, error_message: str = ""):
             "admin_users": admin_users,
             "subscription": subscription,
             "available_plans": available_plans,
-            "current_admin_name": request.session.get("store_logged_in_admin_name") or (admin_users[0].get("name") if admin_users else ""),
+            "current_admin_name": current_admin_name,
             "calendar_days": calendar_days,
             "calendar_month_label": calendar_month_label,
             "calendar_month_value": calendar_month_value,
@@ -835,6 +843,183 @@ def admin_page(request: Request, shop_id: str, error_message: str = ""):
             "selected_date": selected_date,
             "selected_day_schedule": selected_day_schedule,
             "selected_day_count": selected_day_count,
+            "active_page": "overview",
+        },
+    )
+
+
+@app.get("/admin/{shop_id}/reservations", response_class=HTMLResponse)
+def admin_reservations_page(request: Request, shop_id: str, error_message: str = ""):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+
+    shop_id, shop, reservations, customers, admin_users, subscription, available_plans, current_admin_name = _build_admin_common_context(request, shop_id)
+    month_value = request.query_params.get("month") or date.today().strftime("%Y-%m")
+    try:
+        current_month = datetime.strptime(month_value, "%Y-%m").date().replace(day=1)
+    except ValueError:
+        current_month = date.today().replace(day=1)
+
+    filter_date = request.query_params.get("date") or date.today().isoformat()
+    selected_date = _safe_parse_date(filter_date, date.today()).isoformat()
+    filter_staff = (request.query_params.get("staff_id") or "").strip()
+    selected_staff = next((s for s in shop.get("staff_list", []) if str(s.get("id")) == filter_staff), None)
+
+    filtered_reservations = reservations
+    if filter_staff:
+        filtered_reservations = [r for r in filtered_reservations if str(r.get("staff_id") or "") == filter_staff]
+
+    holiday_idx = WEEKDAY_MAP.get(str(shop.get("holiday") or ""))
+    cal = calendar.Calendar(firstweekday=6)
+    counts_by_date = {}
+    for item in filtered_reservations:
+        if str(item.get("status") or "") == "キャンセル":
+            continue
+        key = str(item.get("reservation_date") or "")
+        counts_by_date[key] = counts_by_date.get(key, 0) + 1
+
+    calendar_days = []
+    today_obj = date.today()
+    for week in cal.monthdatescalendar(current_month.year, current_month.month):
+        for current_day in week:
+            iso = current_day.isoformat()
+            calendar_days.append({
+                "date": iso,
+                "day": current_day.day,
+                "count": counts_by_date.get(iso, 0),
+                "is_current_month": current_day.month == current_month.month,
+                "is_today": current_day == today_obj,
+                "is_holiday": holiday_idx is not None and current_day.weekday() == holiday_idx,
+            })
+
+    selected_day_schedule = sorted(
+        [r for r in filtered_reservations if str(r.get("reservation_date") or "") == selected_date],
+        key=lambda x: (str(x.get("start_time") or ""), int(x.get("id") or 0)),
+    )
+    selected_day_count = len([r for r in selected_day_schedule if str(r.get("status") or "") != "キャンセル"])
+    selected_day_sales = sum(int(item.get("price") or 0) for item in selected_day_schedule if str(item.get("status") or "") == "来店済み")
+    selected_day_completed_count = sum(1 for item in selected_day_schedule if str(item.get("status") or "") == "来店済み")
+    reservation_items = sorted(
+        filtered_reservations,
+        key=lambda x: (str(x.get("reservation_date") or ""), str(x.get("start_time") or ""), int(x.get("id") or 0)),
+        reverse=True,
+    )
+    completed_items = [item for item in filtered_reservations if str(item.get("status") or "") == "来店済み"]
+    view_sales_summary = {
+        "total_sales": sum(int(item.get("price") or 0) for item in completed_items),
+        "completed_count": len(completed_items),
+    }
+
+    template_name = "admin/tool/reservations.html" if shop.get("admin_ui_mode") == "tool" else "admin/reservations.html"
+    return templates.TemplateResponse(
+        request=request,
+        name=template_name,
+        context={
+            "request": request,
+            "shop": shop,
+            "shop_id": shop_id,
+            "customers": customers,
+            "staff_list": shop.get("staff_list", []),
+            "menus": shop.get("menus", []),
+            "reservations": filtered_reservations,
+            "reservation_items": reservation_items,
+            "today": today_obj.isoformat(),
+            "filter_date": filter_date,
+            "filter_staff": filter_staff,
+            "selected_staff": selected_staff,
+            "calendar_days": calendar_days,
+            "calendar_month_label": current_month.strftime("%Y年%m月"),
+            "calendar_month_value": current_month.strftime("%Y-%m"),
+            "calendar_prev_month": ((current_month.replace(day=1) - timedelta(days=1)).replace(day=1)).strftime("%Y-%m"),
+            "calendar_next_month": ((current_month.replace(day=28) + timedelta(days=4)).replace(day=1)).strftime("%Y-%m"),
+            "selected_date": selected_date,
+            "selected_day_schedule": selected_day_schedule,
+            "selected_day_count": selected_day_count,
+            "selected_day_sales": selected_day_sales,
+            "selected_day_completed_count": selected_day_completed_count,
+            "view_sales_summary": view_sales_summary,
+            "error_message": error_message,
+            "admin_users": admin_users,
+            "subscription": subscription,
+            "available_plans": available_plans,
+            "current_admin_name": current_admin_name,
+            "active_page": "reservations",
+        },
+    )
+
+
+@app.get("/admin/{shop_id}/customers", response_class=HTMLResponse)
+def admin_customers_page(request: Request, shop_id: str, error_message: str = ""):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+
+    shop_id, shop, reservations, customers, admin_users, subscription, available_plans, current_admin_name = _build_admin_common_context(request, shop_id)
+    keyword = (request.query_params.get("q") or "").strip()
+    customer_items = customers
+    if keyword:
+        lowered = keyword.lower()
+        customer_items = [
+            item for item in customers
+            if lowered in str(item.get("name") or "").lower()
+            or lowered in str(item.get("phone") or "").lower()
+            or lowered in str(item.get("email") or "").lower()
+        ]
+    template_name = "admin/tool/customers.html" if shop.get("admin_ui_mode") == "tool" else "admin/customers.html"
+    return templates.TemplateResponse(
+        request=request,
+        name=template_name,
+        context={
+            "request": request,
+            "shop": shop,
+            "shop_id": shop_id,
+            "customers": customers,
+            "customer_items": customer_items,
+            "keyword": keyword,
+            "today": date.today().isoformat(),
+            "reservations": reservations,
+            "admin_users": admin_users,
+            "subscription": subscription,
+            "available_plans": available_plans,
+            "current_admin_name": current_admin_name,
+            "error_message": error_message,
+            "success_message": request.query_params.get("saved", ""),
+            "active_page": "customers",
+        },
+    )
+
+
+@app.get("/admin/{shop_id}/website", response_class=HTMLResponse)
+def admin_website_page(request: Request, shop_id: str):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+
+    shop_id, shop, reservations, customers, admin_users, subscription, available_plans, current_admin_name = _build_admin_common_context(request, shop_id)
+    homepage_settings = get_shop_homepage_settings(shop_id) or {}
+    homepage_sections = get_shop_homepage_sections(shop_id)
+    homepage_samples = get_all_samples()
+    template_name = "admin/tool/website.html" if shop.get("admin_ui_mode") == "tool" else "admin/website.html"
+    return templates.TemplateResponse(
+        request=request,
+        name=template_name,
+        context={
+            "request": request,
+            "shop": shop,
+            "shop_id": shop_id,
+            "homepage_settings": homepage_settings,
+            "homepage_sections": homepage_sections,
+            "homepage_samples": homepage_samples,
+            "today": date.today().isoformat(),
+            "customers": customers,
+            "today_reservations": [r for r in reservations if str(r.get("reservation_date") or "") == date.today().isoformat()],
+            "admin_users": admin_users,
+            "subscription": subscription,
+            "available_plans": available_plans,
+            "current_admin_name": current_admin_name,
+            "success_message": request.query_params.get("saved", ""),
+            "active_page": "website",
         },
     )
 
