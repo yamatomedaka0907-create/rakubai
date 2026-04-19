@@ -151,8 +151,13 @@ def _build_half_hour_slots(business_hours: str | None) -> list[str]:
     return slots or [f"{hour:02d}:00" for hour in range(10, 19)]
 
 
-def _build_week_availability_matrix(*, shop: dict, reservations: list[dict], selected_date: date) -> tuple[list[dict], list[str], list[dict]]:
-    start_of_week = selected_date - timedelta(days=((selected_date.weekday() + 1) % 7))
+def _normalize_week_start(base_date: date | None) -> date:
+    base = base_date or date.today()
+    return base - timedelta(days=((base.weekday() + 1) % 7))
+
+
+def _build_week_availability_matrix(*, shop: dict, reservations: list[dict], selected_date: date, week_start: date | None = None) -> tuple[list[dict], list[str], list[dict]]:
+    start_of_week = _normalize_week_start(week_start or selected_date)
     holiday_idx = WEEKDAY_MAP.get(str(shop.get('holiday') or ''))
     week_days: list[dict] = []
     for offset in range(7):
@@ -163,6 +168,7 @@ def _build_week_availability_matrix(*, shop: dict, reservations: list[dict], sel
             'weekday': '日月火水木金土'[offset],
             'is_today': current_day == date.today(),
             'is_holiday': holiday_idx is not None and current_day.weekday() == holiday_idx,
+            'is_selected': current_day == selected_date,
         })
 
     time_slots = _build_half_hour_slots(shop.get('business_hours'))
@@ -192,6 +198,65 @@ def _build_week_availability_matrix(*, shop: dict, reservations: list[dict], sel
                 'time': slot,
                 'symbol': symbol,
                 'cell_class': cell_class,
+                'is_selected': day['is_selected'],
+            })
+        weekly_rows.append({'time': slot, 'cells': cells})
+
+    return week_days, time_slots, weekly_rows
+
+
+def _build_public_week_availability_matrix(*, shop: dict, reservations: list[dict], selected_date: date, selected_staff_id: str, selected_menu: dict | None, week_start: date | None = None) -> tuple[list[dict], list[str], list[dict]]:
+    start_of_week = _normalize_week_start(week_start or selected_date)
+    holiday_idx = WEEKDAY_MAP.get(str(shop.get('holiday') or ''))
+    duration = int((selected_menu or {}).get('duration') or 60)
+    time_slots = _build_half_hour_slots(shop.get('business_hours'))
+    now_dt = datetime.now()
+    today_obj = date.today()
+    active_reservations = [r for r in reservations if str(r.get('status') or '') != 'キャンセル']
+
+    week_days: list[dict] = []
+    for offset in range(7):
+        current_day = start_of_week + timedelta(days=offset)
+        is_holiday = holiday_idx is not None and current_day.weekday() == holiday_idx
+        week_days.append({
+            'date': current_day.isoformat(),
+            'label': f"{current_day.month}/{current_day.day}",
+            'weekday': '日月火水木金土'[offset],
+            'is_today': current_day == today_obj,
+            'is_selected': current_day == selected_date,
+            'is_holiday': is_holiday,
+        })
+
+    reservations_by_date: dict[tuple[str, str], list[dict]] = {}
+    if selected_staff_id:
+        for item in active_reservations:
+            if str(item.get('staff_id') or '') != str(selected_staff_id):
+                continue
+            key = (str(item.get('reservation_date') or ''), str(item.get('staff_id') or ''))
+            reservations_by_date.setdefault(key, []).append(item)
+
+    weekly_rows: list[dict] = []
+    for slot in time_slots:
+        start_dt = datetime.strptime(slot, '%H:%M')
+        end_dt = start_dt + timedelta(minutes=duration)
+        cells = []
+        for day in week_days:
+            is_available = False
+            if selected_staff_id and selected_menu and not day['is_holiday']:
+                slot_is_past = day['date'] < today_obj.isoformat() or (day['date'] == today_obj.isoformat() and start_dt.time() <= now_dt.time())
+                day_reservations = reservations_by_date.get((day['date'], str(selected_staff_id)), [])
+                slot_is_conflict = any(
+                    start_dt < datetime.strptime(str(r.get('end_time')), '%H:%M') and end_dt > datetime.strptime(str(r.get('start_time')), '%H:%M')
+                    for r in day_reservations
+                )
+                is_available = not slot_is_past and not slot_is_conflict
+            cells.append({
+                'date': day['date'],
+                'time': slot,
+                'symbol': '◎' if is_available else '×',
+                'cell_class': 'is-open' if is_available else 'is-booked',
+                'is_available': is_available,
+                'is_selected': day['is_selected'],
             })
         weekly_rows.append({'time': slot, 'cells': cells})
 
@@ -292,6 +357,8 @@ def build_shop_booking_context(shop_id: str, request: Request, error_message: st
     selected_staff_id = request.query_params.get("staff_id") or ""
     selected_menu_id = request.query_params.get("menu_id") or ""
     selected_start_time = request.query_params.get("start_time") or ""
+    week_start_query = _safe_parse_date(request.query_params.get("week_start"), selected_date_obj)
+    week_start = _normalize_week_start(week_start_query)
 
     holiday_idx = WEEKDAY_MAP.get(str(shop.get("holiday") or ""))
     today = date.today()
@@ -326,7 +393,7 @@ def build_shop_booking_context(shop_id: str, request: Request, error_message: st
         duration = int(selected_menu.get('duration', 60) or 60)
         current_dt = datetime.now()
         selected_reservations = [r for r in reservations if r.get('reservation_date') == selected_date and str(r.get('staff_id')) == str(selected_staff_id)]
-        for start_time in _build_time_slots():
+        for start_time in _build_half_hour_slots(shop.get('business_hours')):
             start_dt = datetime.strptime(start_time, '%H:%M')
             end_dt = start_dt + timedelta(minutes=duration)
             slot_is_past = selected_date_obj < today or (selected_date_obj == today and start_dt.time() <= current_dt.time())
@@ -353,6 +420,14 @@ def build_shop_booking_context(shop_id: str, request: Request, error_message: st
 
     prev_month = (current_month.replace(day=1) - timedelta(days=1)).replace(day=1).strftime('%Y-%m')
     next_month = (current_month.replace(day=28) + timedelta(days=4)).replace(day=1).strftime('%Y-%m')
+    public_week_days, public_time_slots, public_weekly_rows = _build_public_week_availability_matrix(
+        shop=shop,
+        reservations=reservations,
+        selected_date=selected_date_obj,
+        selected_staff_id=selected_staff_id,
+        selected_menu=selected_menu,
+        week_start=week_start,
+    )
 
     return {
         'request': request,
@@ -375,6 +450,12 @@ def build_shop_booking_context(shop_id: str, request: Request, error_message: st
         'selected_menu': selected_menu,
         'selected_staff': selected_staff,
         'selected_date_is_holiday': (selected_date_obj.weekday() == holiday_idx) if holiday_idx is not None else False,
+        'public_week_days': public_week_days,
+        'public_time_slots': public_time_slots,
+        'public_weekly_rows': public_weekly_rows,
+        'week_start': week_start.isoformat(),
+        'prev_week_start': (week_start - timedelta(days=7)).isoformat(),
+        'next_week_start': (week_start + timedelta(days=7)).isoformat(),
         'form_data': form_data,
         'error_message': error_message,
     }
@@ -895,6 +976,7 @@ def admin_page(request: Request, shop_id: str, error_message: str = ""):
 
     selected_date_obj = _safe_parse_date(request.query_params.get("date"), date.today())
     selected_date = selected_date_obj.isoformat()
+    week_start = _normalize_week_start(_safe_parse_date(request.query_params.get("week_start"), selected_date_obj))
 
     holiday_idx = WEEKDAY_MAP.get(str(shop.get("holiday") or ""))
     cal = calendar.Calendar(firstweekday=6)
@@ -933,6 +1015,7 @@ def admin_page(request: Request, shop_id: str, error_message: str = ""):
         shop=shop,
         reservations=reservations,
         selected_date=selected_date_obj,
+        week_start=week_start,
     )
     template_name = "admin/tool/dashboard.html" if shop.get("admin_ui_mode") == "tool" else "admin/dashboard.html"
 
@@ -970,6 +1053,9 @@ def admin_page(request: Request, shop_id: str, error_message: str = ""):
             "week_days": week_days,
             "time_slots": time_slots,
             "weekly_rows": weekly_rows,
+            "week_start": week_start.isoformat(),
+            "prev_week_start": (week_start - timedelta(days=7)).isoformat(),
+            "next_week_start": (week_start + timedelta(days=7)).isoformat(),
             "active_page": "dashboard",
         },
     )
@@ -989,7 +1075,9 @@ def admin_reservations_page(request: Request, shop_id: str, error_message: str =
         current_month = date.today().replace(day=1)
 
     filter_date = request.query_params.get("date") or date.today().isoformat()
-    selected_date = _safe_parse_date(filter_date, date.today()).isoformat()
+    selected_date_obj = _safe_parse_date(filter_date, date.today())
+    selected_date = selected_date_obj.isoformat()
+    week_start = _normalize_week_start(_safe_parse_date(request.query_params.get("week_start"), selected_date_obj))
     filter_staff = (request.query_params.get("staff_id") or "").strip()
     selected_staff = next((s for s in shop.get("staff_list", []) if str(s.get("id")) == filter_staff), None)
 
@@ -1041,7 +1129,8 @@ def admin_reservations_page(request: Request, shop_id: str, error_message: str =
     week_days, time_slots, weekly_rows = _build_week_availability_matrix(
         shop=shop,
         reservations=filtered_reservations,
-        selected_date=_safe_parse_date(selected_date, today_obj),
+        selected_date=selected_date_obj,
+        week_start=week_start,
     )
     template_name = "admin/tool/reservations.html" if shop.get("admin_ui_mode") == "tool" else "admin/reservations.html"
     return templates.TemplateResponse(
@@ -1074,11 +1163,15 @@ def admin_reservations_page(request: Request, shop_id: str, error_message: str =
             "week_days": week_days,
             "time_slots": time_slots,
             "weekly_rows": weekly_rows,
+            "week_start": week_start.isoformat(),
+            "prev_week_start": (week_start - timedelta(days=7)).isoformat(),
+            "next_week_start": (week_start + timedelta(days=7)).isoformat(),
             "error_message": error_message,
             "admin_users": admin_users,
             "subscription": subscription,
             "available_plans": available_plans,
             "current_admin_name": current_admin_name,
+            "reservation_blocks": [],
             "active_page": "reservations",
         },
     )
@@ -1486,8 +1579,10 @@ def shop_edit_redirect(
     receive_email: str = Form('1'),
     staff_id: str = Form(""),
     menu_id: str = Form(""),
+    week_start: str = Form(""),
 ):
-    url = f"/shop/{shop_id}?reservation_date={reservation_date}&start_time={start_time}&customer_name={customer_name}&phone={phone}&email={email}&receive_email={receive_email}&staff_id={staff_id}&menu_id={menu_id}#reserve-form"
+    week_start_part = f"&week_start={week_start}" if week_start else ""
+    url = f"/shop/{shop_id}?reservation_date={reservation_date}&start_time={start_time}&customer_name={customer_name}&phone={phone}&email={email}&receive_email={receive_email}&staff_id={staff_id}&menu_id={menu_id}{week_start_part}#reserve-form"
     return RedirectResponse(url, status_code=303)
 
 

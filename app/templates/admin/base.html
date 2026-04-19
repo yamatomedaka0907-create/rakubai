@@ -339,9 +339,7 @@
     .staff-link-sub { font-size:13px; color:var(--subtext); }
     .nav-card p { margin:10px 0 0; color:var(--subtext); line-height:1.7; }
 
-    .desktop-calendar-only { display:block; }
-    .mobile-calendar-only { display:none; }
-    .weekly-card { margin-top: 18px; }
+        .weekly-card { margin-top: 18px; }
     .weekly-card .section-note { margin-top: 12px; }
     .availability-wrap {
       overflow: auto;
@@ -399,6 +397,23 @@
     .availability-table td.is-holiday { color: #92400e; background: #fff7ed; }
     .availability-table th.is-today,
     .availability-table td.is-today { box-shadow: inset 0 0 0 2px rgba(15, 23, 42, 0.10); }
+    .availability-table th.is-selected,
+    .availability-table td.is-selected { background: #eefdfa; }
+    .week-next-link {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-height:28px;
+      padding:0 10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background:#fff;
+      color:var(--text);
+      text-decoration:none;
+      font-size:11px;
+      font-weight:800;
+      white-space:nowrap;
+    }
     .availability-legend {
       display:flex;
       gap:10px;
@@ -452,8 +467,6 @@
       .main { padding-top: 16px; }
       .topbar { align-items: flex-start; }
       .topbar-right { justify-content: flex-end; }
-      .desktop-calendar-only { display:none; }
-      .mobile-calendar-only { display:block; }
       .availability-wrap { max-height: none; }
       .availability-table { min-width: 620px; }
     }
@@ -467,6 +480,28 @@
       .topbar-title { font-size: 24px; }
       .summary-grid { grid-template-columns:1fr; }
       .hero, .summary-card, .card, .nav-card { padding: 18px; border-radius: 20px; }
+      .calendar-weekdays, .calendar-grid { gap: 4px; }
+      .calendar-day {
+        min-height: auto;
+        aspect-ratio: 1 / 1;
+        padding: 6px 4px;
+        border-radius: 12px;
+      }
+      .calendar-day-top {
+        flex-direction: column;
+        align-items: flex-start;
+        margin-bottom: 4px;
+      }
+      .calendar-day-number { font-size: 13px; }
+      .calendar-count {
+        min-width: 0;
+        height: auto;
+        padding: 0;
+        background: transparent;
+        font-size: 10px;
+      }
+      .calendar-meta { display:none; }
+      .holiday-label { font-size: 10px; margin-top: 2px; }
     }
   </style>
 </head>

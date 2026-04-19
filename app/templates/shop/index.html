@@ -15,6 +15,10 @@
       --shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
       --danger: #e11d48;
       --muted: #94a3b8;
+      --open-bg: #f0fdf4;
+      --open-text: #166534;
+      --booked-bg: #f8fafc;
+      --booked-text: #64748b;
     }
     * { box-sizing: border-box; }
     body {
@@ -48,20 +52,23 @@
     .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     label { display:grid; gap:8px; font-size:14px; font-weight:700; }
     input, select { width:100%; min-height:46px; padding:0 14px; border:1px solid var(--line); border-radius:12px; font-size:15px; background:#fff; }
-    .calendar-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
-    .calendar-head a { text-decoration:none; color:var(--primary-dark); font-weight:800; padding:8px 12px; border:1px solid var(--line); border-radius:999px; background:#fff; }
-    .calendar-title { font-weight:800; color:var(--primary-dark); }
-    .weekdays, .calendar-grid { display:grid; grid-template-columns:repeat(7, 1fr); gap:8px; }
-    .weekday { text-align:center; font-size:12px; color:var(--subtext); font-weight:800; padding-bottom:4px; }
-    .day-btn, .day-box { min-height:86px; border-radius:16px; padding:10px 8px; display:flex; flex-direction:column; justify-content:space-between; text-align:left; }
-    .day-btn { width:100%; border:1px solid var(--line); background:#fff; cursor:pointer; }
-    .day-box { border:1px dashed #e5e7eb; background:#fafafa; }
-    .day-num { font-weight:800; font-size:16px; }
-    .day-meta { font-size:12px; color:var(--subtext); }
-    .day-btn.selected { border:2px solid var(--primary); background:rgba(46, 196, 182, 0.08); }
-    .day-btn.today { box-shadow: inset 0 0 0 1px var(--primary); }
-    .day-btn.closed, .day-box.closed { background:#fff1f2; border-color:#fecdd3; color:var(--danger); }
-    .day-btn.past, .day-box.past { background:#f8fafc; color:var(--muted); }
+    .week-board-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:16px 0 12px; flex-wrap:wrap; }
+    .week-board-title { font-weight:800; color:var(--primary-dark); }
+    .week-next-link { display:inline-flex; align-items:center; justify-content:center; min-height:38px; padding:0 14px; border-radius:999px; border:1px solid var(--line); background:#fff; color:var(--primary-dark); text-decoration:none; font-weight:800; }
+    .week-board-wrap { overflow:auto; border:1px solid var(--line); border-radius:18px; background:#fff; }
+    .week-board { width:100%; min-width:720px; border-collapse:separate; border-spacing:0; table-layout:fixed; }
+    .week-board th, .week-board td { padding:10px 8px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); text-align:center; vertical-align:middle; background:#fff; }
+    .week-board thead th { position:sticky; top:0; z-index:2; background:#f8fffd; }
+    .week-board .time-col { position:sticky; left:0; z-index:3; min-width:82px; background:#f8fffd; font-weight:800; color:var(--text); white-space:nowrap; }
+    .week-board thead .time-col { z-index:4; }
+    .day-head { display:grid; gap:4px; justify-items:center; }
+    .day-head strong { color:var(--text); }
+    .day-head span { color:var(--subtext); font-size:12px; }
+    .day-head.is-selected strong, .day-head.is-selected span { color:var(--primary-dark); }
+    .slot-mark { display:flex; align-items:center; justify-content:center; min-height:42px; border-radius:12px; text-decoration:none; font-size:22px; font-weight:900; }
+    .slot-mark.is-open { background:var(--open-bg); color:var(--open-text); }
+    .slot-mark.is-booked { background:var(--booked-bg); color:var(--booked-text); }
+    .slot-cell.is-selected, .day-head.is-selected { background:rgba(46, 196, 182, 0.08); }
     .slot-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
     .slot-item input { display:none; }
     .slot-label { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:64px; border-radius:14px; border:1px solid var(--line); background:#fff; font-weight:800; cursor:pointer; gap:4px; }
@@ -99,15 +106,10 @@
       h1 { font-size:26px; line-height:1.35; }
       .section-title { font-size:22px; }
       .grid-2, .slot-grid, .menu-grid, .menu-grid.compact, .menu-grid.tight { grid-template-columns:1fr; }
-      .calendar-head { gap:8px; }
-      .calendar-head a { padding:8px 10px; font-size:12px; }
-      .calendar-title { font-size:14px; text-align:center; }
-      .weekdays, .calendar-grid { gap:4px; }
-      .weekday { font-size:10px; }
-      .day-btn, .day-box { min-height:64px; padding:8px 4px; border-radius:12px; }
-      .day-num { font-size:13px; }
-      .day-meta { font-size:10px; line-height:1.3; }
-      .slot-label { min-height:56px; }
+      .week-board { min-width:620px; }
+      .week-board th, .week-board td { padding:8px 6px; }
+      .week-board .time-col { min-width:76px; }
+      .slot-mark { min-height:38px; font-size:20px; }
       .submit-button { width:100%; }
     }
   </style>
@@ -160,16 +162,16 @@
 
     <section id="reserve-form" class="section-card">
       <h2 class="section-title">Web予約フォーム</h2>
-      <p class="section-text">Hot Pepperのように、先に日付と空いている時間を見ながら選べる形にしています。定休日は赤く表示され、選べません。</p>
+      <p class="section-text">週間表で空き状況を見ながら予約できます。◎ が空き、× が予約済み・受付終了です。</p>
       {% if error_message %}<div class="error-box">{{ error_message }}</div>{% endif %}
 
       <div class="reserve-layout">
         <div class="panel">
           <h3 class="step-title">1. スタッフ・メニュー・日付を選ぶ</h3>
-          <p class="step-note">スタッフとメニューを選ぶと、その条件に合わせて予約できる時間だけが下に出ます。</p>
+          <p class="step-note">スタッフとメニューを選ぶと、その条件に合わせて週間表の ◎ / × が切り替わります。◎ を押すと、その時間を選んだ状態のまま下のお客様情報入力へ進めます。</p>
           <form id="finder-form" method="get" action="/shop/{{ shop_id }}#reserve-form">
             <input type="hidden" name="reservation_date" id="reservation_date_input" value="{{ selected_date }}">
-            <input type="hidden" name="month" id="month_input" value="{{ calendar_month_value }}">
+            <input type="hidden" name="week_start" value="{{ week_start }}">
             <div class="grid-2">
               <label>担当スタッフ
                 <select name="staff_id" required onchange="document.getElementById('finder-form').submit()">
@@ -192,76 +194,80 @@
               {% if selected_staff and selected_menu %}
                 <strong>{{ selected_staff.name }}</strong> / <strong>{{ selected_menu.name }}</strong> / {{ selected_menu.duration }}分 / ¥{{ selected_menu.price }}
               {% else %}
-                スタッフとメニューを選ぶと、下に空いている時間が表示されます。
+                スタッフとメニューを選ぶと、週間表に空き状況が表示されます。
               {% endif %}
             </div>
-
-            <div class="calendar-head" style="margin-top:16px;">
-              <a href="/shop/{{ shop_id }}?month={{ calendar_prev_month }}&staff_id={{ selected_staff_id or '' }}&menu_id={{ selected_menu_id or '' }}&reservation_date={{ selected_date }}#reserve-form">前の月</a>
-              <div class="calendar-title">{{ calendar_month_label }}</div>
-              <a href="/shop/{{ shop_id }}?month={{ calendar_next_month }}&staff_id={{ selected_staff_id or '' }}&menu_id={{ selected_menu_id or '' }}&reservation_date={{ selected_date }}#reserve-form">次の月</a>
-            </div>
-            <div class="weekdays">
-              <div class="weekday">日</div><div class="weekday">月</div><div class="weekday">火</div><div class="weekday">水</div><div class="weekday">木</div><div class="weekday">金</div><div class="weekday">土</div>
-            </div>
-            <div class="calendar-grid">
-              {% for day in calendar_days %}
-                {% if day.is_clickable %}
-                  <button type="button" class="day-btn {% if day.is_selected %}selected{% endif %} {% if day.is_today %}today{% endif %}" onclick="selectDate('{{ day.date }}')">
-                    <span class="day-num">{{ day.day }}</span>
-                    <span class="day-meta">{% if day.count %}{{ day.count }}人{% else %}空き確認{% endif %}</span>
-                  </button>
-                {% else %}
-                  <div class="day-box {% if day.is_closed %}closed{% endif %} {% if day.is_past %}past{% endif %}">
-                    <span class="day-num">{{ day.day }}</span>
-                    <span class="day-meta">{% if day.is_closed %}定休日{% elif day.is_past %}受付終了{% elif day.count %}{{ day.count }}人{% endif %}</span>
-                  </div>
-                {% endif %}
-              {% endfor %}
-            </div>
           </form>
+
+          <div class="week-board-head">
+            <div class="week-board-title">週間空き状況</div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <a class="week-next-link" href="/shop/{{ shop_id }}?staff_id={{ selected_staff_id or '' }}&menu_id={{ selected_menu_id or '' }}&reservation_date={{ selected_date }}&week_start={{ prev_week_start }}#reserve-form">前週へ戻る</a>
+              <a class="week-next-link" href="/shop/{{ shop_id }}?staff_id={{ selected_staff_id or '' }}&menu_id={{ selected_menu_id or '' }}&reservation_date={{ selected_date }}&week_start={{ next_week_start }}#reserve-form">翌週を見る</a>
+            </div>
+          </div>
+          <div class="week-board-wrap">
+            <table class="week-board">
+              <thead>
+                <tr>
+                  <th class="time-col">時間</th>
+                  {% for day in public_week_days %}
+                  <th>
+                    <div class="day-head {% if day.is_selected %}is-selected{% endif %}">
+                      <strong>{{ day.label }}</strong>
+                      <span>{{ day.weekday }}</span>
+                    </div>
+                  </th>
+                  {% endfor %}
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in public_weekly_rows %}
+                <tr>
+                  <th class="time-col">{{ row.time }}</th>
+                  {% for cell in row.cells %}
+                  <td class="slot-cell {% if cell.is_selected %}is-selected{% endif %}">
+                    {% if cell.is_available %}
+                    <a class="slot-mark is-open" href="/shop/{{ shop_id }}?staff_id={{ selected_staff_id or '' }}&menu_id={{ selected_menu_id or '' }}&reservation_date={{ cell.date }}&start_time={{ cell.time }}&week_start={{ week_start }}#customer-info">◎</a>
+                    {% else %}
+                    <span class="slot-mark is-booked">×</span>
+                    {% endif %}
+                  </td>
+                  {% endfor %}
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="summary-box">× は予約済み・受付終了・定休日を含みます。{{ selected_staff and selected_menu and '◎ を押すとその日付と時間が選択されます。' or '先にスタッフとメニューを選んでください。' }}</div>
         </div>
 
-        <div class="panel">
-          <h3 class="step-title">2. 空いている時間を選ぶ</h3>
-          <p class="step-note">選べる時間だけ押せます。埋まっている時間はグレーで表示されます。</p>
+        <div class="panel" id="customer-info">
+          <h3 class="step-title">2. お客様情報を入力して確認へ進む</h3>
+          <p class="step-note">週間空き状況の ◎ を押すと、時間を選んだ状態のままここへ進みます。</p>
 
           {% if selected_date %}
           <div class="summary-box">
             選択中の日付: <strong>{{ selected_date }}</strong>
+            {% if selected_start_time %}<div style="margin-top:8px;">選択中の時間: <strong>{{ selected_start_time }}</strong>{% if selected_slot %}〜{{ selected_slot.end_time }}{% endif %}</div>{% endif %}
             {% if selected_date_is_holiday %}<div class="closed-note" style="margin-top:8px;">この日は定休日です。</div>{% endif %}
           </div>
           {% endif %}
 
           {% if not selected_staff or not selected_menu %}
             <div class="summary-box">先に左側でスタッフとメニューを選んでください。</div>
-          {% elif available_slots %}
+          {% elif not selected_start_time %}
+            <div class="summary-box">左側の週間空き状況から ◎ を押すと、その時間を選んだままお客様情報入力へ進めます。</div>
+          {% elif selected_slot and selected_slot.is_available %}
             <form method="post" action="/shop/{{ shop_id }}/confirm">
               <input type="hidden" name="staff_id" value="{{ selected_staff_id }}">
               <input type="hidden" name="menu_id" value="{{ selected_menu_id }}">
               <input type="hidden" name="reservation_date" value="{{ selected_date }}">
-              <div class="slot-grid">
-                {% for slot in available_slots %}
-                <label class="slot-item">
-                  <input type="radio" name="start_time" value="{{ slot.start_time }}" {% if selected_start_time == slot.start_time %}checked{% endif %} {% if not slot.is_available %}disabled{% endif %} required>
-                  <span class="slot-label {% if not slot.is_available %}disabled{% endif %}">
-                    <span>{{ slot.start_time }}</span>
-                    <small>{% if slot.is_available %}〜{{ slot.end_time }}{% elif slot.is_conflict %}予約済み{% else %}受付終了{% endif %}</small>
-                  </span>
-                </label>
-                {% endfor %}
-              </div>
-
+              <input type="hidden" name="start_time" value="{{ selected_start_time }}">
               <div class="summary-box">
-                {% if selected_slot %}
-                  予約時間: <strong>{{ selected_slot.start_time }}〜{{ selected_slot.end_time }}</strong>
-                {% else %}
-                  上の時間ボタンを1つ選んでください。
-                {% endif %}
+                予約時間: <strong>{{ selected_slot.start_time }}〜{{ selected_slot.end_time }}</strong>
               </div>
-
               <div style="height:14px;"></div>
-              <h3 class="step-title">3. お客様情報を入力して確認へ進む</h3>
               <div class="grid-2">
                 <label>お名前
                   <input type="text" name="customer_name" placeholder="例：山田 花子" value="{{ form_data.customer_name or '' }}" required>
@@ -281,7 +287,7 @@
               <button type="submit" class="submit-button">入力内容を確認する</button>
             </form>
           {% else %}
-            <div class="summary-box">この日の予約可能枠はありません。別の日付か別のスタッフを選んでください。</div>
+            <div class="summary-box">選択した時間は予約できません。別の ◎ を選んでください。</div>
           {% endif %}
         </div>
       </div>

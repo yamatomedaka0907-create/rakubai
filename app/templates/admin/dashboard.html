@@ -87,62 +87,6 @@
       </div>
     </div>
 
-    <div class="calendar-layout">
-      <div class="card desktop-calendar-only">
-        <div class="card-header">
-          <h2>予約カレンダー</h2>
-          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-            <span class="badge holiday-badge">{{ shop.holiday }} は赤表示</span>
-            <div class="calendar-nav">
-              <a href="/admin/{{ shop_id }}?month={{ calendar_prev_month }}&date={{ selected_date }}">← 前月</a>
-              <div class="month-label">{{ calendar_month_label }}</div>
-              <a href="/admin/{{ shop_id }}?month={{ calendar_next_month }}&date={{ selected_date }}">次月 →</a>
-            </div>
-          </div>
-        </div>
-        <div class="calendar-weekdays"><div class="calendar-weekday">日</div><div class="calendar-weekday">月</div><div class="calendar-weekday">火</div><div class="calendar-weekday">水</div><div class="calendar-weekday">木</div><div class="calendar-weekday">金</div><div class="calendar-weekday">土</div></div>
-        <div class="calendar-grid">
-          {% for day in calendar_days %}
-          <a href="/admin/{{ shop_id }}?month={{ calendar_month_value }}&date={{ day.date }}" class="calendar-day{% if not day.is_current_month %} is-outside{% endif %}{% if day.is_today %} is-today{% endif %}{% if selected_date == day.date %} is-selected{% endif %}{% if day.is_holiday %} is-holiday{% endif %}">
-            <div class="calendar-day-top"><span class="calendar-day-number">{{ day.day }}</span><span class="calendar-count">{{ day.count }}人</span></div>
-            <div class="calendar-meta">{% if day.count > 0 %}予約あり{% else %}予約なし{% endif %}</div>
-            {% if day.is_holiday %}<span class="holiday-label">定休日</span>{% endif %}
-          </a>
-          {% endfor %}
-        </div>
-        <p class="section-note">日付を押すと、その日のタイムスケジュールを右側で確認できます。人数はキャンセル以外の予約数です。</p>
-      </div>
-
-      <div class="card">
-        <div class="day-header">
-          <div>
-            <h2 class="day-title">{{ selected_date }} のタイムスケジュール</h2>
-            <p class="day-sub">予約 {{ selected_day_count }}件</p>
-          </div>
-          <a href="/admin/{{ shop_id }}?month={{ calendar_month_value }}&date={{ today }}" class="badge" style="text-decoration:none;">今日を見る</a>
-        </div>
-        {% if selected_day_schedule %}
-        <div class="timeline">
-          {% for reservation in selected_day_schedule %}
-          <div class="timeline-item">
-            <div class="timeline-top">
-              <div class="timeline-time">{{ reservation.start_time }} - {{ reservation.end_time }}</div>
-              {% if reservation.status == "キャンセル" %}<span class="status status-cancelled">キャンセル</span>{% elif reservation.status == "来店済み" %}<span class="status status-done">来店済み</span>{% else %}<span class="status status-reserved">予約済み</span>{% endif %}
-            </div>
-            <div class="timeline-main">
-              <div><strong>顧客:</strong> {{ reservation.customer_name }}</div>
-              <div><strong>スタッフ:</strong> <a href="/admin/{{ shop_id }}/staff/{{ reservation.staff_id }}?month={{ calendar_month_value }}&date={{ reservation.reservation_date }}">{{ reservation.staff_name }}</a></div>
-              <div><strong>メニュー:</strong> {{ reservation.menu_name }} / {{ reservation.duration }}分 / ¥{{ reservation.price }}</div>
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-        {% else %}
-        <p class="empty">この日の予約はまだありません。</p>
-        {% endif %}
-      </div>
-    </div>
-
     <div class="card weekly-card">
       <div class="card-header">
         <h2>週間予約状況</h2>
@@ -154,10 +98,16 @@
             <tr>
               <th class="time-col">時間</th>
               {% for day in week_days %}
-              <th class="{% if day.is_today %}is-today{% endif %}">
+              <th class="{% if day.is_today %}is-today{% endif %} {% if day.is_selected %}is-selected{% endif %}">
                 <div class="day-head">
                   <strong>{{ day.label }}</strong>
                   <span>{{ day.weekday }}</span>
+                  {% if loop.last %}
+                  <div style="display:flex; flex-direction:column; gap:6px; align-items:center;">
+                    <a class="week-next-link" href="/admin/{{ shop_id }}?month={{ calendar_month_value }}&date={{ selected_date }}&week_start={{ prev_week_start }}">前週へ戻る</a>
+                    <a class="week-next-link" href="/admin/{{ shop_id }}?month={{ calendar_month_value }}&date={{ selected_date }}&week_start={{ next_week_start }}">翌週を見る</a>
+                  </div>
+                  {% endif %}
                 </div>
               </th>
               {% endfor %}
@@ -168,7 +118,7 @@
             <tr>
               <th class="time-col">{{ row.time }}</th>
               {% for cell in row.cells %}
-              <td class="symbol-cell {{ cell.cell_class }} {% if week_days[loop.index0].is_today %}is-today{% endif %}">{{ cell.symbol }}</td>
+              <td class="symbol-cell {{ cell.cell_class }} {% if cell.is_selected %}is-selected{% endif %} {% if week_days[loop.index0].is_today %}is-today{% endif %}">{{ cell.symbol }}</td>
               {% endfor %}
             </tr>
             {% endfor %}
@@ -178,7 +128,61 @@
       <div class="availability-legend">
         <span>◎ 空きあり</span><span>× 予約あり</span><span>休 定休日</span>
       </div>
-      <p class="section-note">下にスクロールしても日付行が固定され、横スクロールしても時間列が見えるようにしています。</p>
+      <p class="section-note">週間表を上に、月間カレンダーを下に置いています。下にスクロールしても日付行が固定されます。</p>
+    </div>
+
+    <div class="card">
+      <div class="day-header">
+        <div>
+          <h2 class="day-title">{{ selected_date }} のタイムスケジュール</h2>
+          <p class="day-sub">予約 {{ selected_day_count }}件</p>
+        </div>
+        <a href="/admin/{{ shop_id }}?month={{ calendar_month_value }}&date={{ today }}&week_start={{ week_start }}" class="badge" style="text-decoration:none;">今日を見る</a>
+      </div>
+      {% if selected_day_schedule %}
+      <div class="timeline">
+        {% for reservation in selected_day_schedule %}
+        <div class="timeline-item">
+          <div class="timeline-top">
+            <div class="timeline-time">{{ reservation.start_time }} - {{ reservation.end_time }}</div>
+            {% if reservation.status == "キャンセル" %}<span class="status status-cancelled">キャンセル</span>{% elif reservation.status == "来店済み" %}<span class="status status-done">来店済み</span>{% else %}<span class="status status-reserved">予約済み</span>{% endif %}
+          </div>
+          <div class="timeline-main">
+            <div><strong>顧客:</strong> {{ reservation.customer_name }}</div>
+            <div><strong>スタッフ:</strong> <a href="/admin/{{ shop_id }}/staff/{{ reservation.staff_id }}?month={{ calendar_month_value }}&date={{ reservation.reservation_date }}">{{ reservation.staff_name }}</a></div>
+            <div><strong>メニュー:</strong> {{ reservation.menu_name }} / {{ reservation.duration }}分 / ¥{{ reservation.price }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="empty">この日の予約はまだありません。</p>
+      {% endif %}
+    </div>
+
+    <div class="card monthly-calendar-card">
+      <div class="card-header">
+        <h2>月間カレンダー</h2>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <span class="badge holiday-badge">{{ shop.holiday }} は赤表示</span>
+          <div class="calendar-nav">
+            <a href="/admin/{{ shop_id }}?month={{ calendar_prev_month }}&date={{ selected_date }}&week_start={{ week_start }}">← 前月</a>
+            <div class="month-label">{{ calendar_month_label }}</div>
+            <a href="/admin/{{ shop_id }}?month={{ calendar_next_month }}&date={{ selected_date }}&week_start={{ week_start }}">次月 →</a>
+          </div>
+        </div>
+      </div>
+      <div class="calendar-weekdays"><div class="calendar-weekday">日</div><div class="calendar-weekday">月</div><div class="calendar-weekday">火</div><div class="calendar-weekday">水</div><div class="calendar-weekday">木</div><div class="calendar-weekday">金</div><div class="calendar-weekday">土</div></div>
+      <div class="calendar-grid">
+        {% for day in calendar_days %}
+        <a href="/admin/{{ shop_id }}?month={{ calendar_month_value }}&date={{ day.date }}&week_start={{ day.date }}" class="calendar-day{% if not day.is_current_month %} is-outside{% endif %}{% if day.is_today %} is-today{% endif %}{% if selected_date == day.date %} is-selected{% endif %}{% if day.is_holiday %} is-holiday{% endif %}">
+          <div class="calendar-day-top"><span class="calendar-day-number">{{ day.day }}</span><span class="calendar-count">{{ day.count }}人</span></div>
+          <div class="calendar-meta">{% if day.count > 0 %}予約あり{% else %}予約なし{% endif %}</div>
+          {% if day.is_holiday %}<span class="holiday-label">定休日</span>{% endif %}
+        </a>
+        {% endfor %}
+      </div>
+      <p class="section-note">月間カレンダーをタップすると、その日を基準に週間表も切り替わります。</p>
     </div>
 
     <div class="grid">
