@@ -15,17 +15,19 @@
     <span class="badge">{{ current_slot_label }} 時点</span>
   </div>
   {% if staff_now_list %}
-  <table>
-    <thead><tr><th>名前</th><th>現在の内容</th></tr></thead>
-    <tbody>
-      {% for staff in staff_now_list %}
-      <tr>
-        <td><a href="{{ staff.jump_url or ('/admin/' ~ shop_id ~ '/staff/' ~ staff.id ~ '?date=' ~ selected_date ~ '&week_start=' ~ week_start) }}">{{ staff.name }}</a></td>
-        <td><strong>{{ staff.now_status }}</strong><div style="margin-top:6px; color:var(--text-muted);">{{ staff.now_detail }}</div></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>名前</th><th>現在の内容</th></tr></thead>
+      <tbody>
+        {% for staff in staff_now_list %}
+        <tr>
+          <td><a href="{{ staff.jump_url or ('/admin/' ~ shop_id ~ '/staff/' ~ staff.id ~ '?date=' ~ selected_date ~ '&week_start=' ~ week_start) }}">{{ staff.name }}</a></td>
+          <td><strong>{{ staff.now_status }}</strong><div style="margin-top:6px; color:var(--text-muted);">{{ staff.now_detail }}</div></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% else %}
   <p class="empty">スタッフがまだ登録されていません。</p>
   {% endif %}

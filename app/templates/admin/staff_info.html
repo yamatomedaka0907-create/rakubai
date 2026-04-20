@@ -5,17 +5,19 @@
 <div class="card">
   <div class="card-header"><h2>登録スタッフ一覧</h2><span class="badge">{{ staff_list|length }}名</span></div>
   {% if staff_list %}
-  <table>
-    <thead><tr><th>名前</th><th>対応メニュー</th></tr></thead>
-    <tbody>
-      {% for staff in staff_list %}
-      <tr>
-        <td><a href="/admin/{{ shop_id }}/staff/{{ staff.id }}">{{ staff.name }}</a></td>
-        <td>{% if staff.menu_names %}{{ staff.menu_names|join(' / ') }}{% else %}未設定{% endif %}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>名前</th><th>対応メニュー</th></tr></thead>
+      <tbody>
+        {% for staff in staff_list %}
+        <tr>
+          <td><a href="/admin/{{ shop_id }}/staff/{{ staff.id }}">{{ staff.name }}</a></td>
+          <td>{% if staff.menu_names %}{{ staff.menu_names|join(' / ') }}{% else %}未設定{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% else %}
   <p class="empty">スタッフがまだ登録されていません。</p>
   {% endif %}

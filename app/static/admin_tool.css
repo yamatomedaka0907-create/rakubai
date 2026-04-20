@@ -231,7 +231,7 @@ button, input, select, textarea { font: inherit; }
 }
 .tool-alert.is-success { background: var(--tool-success-soft); border-color: #b8e7cf; color: #106d42; }
 .tool-alert.is-danger { background: var(--tool-danger-soft); border-color: #f3c3c3; color: #9f3434; }
-.tool-table-wrap { overflow: auto; }
+.tool-table-wrap { overflow-x: auto; overflow-y: visible; -webkit-overflow-scrolling: touch; max-width: 100%; }
 .tool-table { width: 100%; border-collapse: collapse; min-width: 760px; }
 .tool-table th {
   padding: 12px;
@@ -246,6 +246,7 @@ button, input, select, textarea { font: inherit; }
   padding: 13px 12px;
   border-bottom: 1px solid #e6eaef;
   vertical-align: top;
+  overflow-wrap: anywhere;
 }
 .tool-table.is-dense td, .tool-table.is-dense th { padding-top: 11px; padding-bottom: 11px; }
 .tool-text-link { font-weight: 800; text-decoration: underline; }
@@ -429,4 +430,11 @@ button, input, select, textarea { font: inherit; }
   .tool-calendar-number { font-size: 13px; line-height: 1; }
   .tool-calendar-count { min-width: 20px; min-height: 20px; padding: 0 6px; font-size: 10px; }
   .tool-calendar-meta, .tool-holiday-label { font-size: 9px; line-height: 1.2; }
+}
+
+
+@media (max-width: 720px) {
+  .tool-table { min-width: 640px; }
+  .tool-table th,
+  .tool-table td { padding: 10px; font-size: 12px; }
 }
