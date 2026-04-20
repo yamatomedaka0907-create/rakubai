@@ -1,0 +1,88 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<div class="hero">
+  <div class="hero-top">
+    <div>
+      <h1>タイムラインカルテ</h1>
+      <p>スタッフごとの予約を時間軸でフル画面表示します。赤いラインは現在時刻です。</p>
+    </div>
+    <form method="get" action="/admin/{{ shop_id }}/timeline-karte" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+      <label style="margin:0;min-width:180px;">表示日<input type="date" name="date" value="{{ timeline_selected_date }}"></label>
+      <button type="submit">切り替える</button>
+    </form>
+  </div>
+</div>
+
+<style>
+.timeline-karte-shell { background:#fff; border:1px solid rgba(15,23,42,.07); border-radius:24px; box-shadow:var(--shadow-md); overflow:hidden; }
+.timeline-karte-header { display:grid; grid-template-columns:100px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(330px, 1fr)); border-bottom:1px solid var(--line); background:#f8fbfd; }
+.timeline-karte-header .time-head, .timeline-karte-header .staff-head { padding:16px 14px; font-weight:900; }
+.timeline-karte-header .time-head { color:var(--subtext); font-size:12px; text-transform:uppercase; }
+.timeline-karte-header .staff-head { border-left:1px solid var(--line); }
+.timeline-karte-scroll { overflow:auto; max-height:calc(100vh - 280px); }
+.timeline-karte-grid { position:relative; display:grid; grid-template-columns:100px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(330px, 1fr)); min-width:max-content; }
+.timeline-time-column { position:relative; background:#fff; z-index:2; }
+.timeline-time-label { position:absolute; left:0; right:0; height:1px; }
+.timeline-time-label span { position:absolute; top:-10px; left:14px; font-size:12px; font-weight:800; color:var(--subtext); background:#fff; padding-right:8px; }
+.timeline-staff-column { position:relative; border-left:1px solid var(--line); background:linear-gradient(180deg,#fff 0%,#fbfdff 100%); }
+.timeline-staff-column::before { content:""; position:absolute; inset:0; background-image:repeating-linear-gradient(to bottom, transparent 0, transparent calc({{ timeline_slot_height }}px - 1px), var(--line) calc({{ timeline_slot_height }}px - 1px), var(--line) {{ timeline_slot_height }}px); pointer-events:none; }
+.timeline-staff-column.is-empty::after { content:"予約なし"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--subtext); font-weight:800; }
+.timeline-now-line { position:absolute; left:0; right:0; height:2px; background:#dc2626; z-index:6; box-shadow:0 0 0 1px rgba(220,38,38,.08); }
+.timeline-now-line::before { content:"現在"; position:absolute; left:10px; top:-12px; display:inline-flex; align-items:center; justify-content:center; min-height:22px; padding:0 8px; border-radius:999px; background:#dc2626; color:#fff; font-size:11px; font-weight:900; }
+.timeline-reservation { position:absolute; left:10px; right:10px; border-radius:18px; padding:12px; color:#0f172a; border:1px solid transparent; box-shadow:0 10px 24px rgba(15,23,42,.08); z-index:4; overflow:hidden; }
+.timeline-reservation.reserved { background:rgba(46,196,182,.16); border-color:rgba(46,196,182,.28); }
+.timeline-reservation.done { background:#dcfce7; border-color:#86efac; }
+.timeline-reservation.cancelled { background:#fee2e2; border-color:#fecaca; }
+.timeline-reservation-time { font-size:12px; font-weight:900; margin-bottom:6px; }
+.timeline-reservation-name { font-size:15px; font-weight:900; line-height:1.35; }
+.timeline-reservation-meta { margin-top:6px; font-size:12px; color:#334155; line-height:1.5; }
+.timeline-reservation-status { margin-top:8px; display:inline-flex; align-items:center; justify-content:center; min-height:24px; padding:0 8px; border-radius:999px; background:rgba(255,255,255,.74); font-size:11px; font-weight:900; }
+@media (max-width:720px){ .timeline-karte-header, .timeline-karte-grid{ grid-template-columns:72px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(270px, 1fr)); } .timeline-time-label span{ left:8px; font-size:10px; } .timeline-reservation{ left:6px; right:6px; border-radius:14px; padding:10px; } .timeline-reservation-name{ font-size:13px; } }
+</style>
+
+<div class="timeline-karte-shell">
+  <div class="timeline-karte-header">
+    <div class="time-head">時間</div>
+    {% for staff in timeline_staff_columns %}<div class="staff-head">{{ staff.name }}</div>{% endfor %}
+  </div>
+  <div class="timeline-karte-scroll">
+    <div class="timeline-karte-grid" style="height:{{ timeline_total_height }}px;">
+      <div class="timeline-time-column">
+        {% for slot in timeline_slots %}<div class="timeline-time-label" style="top:{{ loop.index0 * timeline_slot_height }}px;"><span>{{ slot.label }}</span></div>{% endfor %}
+      </div>
+      {% for staff in timeline_staff_columns %}
+      <div class="timeline-staff-column{% if not staff.reservations %} is-empty{% endif %}">
+        {% for item in staff.reservations %}
+        <div class="timeline-reservation {{ item.status_class }}" style="top:{{ item.top }}px;height:{{ item.height }}px;">
+          <div class="timeline-reservation-time">{{ item.start_time }} - {{ item.end_time }}</div>
+          <div class="timeline-reservation-name">{{ item.staff_name or staff.name }} / {{ item.customer_name }}</div>
+          <div class="timeline-reservation-meta">{{ item.menu_name }}</div>
+          <span class="timeline-reservation-status">{{ item.status }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+      {% if timeline_now_line_top is not none %}<div class="timeline-now-line" style="top:{{ timeline_now_line_top }}px;"></div>{% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  function centerTimelineNow(){
+    const scrollEl = document.querySelector('.timeline-karte-scroll');
+    const nowLine = document.querySelector('.timeline-now-line');
+    if (!scrollEl || !nowLine) return;
+    const target = nowLine.offsetTop - (scrollEl.clientHeight / 2) + (nowLine.offsetHeight / 2);
+    scrollEl.scrollTop = Math.max(0, target);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', centerTimelineNow, { once: true });
+  } else {
+    centerTimelineNow();
+  }
+  window.addEventListener('load', centerTimelineNow, { once: true });
+})();
+</script>
+
+{% endblock %}

@@ -2,6 +2,30 @@
 {% block page_title %}ダッシュボード{% endblock %}
 {% block page_subtitle %}業務ツール風のトップ画面で、今日の運用状況と主要導線をまとめて確認できます。{% endblock %}
 {% block content %}
+{% if unread_chat_items %}
+<section class="tool-panel" style="margin-bottom:20px;">
+  <div class="tool-panel-head">
+    <h2>新着チャット</h2>
+    <div class="tool-note">{{ unread_chat_items|length }}件</div>
+  </div>
+  <div class="tool-card-stack">
+    {% for item in unread_chat_items %}
+    <div class="tool-card-lite">
+      <a class="tool-text-link" href="/admin/{{ shop_id }}/customers/{{ item.customer_id }}#chat-panel">
+        <div class="tool-card-lite-head">
+          <div style="min-width:0;">
+            <div class="tool-card-lite-title">{{ item.customer_name or ('顧客ID: ' ~ item.customer_id) }}</div>
+            <div class="tool-note">{{ item.latest_body or '新しいメッセージがあります。' }}</div>
+          </div>
+          <span class="tool-badge is-primary">{{ item.unread_count }}</span>
+        </div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 <div class="tool-grid">
   <section class="tool-panel is-hero-panel">
     <div class="tool-panel-head is-wide">

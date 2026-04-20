@@ -21,7 +21,7 @@
             <div class="tool-field"><label class="tool-label">管理画面タイプ</label><select class="tool-select" name="admin_ui_mode"><option value="web" {% if shop.admin_ui_mode != "tool" %}selected{% endif %}>WEB風</option><option value="tool" {% if shop.admin_ui_mode == "tool" %}selected{% endif %}>ツール風</option></select></div>
             <div class="tool-field full">
               <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:8px;">
-                <label class="tool-label" style="margin:0;">予約ページのメニュー</label>
+                <label class="tool-label" style="margin:0;">取り扱いメニュー</label>
                 <button class="tool-btn" type="button" id="tool-add-menu-row">メニューを追加</button>
               </div>
               <div id="tool-menu-editor" style="display:grid; gap:10px;">
@@ -36,6 +36,12 @@
                   </div>
                 </div>
                 {% endfor %}
+              </div>
+              <div style="margin-top:10px; border-top:1px dashed var(--tool-line,#d7e3ee); padding-top:12px;">
+                <div class="tool-label" style="margin-bottom:8px;">現在の取り扱いメニュー一覧</div>
+                {% if shop.menus %}
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">{% for menu in shop.menus %}<span class="tool-chip">{{ menu.name }}</span>{% endfor %}</div>
+                {% else %}<div class="tool-note">まだ登録されていません。</div>{% endif %}
               </div>
             </div>
           </div>

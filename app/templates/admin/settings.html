@@ -53,8 +53,8 @@
     <div style="margin-top:24px; border:1px solid var(--line); border-radius:18px; padding:18px; background:#fcfffe;">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
         <div>
-          <div style="font-size:18px; font-weight:800; color:var(--primary-dark);">予約ページのメニュー</div>
-          <div style="color:var(--subtext); font-size:14px; line-height:1.7; margin-top:4px;">ここで追加・削除した内容が予約ページのメニュー一覧と選択肢に反映されます。</div>
+          <div style="font-size:18px; font-weight:800; color:var(--primary-dark);">取り扱いメニュー</div>
+          <div style="color:var(--subtext); font-size:14px; line-height:1.7; margin-top:4px;">ここで追加・削除した内容が取り扱いメニュー一覧と選択肢に反映されます。</div>
         </div>
         <button type="button" id="add-menu-row" style="width:auto; margin-top:0; padding:0 16px; min-height:42px;">メニューを追加</button>
       </div>
@@ -70,6 +70,16 @@
           <label>説明文<textarea name="menu_description" placeholder="例: 基本のカットメニューです。">{{ menu.description }}</textarea></label>
         </div>
         {% endfor %}
+      </div>
+      <div style="margin-top:14px; border-top:1px dashed var(--line); padding-top:14px;">
+        <div style="font-size:14px; font-weight:800; color:var(--primary-dark); margin-bottom:8px;">現在の取り扱いメニュー一覧</div>
+        {% if shop.menus %}
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          {% for menu in shop.menus %}<span class="badge">{{ menu.name }}</span>{% endfor %}
+        </div>
+        {% else %}
+        <div style="color:var(--subtext); font-size:13px;">まだ登録されていません。</div>
+        {% endif %}
       </div>
     </div>
 

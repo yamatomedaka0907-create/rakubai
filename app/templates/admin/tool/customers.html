@@ -3,6 +3,7 @@
 {% block page_subtitle %}顧客一覧の中で、会員と非会員を分けて確認できます。{% endblock %}
 {% block content %}
 <div class="tool-grid">
+  {% if unread_chat_items %}<section class="tool-panel"><div class="tool-panel-head"><h2>新着チャット</h2><div class="tool-note">{{ unread_chat_items|length }}件</div></div><div class="tool-panel-body"><div class="tool-card-stack">{% for item in unread_chat_items %}<div class="tool-card-lite"><a class="tool-text-link" href="/admin/{{ shop_id }}/customers/{{ item.customer_id }}#chat-panel"><div class="tool-card-lite-head"><div><div class="tool-card-lite-title">{{ item.customer_name }}</div><div class="tool-note">{{ item.latest_body or '新しいメッセージがあります。' }}</div></div><span class="tool-badge is-primary">{{ item.unread_count }}</span></div></a></div>{% endfor %}</div></div></section>{% endif %}
   {% if success_message %}<div class="tool-alert is-success">{{ success_message }}</div>{% endif %}
   {% if error_message %}<div class="tool-alert is-danger">{{ error_message }}</div>{% endif %}
 
@@ -52,7 +53,7 @@
                     <td>{{ customer.email or '-' }}</td>
                     <td>{{ customer.visit_count }}回</td>
                     <td>{{ customer.created_at[:10] if customer.created_at else '-' }}</td>
-                    <td><a class="tool-btn" href="/admin/{{ shop_id }}/customers/{{ customer.id }}">詳細</a></td>
+                    <td><div class="tool-actions"><a class="tool-btn" href="/admin/{{ shop_id }}/customers/{{ customer.id }}">詳細</a>{% if unread_chat_map.get(customer.id) %}<a class="tool-btn is-primary" href="/admin/{{ shop_id }}/customers/{{ customer.id }}#chat-panel">{{ unread_chat_map.get(customer.id) }}</a>{% endif %}</div></td>
                   </tr>
                   {% endfor %}
                 </tbody>
@@ -82,7 +83,7 @@
                     <td>{{ customer.email or '-' }}</td>
                     <td>{{ customer.visit_count }}回</td>
                     <td>{{ customer.created_at[:10] if customer.created_at else '-' }}</td>
-                    <td><a class="tool-btn" href="/admin/{{ shop_id }}/customers/{{ customer.id }}">詳細</a></td>
+                    <td><div class="tool-actions"><a class="tool-btn" href="/admin/{{ shop_id }}/customers/{{ customer.id }}">詳細</a>{% if unread_chat_map.get(customer.id) %}<a class="tool-btn is-primary" href="/admin/{{ shop_id }}/customers/{{ customer.id }}#chat-panel">{{ unread_chat_map.get(customer.id) }}</a>{% endif %}</div></td>
                   </tr>
                   {% endfor %}
                 </tbody>

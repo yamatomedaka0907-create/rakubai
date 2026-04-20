@@ -1,17 +1,25 @@
 from __future__ import annotations
 
 from dotenv import load_dotenv
-load_dotenv()
 
 import calendar
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
+import os
 import smtplib
+from urllib.parse import urlparse
+
+import boto3
 from email.mime.text import MIMEText
 from email.utils import formataddr
 from pathlib import Path
 import secrets
 import re
 import unicodedata
+from zoneinfo import ZoneInfo
+
+load_dotenv()
+load_dotenv(Path(__file__).resolve().with_name(".env"))
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
@@ -26,6 +34,7 @@ from app.db import (
     get_shop_management_data,
     get_plans,
     update_shop_basic_info,
+    update_shop_staff_list,
     update_shop_subscription,
     create_shop_with_owner,
     create_customer,
@@ -57,9 +66,22 @@ from app.db import (
     authenticate_member,
     get_member_by_id,
     get_member_reservations,
-    get_chat_messages,
-    add_chat_message,
-    count_monthly_chat_messages,
+    get_member_all_reservations,
+    get_member_by_customer_id,
+    get_latest_chat_member_id,
+    get_member_by_phone_normalized,
+    get_member_linked_shops,
+    deactivate_member,
+    deactivate_members_by_phone,
+    list_chat_messages,
+    create_chat_message,
+    mark_chat_messages_read_for_admin,
+    mark_chat_messages_read_for_member,
+    count_member_chat_messages_in_month,
+    count_shop_chat_messages_in_month,
+    get_admin_unread_chat_summary,
+    get_member_unread_chat_summary,
+    normalize_member_phone,
 )
 from app.runtime_data import (
     get_platform_admin,
@@ -79,7 +101,22 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.mount("/uploads", StaticFiles(directory="data/uploads"), name="uploads")
 
 templates = Jinja2Templates(directory="app/templates")
+templates.env.globals["is_premium_subscription"] = lambda subscription: _is_premium_subscription(subscription)
 PLATFORM_ADMIN = get_platform_admin()
+JST = ZoneInfo("Asia/Tokyo")
+
+
+def _format_chat_datetime(value: object) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    try:
+        parsed = datetime.fromisoformat(raw)
+    except ValueError:
+        return raw[:16]
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(JST).strftime("%Y-%m-%d %H:%M")
 
 
 PLAN_DETAILS = {
@@ -283,6 +320,33 @@ def _build_admin_plan_context(
 WEEKDAY_MAP = {"月曜日": 0, "火曜日": 1, "水曜日": 2, "木曜日": 3, "金曜日": 4, "土曜日": 5, "日曜日": 6}
 
 
+
+
+def _first_env(*names: str) -> str:
+    for name in names:
+        value = os.getenv(name)
+        if value is not None:
+            value = str(value).strip()
+            if value:
+                return value
+    return ""
+
+
+def _get_customer_photo_s3_settings() -> dict[str, str]:
+    bucket = _first_env("S3_BUCKET", "AWS_S3_BUCKET", "AWS_BUCKET", "BUCKET_NAME", "S3_BUCKET_NAME") or "reserve-site-images-001"
+    region = _first_env("AWS_REGION", "AWS_DEFAULT_REGION") or "ap-northeast-1"
+    prefix = (_first_env("S3_PREFIX", "AWS_S3_PREFIX") or "shops").strip("/")
+    endpoint_url = _first_env("S3_ENDPOINT_URL", "AWS_S3_ENDPOINT_URL")
+    public_base_url = _first_env("S3_PUBLIC_BASE_URL", "AWS_S3_PUBLIC_BASE_URL").rstrip("/")
+    acl = _first_env("S3_ACL", "AWS_S3_ACL")
+    return {
+        "bucket": bucket,
+        "region": region,
+        "prefix": prefix,
+        "endpoint_url": endpoint_url,
+        "public_base_url": public_base_url,
+        "acl": acl,
+    }
 def _get_customer_photo_policy(subscription: dict | None) -> dict:
     label = str((subscription or {}).get("plan_name") or "現在のプラン")
     return {"enabled": True, "label": label, "max_photos": None}
@@ -290,20 +354,59 @@ def _get_customer_photo_policy(subscription: dict | None) -> dict:
 
 def _save_customer_photo_file(shop_id: str, customer_id: int, upload: UploadFile) -> str:
     suffix = Path(upload.filename or "photo.jpg").suffix or ".jpg"
+    filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(4)}{suffix.lower()}"
+    file_bytes = upload.file.read()
+
+    s3_settings = _get_customer_photo_s3_settings()
+    bucket = s3_settings["bucket"]
+    if bucket:
+        region = s3_settings["region"]
+        prefix = s3_settings["prefix"]
+        endpoint_url = s3_settings["endpoint_url"] or None
+        public_base_url = s3_settings["public_base_url"]
+        acl = s3_settings["acl"]
+        key_parts = [part for part in [prefix, shop_id, "customers", str(customer_id), filename] if part]
+        key = "/".join(key_parts)
+        content_type = (upload.content_type or "").strip() or "application/octet-stream"
+
+        client_kwargs = {"region_name": region}
+        if endpoint_url:
+            client_kwargs["endpoint_url"] = endpoint_url
+        s3 = boto3.client("s3", **client_kwargs)
+
+        extra_args = {"ContentType": content_type}
+        if acl:
+            extra_args["ACL"] = acl
+        s3.put_object(Bucket=bucket, Key=key, Body=file_bytes, **extra_args)
+
+        if public_base_url:
+            return f"{public_base_url}/{key}"
+        if endpoint_url:
+            return f"{endpoint_url.rstrip('/')}/{bucket}/{key}"
+        return f"https://{bucket}.s3.{region}.amazonaws.com/{key}"
+
     customer_dir = Path("data/uploads/shops") / shop_id / "customers" / str(customer_id)
     customer_dir.mkdir(parents=True, exist_ok=True)
-    filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(4)}{suffix.lower()}"
     save_path = customer_dir / filename
     with save_path.open("wb") as fh:
-        fh.write(upload.file.read())
-    relative = save_path.relative_to(Path("data"))
+        fh.write(file_bytes)
+    relative = save_path.relative_to(Path("data/uploads"))
     return "/uploads/" + str(relative).replace("\\", "/")
+
+
+def _normalize_customer_photo_url(image_url: str) -> str:
+    if not image_url:
+        return ""
+    cleaned = str(image_url).strip()
+    if cleaned.startswith("/uploads/uploads/"):
+        return "/uploads/" + cleaned[len("/uploads/uploads/"):]
+    return cleaned
 
 
 def _delete_local_upload_from_url(image_url: str) -> None:
     if not image_url:
         return
-    cleaned = image_url.split("?", 1)[0]
+    cleaned = _normalize_customer_photo_url(image_url).split("?", 1)[0]
     if not cleaned.startswith("/uploads/"):
         return
     target = Path("data") / cleaned.lstrip("/")
@@ -313,6 +416,202 @@ def _delete_local_upload_from_url(image_url: str) -> None:
     except OSError:
         pass
 
+
+def _delete_customer_photo_file(image_url: str) -> None:
+    if not image_url:
+        return
+    cleaned = _normalize_customer_photo_url(image_url).split("?", 1)[0]
+    if cleaned.startswith("/uploads/"):
+        _delete_local_upload_from_url(cleaned)
+        return
+
+    s3_settings = _get_customer_photo_s3_settings()
+    bucket = s3_settings["bucket"]
+    if not bucket:
+        return
+
+    parsed = urlparse(cleaned)
+    path = parsed.path.lstrip("/")
+    host = (parsed.netloc or "").lower()
+    key = ""
+
+    if path.startswith(f"{bucket}/"):
+        key = path[len(bucket) + 1:]
+    elif host.startswith(f"{bucket}.s3") or host == f"{bucket}.s3.amazonaws.com":
+        key = path
+    else:
+        public_base_url = s3_settings["public_base_url"]
+        if public_base_url and cleaned.startswith(public_base_url + "/"):
+            key = cleaned[len(public_base_url) + 1:]
+        endpoint_url = s3_settings["endpoint_url"].rstrip("/")
+        if not key and endpoint_url and cleaned.startswith(endpoint_url + f"/{bucket}/"):
+            key = cleaned[len(endpoint_url) + len(bucket) + 2:]
+
+    if not key:
+        return
+
+    region = s3_settings["region"]
+    endpoint_url = s3_settings["endpoint_url"] or None
+    client_kwargs = {"region_name": region}
+    if endpoint_url:
+        client_kwargs["endpoint_url"] = endpoint_url
+    s3 = boto3.client("s3", **client_kwargs)
+    s3.delete_object(Bucket=bucket, Key=key)
+
+
+
+
+def _is_premium_subscription(subscription: dict | None) -> bool:
+    current_display_code = _resolve_current_display_plan_code(subscription)
+    return current_display_code == "premium"
+
+
+def _parse_hhmm_to_minutes(value: str | None) -> int | None:
+    if not value:
+        return None
+    try:
+        hours, minutes = str(value).split(":", 1)
+        return int(hours) * 60 + int(minutes)
+    except (TypeError, ValueError):
+        return None
+
+
+def _format_minutes_hhmm(total_minutes: int) -> str:
+    hours = max(0, total_minutes) // 60
+    minutes = max(0, total_minutes) % 60
+    return f"{hours:02d}:{minutes:02d}"
+
+
+def _build_timeline_karte_context(shop: dict, reservations: list[dict], selected_date_obj: date) -> dict[str, object]:
+    selected_date = selected_date_obj.isoformat()
+    configured_staff_list = list(shop.get("staff_list", []))
+    day_reservations = [
+        item for item in reservations
+        if str(item.get("reservation_date") or "") == selected_date
+    ]
+
+    reservation_start_minutes: list[int] = []
+    reservation_end_minutes: list[int] = []
+    for item in day_reservations:
+        start_minutes = _parse_hhmm_to_minutes(item.get("start_time"))
+        end_minutes = _parse_hhmm_to_minutes(item.get("end_time"))
+        if start_minutes is not None:
+            reservation_start_minutes.append(start_minutes)
+        if end_minutes is not None:
+            reservation_end_minutes.append(end_minutes)
+
+    default_start = 9 * 60
+    default_end = 21 * 60
+    if reservation_start_minutes:
+        default_start = min(default_start, min(reservation_start_minutes))
+    if reservation_end_minutes:
+        default_end = max(default_end, max(reservation_end_minutes))
+
+    timeline_start = max(0, (default_start // 30) * 30)
+    timeline_end = min(24 * 60, ((default_end + 29) // 30) * 30)
+    if timeline_end <= timeline_start:
+        timeline_end = min(24 * 60, timeline_start + (12 * 60))
+
+    slot_height = 56
+    slots = []
+    current_slot = timeline_start
+    while current_slot <= timeline_end:
+        slots.append({"label": _format_minutes_hhmm(current_slot), "minutes": current_slot})
+        current_slot += 30
+
+    total_height = max((timeline_end - timeline_start) * slot_height // 30, slot_height * 6)
+
+    reservations_by_staff: dict[str, list[dict]] = {}
+    reservation_staff_meta: dict[str, dict] = {}
+    unassigned_key = "__unassigned__"
+    for item in day_reservations:
+        raw_staff_id = item.get("staff_id")
+        raw_staff_name = str(item.get("staff_name") or "").strip()
+        staff_key = str(raw_staff_id).strip() if raw_staff_id not in (None, "") else ""
+        if not staff_key:
+            staff_key = raw_staff_name or unassigned_key
+        reservations_by_staff.setdefault(staff_key, []).append(item)
+        if staff_key not in reservation_staff_meta:
+            reservation_staff_meta[staff_key] = {
+                "id": raw_staff_id if raw_staff_id not in (None, "") else staff_key,
+                "name": raw_staff_name or ("未割り当て" if staff_key == unassigned_key else f"スタッフ{staff_key}"),
+            }
+
+    staff_columns = []
+    seen_staff_keys: set[str] = set()
+    merged_staff_list: list[dict] = []
+
+    for staff in configured_staff_list:
+        staff_key = str(staff.get("id") or "").strip()
+        if not staff_key:
+            continue
+        merged_staff_list.append({
+            "id": staff.get("id"),
+            "name": staff.get("name") or reservation_staff_meta.get(staff_key, {}).get("name") or f"スタッフ{staff_key}",
+        })
+        seen_staff_keys.add(staff_key)
+
+    for staff_key, meta in reservation_staff_meta.items():
+        if staff_key in seen_staff_keys:
+            continue
+        merged_staff_list.append({
+            "id": meta.get("id"),
+            "name": meta.get("name"),
+        })
+        seen_staff_keys.add(staff_key)
+
+    for staff in merged_staff_list:
+        raw_staff_id = staff.get("id")
+        staff_key = str(raw_staff_id).strip() if raw_staff_id not in (None, "") else ""
+        if not staff_key:
+            staff_key = str(staff.get("name") or "").strip() or unassigned_key
+        items = []
+        for item in sorted(reservations_by_staff.get(staff_key, []), key=lambda x: (str(x.get("start_time") or ""), int(x.get("id") or 0))):
+            start_minutes = _parse_hhmm_to_minutes(item.get("start_time"))
+            end_minutes = _parse_hhmm_to_minutes(item.get("end_time"))
+            if start_minutes is None:
+                continue
+            if end_minutes is None or end_minutes <= start_minutes:
+                duration = int(item.get("duration") or 30)
+                end_minutes = start_minutes + max(duration, 30)
+            top = max(0, (start_minutes - timeline_start) * slot_height / 30)
+            height = max(44, (end_minutes - start_minutes) * slot_height / 30)
+            status = str(item.get("status") or "予約済み")
+            items.append({
+                "id": item.get("id"),
+                "top": round(top, 2),
+                "height": round(height, 2),
+                "start_time": item.get("start_time"),
+                "end_time": item.get("end_time"),
+                "customer_name": item.get("customer_name"),
+                "menu_name": item.get("menu_name"),
+                "price": item.get("price"),
+                "reservation_date": item.get("reservation_date"),
+                "staff_id": item.get("staff_id"),
+                "staff_name": item.get("staff_name"),
+                "status": status,
+                "status_class": "cancelled" if status == "キャンセル" else ("done" if status == "来店済み" else "reserved"),
+            })
+        staff_columns.append({
+            "id": staff.get("id"),
+            "name": staff.get("name"),
+            "reservations": items,
+        })
+
+    now_line_top = None
+    if selected_date_obj == date.today():
+        current_minutes = datetime.now().hour * 60 + datetime.now().minute
+        if timeline_start <= current_minutes <= timeline_end:
+            now_line_top = round((current_minutes - timeline_start) * slot_height / 30, 2)
+
+    return {
+        "timeline_selected_date": selected_date,
+        "timeline_slots": slots,
+        "timeline_staff_columns": staff_columns,
+        "timeline_total_height": total_height,
+        "timeline_slot_height": slot_height,
+        "timeline_now_line_top": now_line_top,
+    }
 
 def _safe_parse_date(value: str | None, fallback: date | None = None) -> date:
     if value:
@@ -411,9 +710,10 @@ def _normalize_week_start(base_date: date | None) -> date:
     return base - timedelta(days=((base.weekday() + 1) % 7))
 
 
-def _build_week_availability_matrix(*, shop: dict, reservations: list[dict], selected_date: date, week_start: date | None = None) -> tuple[list[dict], list[str], list[dict]]:
+def _build_week_availability_matrix(*, shop: dict, reservations: list[dict], selected_date: date, week_start: date | None = None, staff_id: int | str | None = None) -> tuple[list[dict], list[str], list[dict]]:
     start_of_week = _normalize_week_start(week_start or selected_date)
     holiday_idx = WEEKDAY_MAP.get(str(shop.get('holiday') or ''))
+    normalized_staff_id = str(staff_id).strip() if staff_id not in (None, '') else ''
     week_days: list[dict] = []
     for offset in range(7):
         current_day = start_of_week + timedelta(days=offset)
@@ -428,12 +728,25 @@ def _build_week_availability_matrix(*, shop: dict, reservations: list[dict], sel
 
     time_slots = _build_half_hour_slots(shop.get('business_hours'))
     active_reservations = [r for r in reservations if str(r.get('status') or '') != 'キャンセル']
+    if normalized_staff_id:
+        active_reservations = [r for r in active_reservations if str(r.get('staff_id') or '').strip() == normalized_staff_id]
     reserved_keys: set[tuple[str, str]] = set()
     for item in active_reservations:
         reservation_date = str(item.get('reservation_date') or '')
-        start_time = str(item.get('start_time') or '')[:5]
-        if reservation_date and start_time:
-            reserved_keys.add((reservation_date, start_time))
+        start_minutes = _parse_hhmm_to_minutes(str(item.get('start_time') or '')[:5])
+        end_minutes = _parse_hhmm_to_minutes(str(item.get('end_time') or '')[:5])
+        if start_minutes is None:
+            continue
+        if end_minutes is None or end_minutes <= start_minutes:
+            duration = int(item.get('duration') or 30)
+            end_minutes = start_minutes + max(duration, 30)
+
+        current_minutes = start_minutes
+        safety = 0
+        while current_minutes < end_minutes and safety < 96:
+            reserved_keys.add((reservation_date, _format_minutes_hhmm(current_minutes)))
+            current_minutes += 30
+            safety += 1
 
     weekly_rows: list[dict] = []
     for slot in time_slots:
@@ -645,6 +958,10 @@ def build_shop_booking_context(shop_id: str, request: Request, error_message: st
 
     selected_menu = next((m for m in shop.get('menus', []) if str(m.get('id')) == str(selected_menu_id)), None)
     selected_staff = next((s for s in shop.get('staff_list', []) if str(s.get('id')) == str(selected_staff_id)), None)
+    if selected_staff and selected_menu and not _staff_allows_menu(selected_staff, selected_menu.get('id')):
+        selected_menu = None
+        selected_menu_id = ""
+        selected_start_time = ""
 
     available_slots = []
     selected_slot = None
@@ -670,10 +987,12 @@ def build_shop_booking_context(shop_id: str, request: Request, error_message: st
                 selected_slot = slot
             available_slots.append(slot)
 
+    member = _get_member_for_shop_session(request, shop_id)
+    member_page_url = f"/member/{shop_id}/mypage" if member else f"/member/{shop_id}/login?next=/member/{shop_id}/mypage"
     form_data = {
-        'customer_name': request.query_params.get('customer_name', ''),
-        'phone': request.query_params.get('phone', ''),
-        'email': request.query_params.get('email', ''),
+        'customer_name': request.query_params.get('customer_name') or str((member or {}).get('name') or ''),
+        'phone': request.query_params.get('phone') or str((member or {}).get('phone') or ''),
+        'email': request.query_params.get('email') or str((member or {}).get('email') or ''),
         'receive_email': request.query_params.get('receive_email', '1'),
     }
 
@@ -688,11 +1007,13 @@ def build_shop_booking_context(shop_id: str, request: Request, error_message: st
         week_start=week_start,
     )
 
+    subscription = get_shop_subscription(shop_id) or {'status': 'active', 'plan_name': 'Free', 'show_ads': False}
+
     return {
         'request': request,
         'shop': shop,
         'shop_id': shop_id,
-        'subscription': {'status': 'active', 'plan_name': 'Free', 'show_ads': False},
+        'subscription': subscription,
         'staff_list': shop.get('staff_list', []),
         'menus': shop.get('menus', []),
         'selected_staff_id': selected_staff_id,
@@ -716,6 +1037,8 @@ def build_shop_booking_context(shop_id: str, request: Request, error_message: st
         'prev_week_start': (week_start - timedelta(days=7)).isoformat(),
         'next_week_start': (week_start + timedelta(days=7)).isoformat(),
         'form_data': form_data,
+        'member': member,
+        'member_page_url': member_page_url,
         'error_message': error_message,
     }
 
@@ -1135,6 +1458,10 @@ def admin_settings_page(request: Request, shop_id: str):
             "subscription": subscription,
             "available_plans": available_plans,
             "current_admin_name": request.session.get("store_logged_in_admin_name") or (admin_users[0].get("name") if admin_users else ""),
+            "staff_list": shop.get("staff_list", []),
+            "menus": shop.get("menus", []),
+            "customers": get_customers(normalized_shop_id),
+            "today_reservations": [item for item in get_reservations(normalized_shop_id) if str(item.get("reservation_date") or "") == date.today().isoformat()],
             "active_page": "settings",
             "success_message": success_message,
             "message": success_message,
@@ -1295,6 +1622,7 @@ def admin_page(request: Request, shop_id: str, error_message: str = ""):
         reservations=reservations,
         staff_list=shop.get("staff_list", []),
     )
+    unread_chat_items = [_serialize_unread_chat_item(item) for item in get_admin_unread_chat_summary(shop_id)]
     template_name = "admin/tool/dashboard.html" if shop.get("admin_ui_mode") == "tool" else "admin/dashboard.html"
 
     return templates.TemplateResponse(
@@ -1318,6 +1646,7 @@ def admin_page(request: Request, shop_id: str, error_message: str = ""):
             },
             "admin_users": admin_users,
             "subscription": subscription,
+            "subscription_status_label": _format_admin_subscription_status_label(subscription),
             "available_plans": available_plans,
             **plan_context,
             "current_admin_name": current_admin_name,
@@ -1335,6 +1664,7 @@ def admin_page(request: Request, shop_id: str, error_message: str = ""):
             "week_start": week_start.isoformat(),
             "prev_week_start": (week_start - timedelta(days=7)).isoformat(),
             "next_week_start": (week_start + timedelta(days=7)).isoformat(),
+            "unread_chat_items": unread_chat_items,
             "active_page": "dashboard",
         },
     )
@@ -1410,7 +1740,51 @@ def admin_reservations_page(request: Request, shop_id: str, error_message: str =
         reservations=filtered_reservations,
         selected_date=selected_date_obj,
         week_start=week_start,
+        staff_id=filter_staff or None,
     )
+
+    now = datetime.now()
+    current_time_label = now.strftime("%H:%M")
+    current_slot_label = _format_minutes_hhmm((now.hour * 60 + now.minute) // 30 * 30)
+    current_minutes = now.hour * 60 + now.minute
+
+    active_reservations = [r for r in reservations if str(r.get("status") or "") != "キャンセル"]
+    staff_now_list = []
+    for staff in shop.get("staff_list", []):
+        staff_id_value = staff.get("id")
+        staff_id_text = str(staff_id_value or "").strip()
+        now_reservation = None
+        for reservation in active_reservations:
+            if str(reservation.get("staff_id") or "").strip() != staff_id_text:
+                continue
+            if str(reservation.get("reservation_date") or "") != selected_date:
+                continue
+            start_minutes = _parse_hhmm_to_minutes(str(reservation.get("start_time") or "")[:5])
+            end_minutes = _parse_hhmm_to_minutes(str(reservation.get("end_time") or "")[:5])
+            if start_minutes is None:
+                continue
+            if end_minutes is None or end_minutes <= start_minutes:
+                duration = int(reservation.get("duration") or 30)
+                end_minutes = start_minutes + max(duration, 30)
+            if start_minutes <= current_minutes < end_minutes:
+                now_reservation = reservation
+                break
+        if now_reservation:
+            now_status = str(now_reservation.get("menu_name") or "対応中")
+            now_detail = f"{str(now_reservation.get('start_time') or '')[:5]}〜{str(now_reservation.get('end_time') or '')[:5]} / {str(now_reservation.get('customer_name') or '予約あり')}"
+        else:
+            now_status = "予定なし"
+            now_detail = f"{current_slot_label} 時点で対応中の予約はありません"
+
+        jump_url = f"/admin/{shop_id}/staff/{staff_id_text}?date={selected_date}&week_start={week_start.isoformat()}"
+        staff_now_list.append({
+            "id": staff_id_value,
+            "name": staff.get("name") or f"スタッフ{staff_id_text}",
+            "now_status": now_status,
+            "now_detail": now_detail,
+            "jump_url": jump_url,
+        })
+
     template_name = "admin/tool/reservations.html" if shop.get("admin_ui_mode") == "tool" else "admin/reservations.html"
     return templates.TemplateResponse(
         request=request,
@@ -1451,7 +1825,45 @@ def admin_reservations_page(request: Request, shop_id: str, error_message: str =
             "available_plans": available_plans,
             "current_admin_name": current_admin_name,
             "reservation_blocks": [],
+            "staff_now_list": staff_now_list,
+            "current_time_label": current_time_label,
+            "current_slot_label": current_slot_label,
             "active_page": "reservations",
+        },
+    )
+
+
+@app.get("/admin/{shop_id}/timeline-karte", response_class=HTMLResponse)
+def admin_timeline_karte_page(request: Request, shop_id: str):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+
+    shop_id, shop, reservations, customers, admin_users, subscription, available_plans, current_admin_name = _build_admin_common_context(request, shop_id)
+    if not _is_premium_subscription(subscription):
+        return RedirectResponse(f"/admin/{shop_id}/reservations?error_message=タイムラインカルテはプレミアムプラン専用です。", status_code=303)
+
+    selected_date_obj = _safe_parse_date(request.query_params.get("date"), date.today())
+    timeline_context = _build_timeline_karte_context(shop=shop, reservations=reservations, selected_date_obj=selected_date_obj)
+    template_name = "admin/tool/timeline_karte.html" if shop.get("admin_ui_mode") == "tool" else "admin/timeline_karte.html"
+    return templates.TemplateResponse(
+        request=request,
+        name=template_name,
+        context={
+            "request": request,
+            "shop": shop,
+            "shop_id": shop_id,
+            "customers": customers,
+            "staff_list": shop.get("staff_list", []),
+            "menus": shop.get("menus", []),
+            "reservations": reservations,
+            "today": date.today().isoformat(),
+            "admin_users": admin_users,
+            "subscription": subscription,
+            "available_plans": available_plans,
+            "current_admin_name": current_admin_name,
+            "active_page": "timeline_karte",
+            **timeline_context,
         },
     )
 
@@ -1487,6 +1899,8 @@ def admin_customers_page(request: Request, shop_id: str, error_message: str = ""
     customer_items, sort_order = _sort_customer_items(customer_items, sort_order)
     member_customer_items = [item for item in customer_items if item.get("is_member")]
     non_member_customer_items = [item for item in customer_items if not item.get("is_member")]
+    unread_chat_items = [_serialize_unread_chat_item(item) for item in get_admin_unread_chat_summary(shop_id)]
+    unread_chat_map = {int(item.get("customer_id") or 0): int(item.get("unread_count") or 0) for item in unread_chat_items}
     template_name = "admin/tool/customers.html" if shop.get("admin_ui_mode") == "tool" else "admin/customers.html"
     return templates.TemplateResponse(
         request=request,
@@ -1510,6 +1924,8 @@ def admin_customers_page(request: Request, shop_id: str, error_message: str = ""
             "error_message": error_message,
             "success_message": request.query_params.get("saved", ""),
             "active_page": "customers",
+            "unread_chat_items": unread_chat_items,
+            "unread_chat_map": unread_chat_map,
         },
     )
 
@@ -1525,12 +1941,18 @@ def admin_customer_detail_page(request: Request, shop_id: str, customer_id: int,
     if customer is None:
         raise HTTPException(status_code=404, detail="顧客が見つかりません")
     customer_notes = get_customer_notes(shop_id, customer_id)
-    customer_photos = get_customer_photos(shop_id, customer_id)
-    chat_messages = get_chat_messages(shop_id, customer_id)
-    chat_limit = _get_chat_limit_context(subscription, shop_id, customer_id=customer_id)
+    customer_photos = [
+        {**photo, "image_url": _normalize_customer_photo_url(str(photo.get("image_url") or ""))}
+        for photo in get_customer_photos(shop_id, customer_id)
+    ]
+    linked_member = get_member_by_customer_id(shop_id, customer_id)
+    chat_messages = [_serialize_chat_message(item) for item in list_chat_messages(shop_id, customer_id, limit=200)]
+    mark_chat_messages_read_for_admin(shop_id, customer_id)
     customer_photo_policy = _get_customer_photo_policy(subscription)
     max_photos = customer_photo_policy.get("max_photos")
     customer_photo_remaining = None if max_photos is None else max(int(max_photos) - len(customer_photos), 0)
+    chat_limit = _chat_limit_for_subscription(subscription)
+    shop_chat_sent_this_month = count_shop_chat_messages_in_month(shop_id)
     template_name = "admin/tool/customer_detail.html" if shop.get("admin_ui_mode") == "tool" else "admin/customer_detail.html"
     return templates.TemplateResponse(
         request=request,
@@ -1542,10 +1964,14 @@ def admin_customer_detail_page(request: Request, shop_id: str, customer_id: int,
             "customer": customer,
             "customer_notes": customer_notes,
             "customer_photos": customer_photos,
-            "chat_messages": chat_messages,
-            "chat_limit": chat_limit,
             "customer_photo_policy": customer_photo_policy,
             "customer_photo_remaining": customer_photo_remaining,
+            "chat_messages": chat_messages,
+            "shop_chat_limit": chat_limit,
+            "shop_chat_sent_this_month": shop_chat_sent_this_month,
+            "shop_chat_remaining": None if chat_limit is None else max(chat_limit - shop_chat_sent_this_month, 0),
+            "member_chat_enabled": linked_member is not None,
+            "linked_member": linked_member,
             "customers": customers,
             "reservations": reservations,
             "staff_list": shop.get("staff_list", []),
@@ -1558,50 +1984,6 @@ def admin_customer_detail_page(request: Request, shop_id: str, customer_id: int,
             "active_page": "customers",
         },
     )
-
-
-@app.get("/admin/{shop_id}/customers/{customer_id}/chat/messages")
-def admin_customer_chat_messages_api(request: Request, shop_id: str, customer_id: int):
-    redirect = require_store_login(request, shop_id)
-    if redirect:
-        raise HTTPException(status_code=401, detail="ログインしてください")
-    normalized_shop_id = (shop_id or '').strip().lower()
-    customer = get_customer_by_id(normalized_shop_id, customer_id)
-    if customer is None:
-        raise HTTPException(status_code=404, detail="顧客が見つかりません")
-    messages = get_chat_messages(normalized_shop_id, customer_id)
-    subscription = get_shop_subscription(normalized_shop_id) or {}
-    return JSONResponse({
-        "messages": _serialize_chat_messages(messages),
-        "chat_limit": _get_chat_limit_context(subscription, normalized_shop_id, customer_id=customer_id),
-    })
-
-
-@app.post("/admin/{shop_id}/customers/{customer_id}/chat")
-def admin_send_chat_message(request: Request, shop_id: str, customer_id: int, message: str = Form("")):
-    redirect = require_store_login(request, shop_id)
-    if redirect:
-        return redirect
-    normalized_shop_id = (shop_id or '').strip().lower()
-    customer = get_customer_by_id(normalized_shop_id, customer_id)
-    if customer is None:
-        raise HTTPException(status_code=404, detail="顧客が見つかりません")
-    subscription = get_shop_subscription(normalized_shop_id) or {}
-    chat_limit = _get_chat_limit_context(subscription, normalized_shop_id, customer_id=customer_id)
-    if not chat_limit.get('can_send'):
-        return admin_customer_detail_page(request, normalized_shop_id, customer_id, error_message="現在のプランでは今月のチャット送信上限に達しています。")
-    text = str(message or '').strip()
-    if not text:
-        return admin_customer_detail_page(request, normalized_shop_id, customer_id, error_message="メッセージを入力してください。")
-    sender_name = str(request.session.get("store_logged_in_admin_name") or "スタッフ")
-    add_chat_message(
-        normalized_shop_id,
-        customer_id,
-        sender_type='staff',
-        message=text,
-        sender_name=sender_name,
-    )
-    return RedirectResponse(url=f"/admin/{normalized_shop_id}/customers/{customer_id}?saved=送信しました", status_code=303)
 
 
 @app.post("/admin/{shop_id}/customers/{customer_id}/update")
@@ -1634,7 +2016,7 @@ def admin_delete_customer_route(request: Request, shop_id: str, customer_id: int
     if customer is None:
         raise HTTPException(status_code=404, detail="顧客が見つかりません")
     for photo in get_customer_photos(shop_id, customer_id):
-        _delete_local_upload_from_url(str(photo.get("image_url") or ""))
+        _delete_customer_photo_file(str(photo.get("image_url") or ""))
     delete_customer(shop_id, customer_id)
     return RedirectResponse(f"/admin/{shop_id}/customers?saved=顧客を削除しました", status_code=303)
 
@@ -1702,7 +2084,7 @@ def admin_delete_customer_photo_route(request: Request, shop_id: str, customer_i
         return redirect
     deleted = delete_customer_photo(shop_id, customer_id, photo_id)
     if deleted is not None:
-        _delete_local_upload_from_url(str(deleted.get("image_url") or ""))
+        _delete_customer_photo_file(str(deleted.get("image_url") or ""))
     return RedirectResponse(f"/admin/{shop_id}/customers/{customer_id}?saved=写真を削除しました", status_code=303)
 
 
@@ -1808,6 +2190,8 @@ def admin_create_reservation(
     menu = next((m for m in shop.get("menus", []) if int(m.get("id") or 0) == int(menu_id)), None)
     if not customer or not staff or not menu:
         return admin_page(request, shop_id, error_message="顧客・スタッフ・メニューの指定を確認してください。")
+    if not _staff_allows_menu(staff, menu_id):
+        return admin_page(request, shop_id, error_message="選択したスタッフではこのメニューを予約できません。")
     try:
         start_dt = datetime.strptime(start_time, "%H:%M")
     except ValueError:
@@ -1888,6 +2272,14 @@ def shop_confirm(
             context=ctx,
             status_code=400,
         )
+    if not _staff_allows_menu(staff, menu_id):
+        ctx = build_shop_booking_context(shop_id, request, "選択したスタッフではこのメニューを予約できません。")
+        return templates.TemplateResponse(
+            request=request,
+            name="shop/index.html",
+            context=ctx,
+            status_code=400,
+        )
     start_dt = datetime.strptime(start_time, "%H:%M")
     end_dt = (start_dt + timedelta(minutes=int(menu.get("duration", 60)))).strftime("%H:%M")
     reservation_preview = {
@@ -1956,6 +2348,14 @@ def shop_reserve(
             context=ctx,
             status_code=400,
         )
+    if not _staff_allows_menu(staff, menu_id):
+        ctx = build_shop_booking_context(shop_id, request, "選択したスタッフではこのメニューを予約できません。")
+        return templates.TemplateResponse(
+            request=request,
+            name="shop/index.html",
+            context=ctx,
+            status_code=400,
+        )
     customer = find_customer(shop_id, customer_name, phone, email) or create_customer(shop_id, customer_name, phone, email)
     updated_customer = update_customer_contact(shop_id, int(customer['id']), customer_name, phone, email)
     if updated_customer is not None:
@@ -1989,44 +2389,6 @@ def shop_reserve(
     )
 
 
-def _normalize_plan_code_for_chat(subscription: dict | None) -> str:
-    code = str((subscription or {}).get('plan_code') or '').strip().lower()
-    if code in ('standard', 'basic'):
-        return 'standard'
-    if code in ('premium', 'pro'):
-        return 'premium'
-    return 'free'
-
-
-def _get_chat_limit_context(subscription: dict | None, shop_id: str, customer_id: int | None = None) -> dict[str, object]:
-    plan_code = _normalize_plan_code_for_chat(subscription)
-    monthly_count = count_monthly_chat_messages(shop_id, customer_id=customer_id)
-    monthly_limit = 100 if plan_code == 'free' else None
-    remaining = None if monthly_limit is None else max(monthly_limit - monthly_count, 0)
-    return {
-        'plan_code': plan_code,
-        'monthly_count': monthly_count,
-        'monthly_limit': monthly_limit,
-        'remaining': remaining,
-        'is_limited': monthly_limit is not None,
-        'can_send': monthly_limit is None or monthly_count < monthly_limit,
-        'label': ('今月 %s / %s 通' % (monthly_count, monthly_limit)) if monthly_limit is not None else '無制限',
-    }
-
-
-def _serialize_chat_messages(messages: list[dict]) -> list[dict[str, object]]:
-    serialized: list[dict[str, object]] = []
-    for item in messages:
-        serialized.append({
-            'id': int(item.get('id') or 0),
-            'sender_type': 'member' if str(item.get('sender_type') or '') == 'member' else 'staff',
-            'sender_name': str(item.get('sender_name') or ''),
-            'message': str(item.get('message') or ''),
-            'created_at': str(item.get('created_at') or ''),
-        })
-    return serialized
-
-
 def _member_default_next(shop_id: str) -> str:
     return f"/shop/{shop_id}"
 
@@ -2053,6 +2415,350 @@ def _login_member_session(request: Request, shop_id: str, member: dict) -> None:
     request.session['member_logged_in_id'] = int(member['id'])
     request.session['member_logged_in_shop_id'] = shop_id
     request.session['member_logged_in_name'] = str(member.get('name') or '')
+    request.session['member_logged_in_phone_normalized'] = str(member.get('phone_normalized') or normalize_member_phone(str(member.get('phone') or '')) or '')
+
+
+def _get_member_for_shop_session(request: Request, shop_id: str) -> dict | None:
+    member = _get_logged_in_member(request, shop_id)
+    if member is not None:
+        return member
+    normalized_phone = normalize_member_phone(str(request.session.get('member_logged_in_phone_normalized') or ''))
+    if not normalized_phone:
+        return None
+    cross_shop_member = get_member_by_phone_normalized(shop_id, normalized_phone)
+    if cross_shop_member is not None:
+        _login_member_session(request, shop_id, cross_shop_member)
+    return cross_shop_member
+
+
+def _format_admin_subscription_status_label(subscription: dict | None) -> str:
+    status = str((subscription or {}).get("status") or "").strip().lower()
+    if status == "active":
+        started_at_raw = str((subscription or {}).get("started_at") or "").strip()
+        remaining_days = 0
+        if started_at_raw:
+            parsed_started_at = None
+            for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
+                try:
+                    parsed_started_at = datetime.strptime(started_at_raw[:19], fmt) if fmt != "%Y-%m-%d" else datetime.strptime(started_at_raw[:10], fmt)
+                    break
+                except ValueError:
+                    continue
+            if parsed_started_at is not None:
+                renewal_date = parsed_started_at.date() + timedelta(days=30)
+                remaining_days = max((renewal_date - date.today()).days, 0)
+        return f"契約中(自動更新まであと{remaining_days}日)"
+    if status == "trial":
+        return "トライアル中"
+    if status == "canceled":
+        return "解約済み"
+    return status or "未設定"
+
+
+def _chat_limit_for_subscription(subscription: dict | None) -> int | None:
+    plan_code = str((subscription or {}).get('plan_code') or '').strip().lower()
+    if plan_code == 'free':
+        return 100
+    return None
+
+
+def _logout_member_session(request: Request) -> None:
+    request.session.pop('member_logged_in_id', None)
+    request.session.pop('member_logged_in_shop_id', None)
+    request.session.pop('member_logged_in_name', None)
+    request.session.pop('member_logged_in_phone_normalized', None)
+
+
+def _serialize_chat_message(message: dict[str, object]) -> dict[str, object]:
+    sender_type = str(message.get('sender_type') or '')
+    return {
+        'id': int(message.get('id') or 0),
+        'sender_type': sender_type,
+        'body': str(message.get('body') or ''),
+        'created_at': _format_chat_datetime(message.get('created_at')),
+        'role_label': 'あなた' if sender_type == 'member' else '店舗',
+    }
+
+
+def _serialize_unread_chat_item(item: dict[str, object]) -> dict[str, object]:
+    serialized = dict(item)
+    serialized['latest_created_at'] = _format_chat_datetime(item.get('latest_created_at'))
+    return serialized
+
+
+
+@app.get("/admin/register/{shop_id}", response_class=HTMLResponse)
+def admin_staff_register_page(request: Request, shop_id: str, error_message: str = "", success_message: str = ""):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+
+    normalized_shop_id = (shop_id or "").strip().lower()
+    shop = get_shop(normalized_shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="見つかりません")
+
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/register.html",
+        context={
+            "request": request,
+            "shop": shop,
+            "shop_id": normalized_shop_id,
+            "error_message": error_message,
+            "success_message": success_message,
+            "staff_list": shop.get("staff_list", []),
+            "menus": shop.get("menus", []),
+        },
+    )
+
+
+@app.post("/admin/register/{shop_id}")
+def admin_staff_register_submit(
+    request: Request,
+    shop_id: str,
+    name: str = Form(...),
+    menu_ids: list[str] = Form([]),
+):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+
+    normalized_shop_id = (shop_id or "").strip().lower()
+    shop = get_shop(normalized_shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="見つかりません")
+
+    staff_name = (name or "").strip()
+    if not staff_name:
+        return admin_staff_register_page(request, normalized_shop_id, error_message="スタッフ名を入力してください。")
+
+    normalized_menu_ids: list[int] = []
+    for item in menu_ids or []:
+        try:
+            normalized_menu_ids.append(int(item))
+        except (TypeError, ValueError):
+            continue
+
+    staff_list = list(shop.get("staff_list", []))
+    staff_list.append({
+        "name": staff_name,
+        "menu_ids": normalized_menu_ids,
+    })
+    update_shop_staff_list(normalized_shop_id, staff_list)
+    return RedirectResponse(f"/admin/{normalized_shop_id}/staff-info?saved=スタッフを登録しました。", status_code=303)
+
+
+
+@app.get("/admin/{shop_id}/staff-info/{staff_id}/edit", response_class=HTMLResponse)
+def admin_staff_edit_page(request: Request, shop_id: str, staff_id: int, error_message: str = ""):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+
+    normalized_shop_id = (shop_id or "").strip().lower()
+    shop = get_shop(normalized_shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="見つかりません")
+
+    raw_staff_list = list(shop.get("staff_list", []))
+    target_index = next((index for index, staff in enumerate(raw_staff_list) if int(staff.get("id") or 0) == int(staff_id)), None)
+    if target_index is None:
+        raise HTTPException(status_code=404, detail="スタッフが見つかりません")
+
+    target_staff = dict(raw_staff_list[target_index])
+    selected_menu_ids = {int(menu_id) for menu_id in target_staff.get("menu_ids", []) if str(menu_id).strip()}
+    template_name = "admin/tool/staff_edit.html" if shop.get("admin_ui_mode") == "tool" else "admin/staff_edit.html"
+    return templates.TemplateResponse(
+        request=request,
+        name=template_name,
+        context={
+            "request": request,
+            "shop": shop,
+            "shop_id": normalized_shop_id,
+            "staff": target_staff,
+            "menus": shop.get("menus", []),
+            "selected_menu_ids": selected_menu_ids,
+            "error_message": error_message,
+            "active_page": "staff_info",
+        },
+    )
+
+
+@app.post("/admin/{shop_id}/staff-info/{staff_id}/edit")
+def admin_staff_edit_submit(
+    request: Request,
+    shop_id: str,
+    staff_id: int,
+    name: str = Form(...),
+    menu_ids: list[str] = Form([]),
+):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+
+    normalized_shop_id = (shop_id or "").strip().lower()
+    shop = get_shop(normalized_shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="見つかりません")
+
+    staff_name = (name or "").strip()
+    if not staff_name:
+        return admin_staff_edit_page(request, normalized_shop_id, staff_id, error_message="スタッフ名を入力してください。")
+
+    normalized_menu_ids: list[int] = []
+    for item in menu_ids or []:
+        try:
+            normalized_menu_ids.append(int(item))
+        except (TypeError, ValueError):
+            continue
+
+    staff_list = list(shop.get("staff_list", []))
+    updated = False
+    for index, staff in enumerate(staff_list):
+        if int(staff.get("id") or 0) != int(staff_id):
+            continue
+        staff_list[index] = {
+            **staff,
+            "name": staff_name,
+            "menu_ids": normalized_menu_ids,
+        }
+        updated = True
+        break
+
+    if not updated:
+        raise HTTPException(status_code=404, detail="スタッフが見つかりません")
+
+    update_shop_staff_list(normalized_shop_id, staff_list)
+    return RedirectResponse(f"/admin/{normalized_shop_id}/staff-info?saved=スタッフ情報を更新しました。", status_code=303)
+
+
+
+@app.get("/admin/{shop_id}/staff/{staff_id}", response_class=HTMLResponse)
+def admin_staff_schedule_page(request: Request, shop_id: str, staff_id: int):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+
+    normalized_shop_id = (shop_id or "").strip().lower()
+    shop = get_shop(normalized_shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+
+    staff_list = list(shop.get("staff_list", []))
+    target_staff = next((staff for staff in staff_list if int(staff.get("id") or 0) == int(staff_id)), None)
+    if not target_staff:
+        raise HTTPException(status_code=404, detail="スタッフが見つかりません")
+
+    reservations = get_reservations(normalized_shop_id)
+    customers = get_customers(normalized_shop_id)
+    admin_users = get_admin_users(normalized_shop_id)
+    subscription = get_shop_subscription(normalized_shop_id) or {}
+    current_admin_name = request.session.get("store_logged_in_admin_name") or (admin_users[0].get("name") if admin_users else "")
+
+    month_value = request.query_params.get("month") or date.today().strftime("%Y-%m")
+    try:
+        current_month = datetime.strptime(month_value, "%Y-%m").date().replace(day=1)
+    except ValueError:
+        current_month = date.today().replace(day=1)
+    calendar_month_value = current_month.strftime("%Y-%m")
+    selected_date_obj = _safe_parse_date(request.query_params.get("date"), date.today())
+    week_start = _normalize_week_start(_safe_parse_date(request.query_params.get("week_start"), selected_date_obj))
+
+    selected_day_schedule = sorted(
+        [
+            r for r in reservations
+            if str(r.get("reservation_date") or "") == selected_date_obj.isoformat()
+            and str(r.get("staff_id") or "").strip() == str(staff_id)
+        ],
+        key=lambda x: (str(x.get("start_time") or ""), int(x.get("id") or 0)),
+    )
+    selected_day_count = len([r for r in selected_day_schedule if str(r.get("status") or "") != "キャンセル"])
+
+    week_days, time_slots, weekly_rows = _build_week_availability_matrix(
+        shop=shop,
+        reservations=reservations,
+        selected_date=selected_date_obj,
+        week_start=week_start,
+        staff_id=staff_id,
+    )
+    template_name = "admin/tool/staff_schedule.html" if shop.get("admin_ui_mode") == "tool" else "admin/staff_schedule.html"
+    return templates.TemplateResponse(
+        request=request,
+        name=template_name,
+        context={
+            "request": request,
+            "shop": shop,
+            "shop_id": normalized_shop_id,
+            "subscription": subscription,
+            "customers": customers,
+            "today": date.today().isoformat(),
+            "today_reservations": [
+                r for r in reservations
+                if str(r.get("reservation_date") or "") == date.today().isoformat()
+            ],
+            "staff_list": staff_list,
+            "staff": target_staff,
+            "current_staff_id": int(staff_id),
+            "current_admin_name": current_admin_name,
+            "selected_date": selected_date_obj.isoformat(),
+            "selected_day_schedule": selected_day_schedule,
+            "selected_day_count": selected_day_count,
+            "week_days": week_days,
+            "time_slots": time_slots,
+            "weekly_rows": weekly_rows,
+            "week_start": week_start.isoformat(),
+            "prev_week_start": (week_start - timedelta(days=7)).isoformat(),
+            "next_week_start": (week_start + timedelta(days=7)).isoformat(),
+            "calendar_month_value": calendar_month_value,
+            "active_page": "staff",
+        },
+    )
+
+
+@app.get("/admin/{shop_id}/staff-info", response_class=HTMLResponse)
+def admin_staff_info_page(request: Request, shop_id: str):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+
+    normalized_shop_id = (shop_id or "").strip().lower()
+    shop = get_shop(normalized_shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="見つかりません")
+
+    reservations = get_reservations(normalized_shop_id)
+    customers = get_customers(normalized_shop_id)
+    admin_users = get_admin_users(normalized_shop_id)
+    subscription = get_shop_subscription(normalized_shop_id) or {}
+    current_admin_name = request.session.get("store_logged_in_admin_name") or (admin_users[0].get("name") if admin_users else "")
+    menu_lookup = {str(item.get("id")): item.get("name") for item in shop.get("menus", [])}
+    staff_list = []
+    for staff in shop.get("staff_list", []):
+        names = [menu_lookup.get(str(menu_id)) for menu_id in staff.get("menu_ids", [])]
+        staff_list.append({
+            **staff,
+            "menu_names": [name for name in names if name],
+        })
+
+    template_name = "admin/tool/staff_info.html" if shop.get("admin_ui_mode") == "tool" else "admin/staff_info.html"
+    return templates.TemplateResponse(
+        request=request,
+        name=template_name,
+        context={
+            "request": request,
+            "shop": shop,
+            "shop_id": normalized_shop_id,
+            "staff_list": staff_list,
+            "menus": shop.get("menus", []),
+            "customers": customers,
+            "today_reservations": [item for item in reservations if str(item.get("reservation_date") or "") == date.today().isoformat()],
+            "subscription": subscription,
+            "current_admin_name": current_admin_name,
+            "active_page": "staff_info",
+            "success_message": request.query_params.get("saved", ""),
+        },
+    )
 
 
 @app.get("/member/{shop_id}/login", response_class=HTMLResponse)
@@ -2060,9 +2766,10 @@ def member_login_page(request: Request, shop_id: str, next: str | None = None, e
     shop = get_shop(shop_id)
     if not shop:
         raise HTTPException(status_code=404, detail="店舗が見つかりません")
-    member = _get_logged_in_member(request, shop_id)
+    target_url = _member_redirect_target(shop_id, next)
+    member = _get_member_for_shop_session(request, shop_id)
     if member is not None:
-        return RedirectResponse(url=f"/member/{shop_id}/mypage", status_code=303)
+        return RedirectResponse(url=target_url or f"/member/{shop_id}/mypage", status_code=303)
     return templates.TemplateResponse(
         request=request,
         name="member/login.html",
@@ -2070,7 +2777,7 @@ def member_login_page(request: Request, shop_id: str, next: str | None = None, e
             "request": request,
             "shop": shop,
             "shop_id": shop_id,
-            "next_url": _member_redirect_target(shop_id, next),
+            "next_url": target_url,
             "error": error or "",
         },
     )
@@ -2133,25 +2840,33 @@ def member_register_submit(
 
 @app.get("/member/{shop_id}/logout")
 def member_logout(request: Request, shop_id: str):
-    request.session.pop('member_logged_in_id', None)
-    request.session.pop('member_logged_in_shop_id', None)
-    request.session.pop('member_logged_in_name', None)
+    _logout_member_session(request)
     return RedirectResponse(url=f"/member/{shop_id}/login", status_code=303)
 
 
 @app.get("/member/{shop_id}/mypage", response_class=HTMLResponse)
-def member_dashboard_page(request: Request, shop_id: str, error_message: str = ""):
+def member_dashboard_page(request: Request, shop_id: str):
     shop = get_shop(shop_id)
     if not shop:
         raise HTTPException(status_code=404, detail="店舗が見つかりません")
-    member = _get_logged_in_member(request, shop_id)
+    member = _get_member_for_shop_session(request, shop_id)
     if member is None:
         return RedirectResponse(url=f"/member/{shop_id}/login?next=/member/{shop_id}/mypage", status_code=303)
-    reservations = get_member_reservations(shop_id, int(member['id']))
-    customer_id = int(member.get('customer_id') or 0)
-    chat_messages = get_chat_messages(shop_id, customer_id) if customer_id else []
-    subscription = get_shop_subscription(shop_id) or {}
-    chat_limit = _get_chat_limit_context(subscription, shop_id, customer_id=customer_id if customer_id else None)
+    reservations = get_member_all_reservations(str(member.get('phone_normalized') or member.get('phone') or ''))
+    completed_reservations = [item for item in reservations if str(item.get('status') or '') == '来店済み']
+    member_photos = [
+        {**photo, "image_url": _normalize_customer_photo_url(str(photo.get("image_url") or ""))}
+        for photo in (get_customer_photos(shop_id, int(member.get('customer_id') or 0)) if member.get('customer_id') else [])
+    ]
+    linked_shops = get_member_linked_shops(str(member.get('phone_normalized') or member.get('phone') or ''))
+    member_unread_items = [_serialize_unread_chat_item(item) for item in get_member_unread_chat_summary(str(member.get('phone_normalized') or member.get('phone') or ''))]
+    active_customer_id = int(member.get('customer_id') or 0)
+    chat_messages = [_serialize_chat_message(item) for item in list_chat_messages(shop_id, active_customer_id, limit=200, member_id=int(member['id']))] if active_customer_id else []
+    if active_customer_id:
+        mark_chat_messages_read_for_member(shop_id, active_customer_id, int(member['id']))
+    shop_subscription = get_shop_subscription(shop_id)
+    chat_limit = _chat_limit_for_subscription(shop_subscription)
+    shop_chat_sent_this_month = count_shop_chat_messages_in_month(shop_id)
     return templates.TemplateResponse(
         request=request,
         name="member/dashboard.html",
@@ -2161,57 +2876,186 @@ def member_dashboard_page(request: Request, shop_id: str, error_message: str = "
             "shop_id": shop_id,
             "member": member,
             "reservations": reservations[:10],
+            "completed_reservations": completed_reservations[:10],
             "reservation_count": len(reservations),
-            "member_photos": [],
+            "member_photos": member_photos,
             "chat_messages": chat_messages,
-            "chat_limit": chat_limit,
-            "subscription": subscription,
-            "error_message": error_message,
-            "success_message": request.query_params.get("saved", ""),
+            "linked_shops": linked_shops,
+            "member_unread_items": member_unread_items,
+            "member_chat_customer_id": active_customer_id,
+            "member_chat_enabled": bool(active_customer_id),
+            "member_chat_limit": chat_limit,
+            "member_chat_sent_this_month": shop_chat_sent_this_month,
+            "member_chat_remaining": None if chat_limit is None else max(chat_limit - shop_chat_sent_this_month, 0),
+        },
+    )
+
+
+@app.get("/member/{shop_id}/unsubscribe/shop", response_class=HTMLResponse)
+def member_unsubscribe_shop_page(request: Request, shop_id: str):
+    shop = get_shop(shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+    member = _get_member_for_shop_session(request, shop_id)
+    if member is None:
+        return RedirectResponse(url=f"/member/{shop_id}/login?next=/member/{shop_id}/unsubscribe/shop", status_code=303)
+    linked_shops = get_member_linked_shops(str(member.get('phone_normalized') or member.get('phone') or ''))
+    return templates.TemplateResponse(
+        request=request,
+        name="member/unsubscribe.html",
+        context={
+            "request": request,
+            "shop": shop,
+            "shop_id": shop_id,
+            "member": member,
+            "unsubscribe_mode": "shop",
+            "linked_shops": linked_shops,
+        },
+    )
+
+
+@app.post("/member/{shop_id}/unsubscribe/shop")
+def member_unsubscribe_shop_submit(request: Request, shop_id: str):
+    shop = get_shop(shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+    member = _get_member_for_shop_session(request, shop_id)
+    if member is None:
+        return RedirectResponse(url=f"/member/{shop_id}/login?next=/member/{shop_id}/unsubscribe/shop", status_code=303)
+    deactivate_member(shop_id, int(member['id']))
+    _logout_member_session(request)
+    return templates.TemplateResponse(
+        request=request,
+        name="member/unsubscribe_complete.html",
+        context={
+            "request": request,
+            "shop": shop,
+            "shop_id": shop_id,
+            "mode": "shop",
+        },
+    )
+
+
+@app.get("/member/{shop_id}/unsubscribe/all", response_class=HTMLResponse)
+def member_unsubscribe_all_page(request: Request, shop_id: str):
+    shop = get_shop(shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+    member = _get_member_for_shop_session(request, shop_id)
+    if member is None:
+        return RedirectResponse(url=f"/member/{shop_id}/login?next=/member/{shop_id}/unsubscribe/all", status_code=303)
+    linked_shops = get_member_linked_shops(str(member.get('phone_normalized') or member.get('phone') or ''))
+    return templates.TemplateResponse(
+        request=request,
+        name="member/unsubscribe.html",
+        context={
+            "request": request,
+            "shop": shop,
+            "shop_id": shop_id,
+            "member": member,
+            "unsubscribe_mode": "all",
+            "linked_shops": linked_shops,
+        },
+    )
+
+
+@app.post("/member/{shop_id}/unsubscribe/all")
+def member_unsubscribe_all_submit(request: Request, shop_id: str):
+    shop = get_shop(shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+    member = _get_member_for_shop_session(request, shop_id)
+    if member is None:
+        return RedirectResponse(url=f"/member/{shop_id}/login?next=/member/{shop_id}/unsubscribe/all", status_code=303)
+    deactivate_members_by_phone(str(member.get('phone_normalized') or member.get('phone') or ''))
+    _logout_member_session(request)
+    return templates.TemplateResponse(
+        request=request,
+        name="member/unsubscribe_complete.html",
+        context={
+            "request": request,
+            "shop": shop,
+            "shop_id": shop_id,
+            "mode": "all",
         },
     )
 
 
 @app.get("/member/{shop_id}/chat/messages")
 def member_chat_messages_api(request: Request, shop_id: str):
-    member = _get_logged_in_member(request, shop_id)
+    shop = get_shop(shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+    member = _get_member_for_shop_session(request, shop_id)
     if member is None:
         raise HTTPException(status_code=401, detail="ログインしてください")
     customer_id = int(member.get('customer_id') or 0)
     if not customer_id:
-        return JSONResponse({"messages": [], "chat_limit": _get_chat_limit_context(get_shop_subscription(shop_id) or {}, shop_id)})
-    messages = get_chat_messages(shop_id, customer_id)
-    subscription = get_shop_subscription(shop_id) or {}
-    return JSONResponse({
-        "messages": _serialize_chat_messages(messages),
-        "chat_limit": _get_chat_limit_context(subscription, shop_id, customer_id=customer_id),
-    })
+        return JSONResponse({"ok": True, "messages": [], "unread_count": 0})
+    mark_chat_messages_read_for_member(shop_id, customer_id, int(member['id']))
+    messages = [_serialize_chat_message(item) for item in list_chat_messages(shop_id, customer_id, limit=200, member_id=int(member['id']))]
+    return JSONResponse({"ok": True, "messages": messages, "unread_count": 0})
 
 
-@app.post("/member/{shop_id}/chat")
-def member_send_chat_message(request: Request, shop_id: str, message: str = Form("")):
-    member = _get_logged_in_member(request, shop_id)
+@app.post("/member/{shop_id}/chat/messages")
+def member_chat_send_api(request: Request, shop_id: str, message: str = Form(...)):
+    shop = get_shop(shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+    member = _get_member_for_shop_session(request, shop_id)
     if member is None:
-        return RedirectResponse(url=f"/member/{shop_id}/login?next=/member/{shop_id}/mypage", status_code=303)
+        raise HTTPException(status_code=401, detail="ログインしてください")
     customer_id = int(member.get('customer_id') or 0)
     if not customer_id:
-        return member_dashboard_page(request, shop_id, error_message="会員情報に顧客データが紐づいていません。")
-    subscription = get_shop_subscription(shop_id) or {}
-    chat_limit = _get_chat_limit_context(subscription, shop_id, customer_id=customer_id)
-    if not chat_limit.get('can_send'):
-        return member_dashboard_page(request, shop_id, error_message="現在のプランでは今月のチャット送信上限に達しています。")
-    text = str(message or '').strip()
-    if not text:
-        return member_dashboard_page(request, shop_id, error_message="メッセージを入力してください。")
-    add_chat_message(
-        shop_id,
-        customer_id,
-        sender_type='member',
-        message=text,
-        member_id=int(member['id']),
-        sender_name=str(member.get('name') or ''),
-    )
-    return RedirectResponse(url=f"/member/{shop_id}/mypage?saved=送信しました", status_code=303)
+        return JSONResponse({"ok": False, "error": "顧客データが見つかりません。"}, status_code=400)
+    try:
+        create_chat_message(shop_id, customer_id, int(member['id']), 'member', message)
+    except ValueError as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+    messages = [_serialize_chat_message(item) for item in list_chat_messages(shop_id, customer_id, limit=200, member_id=int(member['id']))]
+    return JSONResponse({"ok": True, "messages": messages})
+
+
+@app.get("/admin/{shop_id}/customers/{customer_id}/chat/messages")
+def admin_chat_messages_api(request: Request, shop_id: str, customer_id: int):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        raise HTTPException(status_code=401, detail="ログインしてください")
+    customer = get_customer_by_id(shop_id, customer_id)
+    if customer is None:
+        raise HTTPException(status_code=404, detail="顧客が見つかりません")
+    active_member_id = get_latest_chat_member_id(shop_id, customer_id)
+    mark_chat_messages_read_for_admin(shop_id, customer_id)
+    messages = [_serialize_chat_message(item) for item in list_chat_messages(shop_id, customer_id, limit=200, member_id=active_member_id)]
+    subscription = get_shop_subscription(shop_id)
+    chat_limit = _chat_limit_for_subscription(subscription)
+    sent_count = count_shop_chat_messages_in_month(shop_id)
+    return JSONResponse({"ok": True, "messages": messages, "unread_count": 0, "sent_this_month": sent_count, "remaining": None if chat_limit is None else max(chat_limit - sent_count, 0), "limit": chat_limit})
+
+
+@app.post("/admin/{shop_id}/customers/{customer_id}/chat/messages")
+def admin_chat_send_api(request: Request, shop_id: str, customer_id: int, message: str = Form(...)):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        raise HTTPException(status_code=401, detail="ログインしてください")
+    customer = get_customer_by_id(shop_id, customer_id)
+    if customer is None:
+        raise HTTPException(status_code=404, detail="顧客が見つかりません")
+    active_member_id = get_latest_chat_member_id(shop_id, customer_id)
+    linked_member = get_member_by_id(shop_id, active_member_id) if active_member_id else get_member_by_customer_id(shop_id, customer_id)
+    subscription = get_shop_subscription(shop_id)
+    chat_limit = _chat_limit_for_subscription(subscription)
+    sent_count = count_shop_chat_messages_in_month(shop_id)
+    if chat_limit is not None and sent_count >= chat_limit:
+        return JSONResponse({"ok": False, "error": f"このプランではチャット送信は月{chat_limit}通までです。"}, status_code=400)
+    try:
+        create_chat_message(shop_id, customer_id, int(linked_member['id']) if linked_member else None, 'staff', message)
+    except ValueError as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+    mark_chat_messages_read_for_admin(shop_id, customer_id)
+    messages = [_serialize_chat_message(item) for item in list_chat_messages(shop_id, customer_id, limit=200, member_id=active_member_id or (int(linked_member['id']) if linked_member else None))]
+    new_sent_count = count_shop_chat_messages_in_month(shop_id)
+    return JSONResponse({"ok": True, "messages": messages, "sent_this_month": new_sent_count, "remaining": None if chat_limit is None else max(chat_limit - new_sent_count, 0), "limit": chat_limit})
 
 
 @app.get("/site/{shop_id}", response_class=HTMLResponse)
@@ -2221,6 +3065,7 @@ def site_page(request: Request, shop_id: str):
         raise HTTPException(status_code=404, detail="店舗が見つかりません")
     homepage = get_shop_homepage_settings(shop_id) or {}
     sections = get_shop_homepage_sections(shop_id)
+    subscription = get_shop_subscription(shop_id) or {}
     theme = {
         "primary": homepage.get("primary_color") or shop.get("primary_color") or "#2563eb",
         "background": homepage.get("background_color") or "#f8fafc",
@@ -2246,6 +3091,7 @@ def site_page(request: Request, shop_id: str):
             "homepage": homepage,
             "sections": sections,
             "theme": theme,
+            "subscription": subscription,
             "calendar_days": build_public_calendar_days(calendar_year, calendar_month, holiday_weekday),
             "calendar_month_label": month_start.strftime("%Y年%m月"),
             "calendar_month_value": month_start.strftime("%Y-%m"),
@@ -2330,5 +3176,25 @@ def sample_preview_page(request: Request, category_code: str, sample_code: str):
             "return_to": str(request.url),
         },
     )
+
+
+
+def _staff_allows_menu(staff: dict | None, menu_id: int | str | None) -> bool:
+    if not staff:
+        return False
+    allowed_menu_ids = staff.get("menu_ids") or []
+    if not allowed_menu_ids:
+        return True
+    try:
+        normalized_menu_id = int(menu_id)
+    except (TypeError, ValueError):
+        return False
+    normalized_allowed_ids: set[int] = set()
+    for item in allowed_menu_ids:
+        try:
+            normalized_allowed_ids.add(int(item))
+        except (TypeError, ValueError):
+            continue
+    return normalized_menu_id in normalized_allowed_ids
 
 

@@ -3,144 +3,36 @@
 <div class="hero"><div class="hero-top"><div><h1>顧客編集</h1><p>顧客の基本情報を編集できます。</p></div></div></div>
 {% if success_message %}<div class="card" style="margin-bottom:18px;border-color:#bbf7d0;background:#f0fdf4;"><div class="card-header"><h2>完了</h2><span class="badge">保存済み</span></div><p class="section-note">{{ success_message }}</p></div>{% endif %}
 {% if error_message %}<div class="card" style="margin-bottom:18px;border-color:#fecaca;background:#fff1f2;"><div class="card-header"><h2>エラー</h2><span class="badge">確認</span></div><p class="section-note">{{ error_message }}</p></div>{% endif %}
+<div class="card" id="chat-panel" style="margin-bottom:18px;">
+  <div class="card-header"><h2>顧客とのチャット</h2><span class="badge">{{ customer.name }}</span></div>
+  {% if member_chat_enabled %}
+  <div style="border:1px solid var(--line);border-radius:24px;overflow:hidden;background:#eaf8e7;">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;padding:16px 18px;background:#dff4dc;border-bottom:1px solid #d9ecd8;"><strong>{{ customer.name }} さん</strong><span class="section-note" id="admin-chat-meta">{% if shop_chat_limit is none %}チャット送信は無制限{% else %}店舗が{{ shop_chat_limit }}件 / 今月{{ shop_chat_sent_this_month }}件送信済み / 残り{{ shop_chat_remaining }}件{% endif %} ・ 5秒ごとに自動更新</span></div>
+    <div id="admin-chat-messages" style="display:grid;gap:12px;padding:18px;max-height:500px;overflow:auto;background:linear-gradient(180deg,#eaf8e7,#e4f5e1);">{% for item in chat_messages %}<div style="display:grid;"><div style="max-width:82%;padding:12px 14px;border-radius:18px;line-height:1.8;font-size:14px;{% if item.sender_type == 'staff' %}background:#06c755;color:#fff;justify-self:end;border-top-right-radius:6px;{% else %}background:#fff;justify-self:start;border-top-left-radius:6px;{% endif %}">{{ item.body | replace('\n', '<br>') | safe }}</div><div style="font-size:12px;color:var(--subtext);margin-top:6px;{% if item.sender_type == 'staff' %}text-align:right;{% endif %}">{{ item.created_at[:16] if item.created_at else '' }}</div></div>{% else %}<div class="empty">まだメッセージはありません。</div>{% endfor %}</div>
+    <form id="admin-chat-form" style="display:grid;grid-template-columns:1fr auto;gap:10px;padding:16px 18px 18px;background:#dff4dc;"><textarea name="message" id="admin-chat-input" placeholder="メッセージを入力してください" style="width:100%;min-height:82px;padding:14px 16px;border:1px solid #cde7d6;border-radius:18px;resize:vertical;font:inherit;background:#fff;"></textarea><button type="submit">送信</button></form>
+  </div>
+  <div id="admin-chat-error" class="section-note" style="color:#b91c1c;display:none;margin-top:8px;"></div>
+  {% else %}<p class="empty">この顧客はまだ会員登録されていないため、チャットは使えません。</p>{% endif %}
+</div>
 <div class="grid">
-  <div class="card">
-    <div class="card-header"><h2>基本情報</h2><span class="badge">編集</span></div>
-    <form method="post" action="/admin/{{ shop_id }}/customers/{{ customer.id }}/update">
-      <label>顧客名<input type="text" name="name" value="{{ customer.name }}" required></label>
-      <label>電話番号<input type="text" name="phone" value="{{ customer.phone or '' }}"></label>
-      <label>メールアドレス<input type="email" name="email" value="{{ customer.email or '' }}"></label>
-      <button type="submit">顧客情報を更新する</button>
-    </form>
-    <form method="post" action="/admin/{{ shop_id }}/customers/{{ customer.id }}/delete" onsubmit="return confirm('この顧客を削除しますか？登録済みの追加情報と写真も削除されます。');" style="margin-top:12px;">
-      <button type="submit" style="background:#fff1f2;color:#991b1b;border:1px solid #fecaca;">顧客を削除する</button>
-    </form>
-  </div>
-  <div class="card">
-    <div class="card-header"><h2>メモ追加</h2><span class="badge">任意</span></div>
-    <form method="post" action="/admin/{{ shop_id }}/customers/{{ customer.id }}/notes">
-      <label>タイトル<input type="text" name="title" required></label>
-      <label>内容<textarea name="content" rows="5" required></textarea></label>
-      <button type="submit">追加情報を保存する</button>
-    </form>
-  </div>
+  <div class="card"><div class="card-header"><h2>基本情報</h2><span class="badge">編集</span></div><form method="post" action="/admin/{{ shop_id }}/customers/{{ customer.id }}/update"><label>顧客名<input type="text" name="name" value="{{ customer.name }}" required></label><label>電話番号<input type="text" name="phone" value="{{ customer.phone or '' }}"></label><label>メールアドレス<input type="email" name="email" value="{{ customer.email or '' }}"></label><button type="submit">顧客情報を更新する</button></form><form method="post" action="/admin/{{ shop_id }}/customers/{{ customer.id }}/delete" onsubmit="return confirm('この顧客を削除しますか？登録済みの追加情報と写真も削除されます。');" style="margin-top:12px;"><button type="submit" style="background:#fff1f2;color:#991b1b;border:1px solid #fecaca;">顧客を削除する</button></form></div>
+  <div class="card"><div class="card-header"><h2>メモ追加</h2><span class="badge">任意</span></div><form method="post" action="/admin/{{ shop_id }}/customers/{{ customer.id }}/notes"><label>タイトル<input type="text" name="title" required></label><label>内容<textarea name="content" rows="5" required></textarea></label><button type="submit">追加情報を保存する</button></form></div>
 </div>
 <div class="grid" style="margin-top:18px;">
-  <div class="card">
-    <div class="card-header"><h2>追加情報一覧</h2><span class="badge">{{ customer_notes|length }}件</span></div>
-    {% if customer_notes %}
-      {% for note in customer_notes %}
-      <div style="padding:14px 0;border-top:1px solid var(--line);">
-        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
-          <div><strong>{{ note.title }}</strong><div class="section-note">{{ note.created_at[:16] if note.created_at else '' }}</div></div>
-          <form method="post" action="/admin/{{ shop_id }}/customers/{{ customer.id }}/notes/{{ note.id }}/delete" onsubmit="return confirm('この追加情報を削除しますか？');"><button type="submit">削除</button></form>
-        </div>
-        <p class="section-note" style="margin-top:8px;white-space:pre-wrap;">{{ note.content }}</p>
-      </div>
-      {% endfor %}
-    {% else %}<p class="empty">追加情報はまだありません。</p>{% endif %}
-  </div>
-  <div class="card">
-    <div class="card-header"><h2>顧客写真</h2><span class="badge">{{ customer_photos|length }}枚</span></div>
-    <p class="section-note">
-      {% if customer_photo_policy.enabled %}
-        {{ customer_photo_policy.label }} /
-        {% if customer_photo_policy.max_photos is none %}
-          保存枚数制限なし
-        {% else %}
-          保存上限 {{ customer_photo_policy.max_photos }} 枚 / 残り {{ customer_photo_remaining }} 枚
-        {% endif %}
-      {% else %}
-        {{ customer_photo_policy.label }}では顧客写真を保存できません。
-      {% endif %}
-    </p>
-    <form method="post" action="/admin/{{ shop_id }}/customers/{{ customer.id }}/photos" enctype="multipart/form-data">
-      <label>写真を撮影・保存<input type="file" name="photo" accept="image/*" capture="environment" {% if not customer_photo_policy.enabled %}disabled{% endif %} required></label>
-      <button type="submit" {% if not customer_photo_policy.enabled %}disabled{% endif %}>写真を保存する</button>
-    </form>
-    {% if customer_photos %}
-      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px;">
-      {% for photo in customer_photos %}
-        <div style="border:1px solid var(--line);border-radius:16px;padding:10px;background:#fff;">
-          <a href="{{ photo.image_url }}" target="_blank" rel="noopener noreferrer" style="display:block;"><img src="{{ photo.image_url }}" alt="顧客写真" style="width:100%;height:180px;object-fit:cover;border-radius:12px;display:block;cursor:zoom-in;"></a>
-          <div class="section-note" style="margin:8px 0;">{{ photo.created_at[:16] if photo.created_at else '' }}</div>
-          <form method="post" action="/admin/{{ shop_id }}/customers/{{ customer.id }}/photos/{{ photo.id }}/delete" onsubmit="return confirm('この写真を削除しますか？');"><button type="submit">削除</button></form>
-        </div>
-      {% endfor %}
-      </div>
-    {% else %}<p class="empty">写真はまだありません。</p>{% endif %}
-  </div>
-</div>
-
-<div class="card" style="margin-top:18px;">
-  <div class="card-header"><h2>顧客チャット</h2><span class="badge">{% if chat_limit.monthly_limit is none %}無制限{% else %}残り {{ chat_limit.remaining }} 通{% endif %}</span></div>
-  <p class="section-note">LINE風チャットです。ページ表示中のみ5秒ごとに自動更新します。</p>
-  <div style="border:1px solid var(--line);border-radius:22px;overflow:hidden;background:#eaf7f2;">
-    <div style="padding:14px 16px;border-bottom:1px solid var(--line);background:#fff;display:flex;justify-content:space-between;gap:12px;align-items:center;">
-      <strong>{{ customer.name }} さんとのチャット</strong>
-      <span id="adminChatMeta" class="section-note">{% if chat_limit.monthly_limit is none %}無制限{% else %}{{ chat_limit.label }}{% endif %}</span>
-    </div>
-    <div id="adminChatMessages" style="padding:16px;display:grid;gap:10px;max-height:520px;overflow:auto;">
-      {% if chat_messages %}
-        {% for item in chat_messages %}
-          <div style="max-width:82%;padding:12px 14px;border-radius:18px;line-height:1.8;{% if item.sender_type == 'staff' %}justify-self:end;background:#8de055;color:#111827;{% else %}justify-self:start;background:#fff;border:1px solid var(--line);{% endif %}">
-            {{ item.message | replace('
-', '<br>') | safe }}
-            <div class="section-note" style="margin-top:6px;">{{ (item.sender_name or 'スタッフ') if item.sender_type == 'staff' else '会員' }} ・ {{ item.created_at[:16] if item.created_at else '' }}</div>
-          </div>
-        {% endfor %}
-      {% else %}
-        <div class="empty">まだメッセージはありません。</div>
-      {% endif %}
-    </div>
-    <form method="post" action="/admin/{{ shop_id }}/customers/{{ customer.id }}/chat" style="padding:16px;background:#fff;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr auto;gap:10px;">
-      <textarea name="message" rows="4" placeholder="メッセージを入力" style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:16px;resize:vertical;" {% if not chat_limit.can_send %}disabled{% endif %}></textarea>
-      <button type="submit" {% if not chat_limit.can_send %}disabled{% endif %}>送信</button>
-    </form>
-  </div>
+  <div class="card"><div class="card-header"><h2>追加情報一覧</h2><span class="badge">{{ customer_notes|length }}件</span></div>{% if customer_notes %}{% for note in customer_notes %}<div style="padding:14px 0;border-top:1px solid var(--line);"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;"><div><strong>{{ note.title }}</strong><div class="section-note">{{ note.created_at[:16] if note.created_at else '' }}</div></div><form method="post" action="/admin/{{ shop_id }}/customers/{{ customer.id }}/notes/{{ note.id }}/delete" onsubmit="return confirm('この追加情報を削除しますか？');"><button type="submit">削除</button></form></div><p class="section-note" style="margin-top:8px;white-space:pre-wrap;">{{ note.content }}</p></div>{% endfor %}{% else %}<p class="empty">追加情報はまだありません。</p>{% endif %}</div>
+  <div class="card"><div class="card-header"><h2>顧客写真</h2><span class="badge">{{ customer_photos|length }}枚</span></div><p class="section-note">{% if customer_photo_policy.enabled %}{{ customer_photo_policy.label }} / {% if customer_photo_policy.max_photos is none %}保存枚数制限なし{% else %}保存上限 {{ customer_photo_policy.max_photos }} 枚 / 残り {{ customer_photo_remaining }} 枚{% endif %}{% else %}{{ customer_photo_policy.label }}では顧客写真を保存できません。{% endif %}</p><form method="post" action="/admin/{{ shop_id }}/customers/{{ customer.id }}/photos" enctype="multipart/form-data"><label>写真を撮影・保存<input type="file" name="photo" accept="image/*" capture="environment" {% if not customer_photo_policy.enabled %}disabled{% endif %} required></label><button type="submit" {% if not customer_photo_policy.enabled %}disabled{% endif %}>写真を保存する</button></form>{% if customer_photos %}<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px;">{% for photo in customer_photos %}<div style="border:1px solid var(--line);border-radius:16px;padding:10px;background:#fff;"><a href="{{ photo.image_url }}" target="_blank" rel="noopener noreferrer" style="display:block;"><img src="{{ photo.image_url }}" alt="顧客写真" style="width:100%;height:180px;object-fit:cover;border-radius:12px;display:block;cursor:zoom-in;"></a><div class="section-note" style="margin:8px 0;">{{ photo.created_at[:16] if photo.created_at else '' }}</div><form method="post" action="/admin/{{ shop_id }}/customers/{{ customer.id }}/photos/{{ photo.id }}/delete" onsubmit="return confirm('この写真を削除しますか？');"><button type="submit">削除</button></form></div>{% endfor %}</div>{% else %}<p class="empty">写真はまだありません。</p>{% endif %}</div>
 </div>
 <script>
-  (function () {
-    const messagesEl = document.getElementById('adminChatMessages');
-    const metaEl = document.getElementById('adminChatMeta');
-    if (!messagesEl) return;
-    let timer = null;
-    const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-    const render = (payload) => {
-      const messages = Array.isArray(payload.messages) ? payload.messages : [];
-      if (metaEl && payload.chat_limit) {
-        metaEl.textContent = payload.chat_limit.monthly_limit == null
-          ? '無制限'
-          : `今月 ${payload.chat_limit.monthly_count} / ${payload.chat_limit.monthly_limit} 通`;
-      }
-      if (!messages.length) {
-        messagesEl.innerHTML = '<div class="empty">まだメッセージはありません。</div>';
-        return;
-      }
-      messagesEl.innerHTML = messages.map((item) => {
-        const isStaff = item.sender_type === 'staff';
-        const name = isStaff ? (item.sender_name || 'スタッフ') : '会員';
-        const message = escapeHtml(item.message).replace(/
-/g, '<br>');
-        const time = escapeHtml((item.created_at || '').slice(0, 16));
-        const style = isStaff
-          ? 'max-width:82%;padding:12px 14px;border-radius:18px;line-height:1.8;justify-self:end;background:#8de055;color:#111827;'
-          : 'max-width:82%;padding:12px 14px;border-radius:18px;line-height:1.8;justify-self:start;background:#fff;border:1px solid var(--line);';
-        return `<div style="${style}">${message}<div class="section-note" style="margin-top:6px;">${escapeHtml(name)} ・ ${time}</div></div>`;
-      }).join('');
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-    };
-    const fetchMessages = async () => {
-      if (document.hidden) return;
-      const res = await fetch('/admin/{{ shop_id }}/customers/{{ customer.id }}/chat/messages', { headers: { 'X-Requested-With': 'fetch' } });
-      if (!res.ok) return;
-      render(await res.json());
-    };
-    const start = () => { if (!timer) timer = window.setInterval(fetchMessages, 5000); };
-    const stop = () => { if (timer) { window.clearInterval(timer); timer = null; } };
-    document.addEventListener('visibilitychange', () => { if (document.hidden) { stop(); } else { fetchMessages(); start(); } });
-    fetchMessages();
-    start();
-  })();
+const adminChatForm=document.getElementById('admin-chat-form');
+const adminChatMessages=document.getElementById('admin-chat-messages');
+const adminChatInput=document.getElementById('admin-chat-input');
+const adminChatError=document.getElementById('admin-chat-error');
+const adminChatMeta=document.getElementById('admin-chat-meta');
+function updateAdminChatMeta(data){if(!adminChatMeta)return;const suffix=adminChatMeta.textContent&&adminChatMeta.textContent.includes('・ 5秒ごとに自動更新')?' ・ 5秒ごとに自動更新':'';if(data&&Object.prototype.hasOwnProperty.call(data,'limit')){adminChatMeta.textContent=data.limit===null?`チャット送信は無制限${suffix}`:`店舗が${data.limit}件 / 今月${data.sent_this_month||0}件送信済み / 残り${data.remaining||0}件${suffix}`;}}
+let adminChatRefreshing=false;
+function escapeHtml(value){return String(value||'').replace(/[&<>"']/g,(char)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));}
+function renderAdminMessages(messages){if(!adminChatMessages)return;const nearBottom=adminChatMessages.scrollHeight-adminChatMessages.scrollTop-adminChatMessages.clientHeight<80;adminChatMessages.innerHTML=messages.length?messages.map((item)=>`<div style="display:grid;"><div style="max-width:82%;padding:12px 14px;border-radius:18px;line-height:1.8;font-size:14px;${item.sender_type==='staff'?'background:#06c755;color:#fff;justify-self:end;border-top-right-radius:6px;':'background:#fff;justify-self:start;border-top-left-radius:6px;'}">${escapeHtml(item.body).replace(/\n/g,'<br>')}</div><div style="font-size:12px;color:var(--subtext);margin-top:6px;${item.sender_type==='staff'?'text-align:right;':''}">${escapeHtml((item.created_at||'').slice(0,16))}</div></div>`).join(''):'<div class="empty">まだメッセージはありません。</div>';if(nearBottom)adminChatMessages.scrollTop=adminChatMessages.scrollHeight;}
+async function refreshAdminChat(){if(!adminChatMessages||adminChatRefreshing||document.hidden)return;adminChatRefreshing=true;try{const response=await fetch('/admin/{{ shop_id }}/customers/{{ customer.id }}/chat/messages',{headers:{'X-Requested-With':'fetch'}});const data=await response.json();if(data.ok){renderAdminMessages(data.messages||[]);updateAdminChatMeta(data);}}catch(error){}finally{adminChatRefreshing=false;}}
+if(adminChatForm){adminChatForm.addEventListener('submit',async(event)=>{event.preventDefault();adminChatError.style.display='none';const formData=new FormData(adminChatForm);const message=String(formData.get('message')||'').trim();if(!message){adminChatError.textContent='メッセージを入力してください。';adminChatError.style.display='block';return;}try{const response=await fetch('/admin/{{ shop_id }}/customers/{{ customer.id }}/chat/messages',{method:'POST',body:formData,headers:{'X-Requested-With':'fetch'}});const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||'送信に失敗しました。');renderAdminMessages(data.messages||[]);updateAdminChatMeta(data);adminChatInput.value='';adminChatMessages.scrollTop=adminChatMessages.scrollHeight;}catch(error){adminChatError.textContent=error.message||'送信に失敗しました。';adminChatError.style.display='block';}});setInterval(refreshAdminChat,5000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshAdminChat();});window.addEventListener('load',()=>{if(adminChatMessages)adminChatMessages.scrollTop=adminChatMessages.scrollHeight;});}
 </script>
 {% endblock %}

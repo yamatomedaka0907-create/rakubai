@@ -1,0 +1,25 @@
+{% extends "admin/tool/base.html" %}
+{% block page_title %}スタッフ情報{% endblock %}
+{% block page_subtitle %}登録済みスタッフと対応メニューを確認できます。{% endblock %}
+{% block content %}
+<section class="tool-panel">
+  <div class="tool-panel-head is-wide"><h2>スタッフ情報</h2><a class="tool-btn is-primary" href="/admin/register/{{ shop_id }}">新規スタッフ登録</a></div>
+  <div class="tool-panel-body">
+    {% if success_message %}<div class="tool-alert is-success">{{ success_message }}</div>{% endif %}
+    {% if staff_list %}
+    <div class="tool-table-wrap">
+      <table class="tool-table is-dense">
+        <thead><tr><th>名前</th><th>対応メニュー</th></tr></thead>
+        <tbody>
+          {% for staff in staff_list %}
+          <tr><td><a class="tool-text-link" href="/admin/{{ shop_id }}/staff/{{ staff.id }}">{{ staff.name }}</a></td><td>{% if staff.menu_names %}{{ staff.menu_names|join(' / ') }}{% else %}未設定{% endif %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="tool-empty">スタッフがまだ登録されていません。</div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

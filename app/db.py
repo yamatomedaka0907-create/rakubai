@@ -312,7 +312,6 @@ def init_db() -> None:
         _ensure_column(conn, 'members', 'email_reminder_enabled', 'email_reminder_enabled INTEGER NOT NULL DEFAULT 0')
         _ensure_column(conn, 'members', 'updated_at', "updated_at TEXT DEFAULT CURRENT_TIMESTAMP")
 
-
         conn.execute(
             '''
             CREATE TABLE IF NOT EXISTS chat_messages (
@@ -321,14 +320,16 @@ def init_db() -> None:
                 customer_id INTEGER NOT NULL,
                 member_id INTEGER,
                 sender_type TEXT NOT NULL,
-                sender_name TEXT DEFAULT '',
-                message TEXT NOT NULL,
+                body TEXT NOT NULL DEFAULT '',
+                is_read INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(customer_id) REFERENCES customers(id),
                 FOREIGN KEY(member_id) REFERENCES members(id)
             )
             '''
         )
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_chat_messages_shop_customer_created ON chat_messages(shop_id, customer_id, created_at, id)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_chat_messages_shop_read ON chat_messages(shop_id, is_read, sender_type, created_at, id)')
 
         conn.execute(
             '''
@@ -407,7 +408,6 @@ def init_db() -> None:
         conn.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_shop_id ON subscriptions(shop_id)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_admin_users_shop_id ON admin_users(shop_id, login_id)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_members_shop_phone ON members(shop_id, phone_normalized)')
-        conn.execute('CREATE INDEX IF NOT EXISTS idx_chat_messages_shop_customer_id ON chat_messages(shop_id, customer_id, id)')
 
         for shop_id, shop in SHOPS.items():
             conn.execute(
@@ -1652,78 +1652,6 @@ def update_reservation_status(shop_id: str, reservation_id: int, status: str) ->
         conn.commit()
 
 
-def get_chat_messages(shop_id: str, customer_id: int, limit: int = 200) -> list[dict[str, Any]]:
-    safe_limit = max(1, min(int(limit or 200), 500))
-    with get_connection() as conn:
-        rows = conn.execute(
-            '''
-            SELECT id, shop_id, customer_id, member_id, sender_type, sender_name, message, created_at
-            FROM chat_messages
-            WHERE shop_id = ? AND customer_id = ?
-            ORDER BY id DESC
-            LIMIT ?
-            ''',
-            (shop_id, customer_id, safe_limit),
-        ).fetchall()
-    items = _rows_to_dicts(rows)
-    items.reverse()
-    return items
-
-
-def add_chat_message(
-    shop_id: str,
-    customer_id: int,
-    *,
-    sender_type: str,
-    message: str,
-    member_id: int | None = None,
-    sender_name: str = '',
-) -> dict[str, Any]:
-    normalized_sender = 'member' if sender_type == 'member' else 'staff'
-    text = str(message or '').strip()
-    if not text:
-        raise ValueError('メッセージを入力してください。')
-    with get_connection() as conn:
-        cursor = conn.execute(
-            '''
-            INSERT INTO chat_messages (shop_id, customer_id, member_id, sender_type, sender_name, message)
-            VALUES (?, ?, ?, ?, ?, ?)
-            ''',
-            (shop_id, customer_id, member_id, normalized_sender, str(sender_name or '').strip(), text),
-        )
-        message_id = int(cursor.lastrowid)
-        conn.commit()
-        row = conn.execute(
-            '''
-            SELECT id, shop_id, customer_id, member_id, sender_type, sender_name, message, created_at
-            FROM chat_messages
-            WHERE id = ? AND shop_id = ? AND customer_id = ?
-            LIMIT 1
-            ''',
-            (message_id, shop_id, customer_id),
-        ).fetchone()
-    if row is None:
-        raise RuntimeError('チャットメッセージの保存に失敗しました。')
-    return dict(row)
-
-
-def count_monthly_chat_messages(shop_id: str, customer_id: int | None = None, month_value: str | None = None) -> int:
-    target_month = str(month_value or datetime.now().strftime('%Y-%m')).strip()
-    sql = '''
-        SELECT COUNT(*)
-        FROM chat_messages
-        WHERE shop_id = ?
-          AND strftime('%Y-%m', created_at, 'localtime') = ?
-    '''
-    params: list[Any] = [shop_id, target_month]
-    if customer_id is not None:
-        sql += ' AND customer_id = ?'
-        params.append(int(customer_id))
-    with get_connection() as conn:
-        row = conn.execute(sql, tuple(params)).fetchone()
-    return int(row[0] if row else 0)
-
-
 # plans / subscriptions
 
 def get_plans(active_only: bool = False) -> list[dict[str, Any]]:
@@ -1867,6 +1795,9 @@ def get_shop_management_data(shop_id: str) -> dict[str, Any] | None:
                 s.primary_dark,
                 s.accent_bg,
                 s.reply_to_email,
+                s.admin_ui_mode,
+                s.staff_list_json,
+                s.menus_json,
                 s.created_at,
                 COALESCE(p.id, 0) AS plan_id,
                 COALESCE(p.code, '') AS plan_code,
@@ -1880,7 +1811,7 @@ def get_shop_management_data(shop_id: str) -> dict[str, Any] | None:
             ''',
             (shop_id,),
         ).fetchone()
-    return dict(row) if row else None
+    return _deserialize_shop_row(row) if row else None
 
 
 def _normalize_shop_menus(menus: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
@@ -1913,6 +1844,37 @@ def _normalize_shop_menus(menus: list[dict[str, Any]] | None) -> list[dict[str, 
             'duration': duration,
             'price': price,
             'description': description,
+        })
+
+    for idx, item in enumerate(normalized, start=1):
+        item['id'] = idx
+    return normalized
+
+
+def _normalize_shop_staff_list(staff_list: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    for index, staff in enumerate(staff_list or [], start=1):
+        name = str(staff.get('name', '')).strip()
+        if not name:
+            continue
+        staff_id = staff.get('id', index)
+        try:
+            staff_id = int(staff_id)
+        except (TypeError, ValueError):
+            staff_id = index
+        menu_ids_raw = staff.get('menu_ids', [])
+        if isinstance(menu_ids_raw, str):
+            menu_ids_raw = [item.strip() for item in menu_ids_raw.split(',') if item.strip()]
+        menu_ids: list[int] = []
+        for item in menu_ids_raw or []:
+            try:
+                menu_ids.append(int(item))
+            except (TypeError, ValueError):
+                continue
+        normalized.append({
+            'id': staff_id,
+            'name': name,
+            'menu_ids': menu_ids,
         })
 
     for idx, item in enumerate(normalized, start=1):
@@ -1975,6 +1937,20 @@ def update_shop_basic_info(
             ),
         )
         conn.commit()
+
+def update_shop_staff_list(shop_id: str, staff_list: list[dict[str, Any]] | None = None) -> None:
+    normalized_staff_list = _normalize_shop_staff_list(staff_list)
+    with get_connection() as conn:
+        conn.execute(
+            '''
+            UPDATE shops
+            SET staff_list_json = ?
+            WHERE shop_id = ?
+            ''',
+            (json.dumps(normalized_staff_list, ensure_ascii=False), shop_id),
+        )
+        conn.commit()
+
 
 def update_shop_subscription(shop_id: str, plan_id: int, status: str = 'active') -> None:
     with get_connection() as conn:
@@ -2309,28 +2285,354 @@ def get_member_reservations(shop_id: str, member_id: int) -> list[dict[str, Any]
         rows = conn.execute(
             '''
             SELECT
-                id,
-                shop_id,
-                customer_id,
-                customer_name,
-                customer_email,
-                receive_email,
-                staff_id,
-                staff_name,
-                menu_id,
-                menu_name,
-                duration,
-                price,
-                reservation_date,
-                start_time,
-                end_time,
-                status,
-                source,
-                created_at
-            FROM reservations
-            WHERE shop_id = ? AND customer_id = ?
-            ORDER BY reservation_date DESC, start_time DESC, id DESC
+                r.id,
+                r.shop_id,
+                r.customer_id,
+                r.customer_name,
+                r.customer_email,
+                r.receive_email,
+                r.staff_id,
+                r.staff_name,
+                r.menu_id,
+                r.menu_name,
+                r.duration,
+                r.price,
+                r.reservation_date,
+                r.start_time,
+                r.end_time,
+                r.status,
+                r.source,
+                r.created_at,
+                s.shop_name
+            FROM reservations r
+            JOIN shops s ON s.shop_id = r.shop_id
+            WHERE r.shop_id = ? AND r.customer_id = ?
+            ORDER BY r.reservation_date DESC, r.start_time DESC, r.id DESC
             ''',
             (shop_id, int(member['customer_id'])),
+        ).fetchall()
+    return _rows_to_dicts(rows)
+
+
+def get_member_all_reservations(phone_or_normalized: str) -> list[dict[str, Any]]:
+    normalized_phone = normalize_member_phone(phone_or_normalized)
+    if not normalized_phone:
+        return []
+    with get_connection() as conn:
+        rows = conn.execute(
+            '''
+            SELECT
+                r.id,
+                r.shop_id,
+                r.customer_id,
+                r.customer_name,
+                r.customer_email,
+                r.receive_email,
+                r.staff_id,
+                r.staff_name,
+                r.menu_id,
+                r.menu_name,
+                r.duration,
+                r.price,
+                r.reservation_date,
+                r.start_time,
+                r.end_time,
+                r.status,
+                r.source,
+                r.created_at,
+                s.shop_name
+            FROM members m
+            JOIN reservations r ON r.shop_id = m.shop_id AND r.customer_id = m.customer_id
+            JOIN shops s ON s.shop_id = r.shop_id
+            WHERE m.phone_normalized = ? AND m.is_active = 1 AND m.customer_id IS NOT NULL
+            ORDER BY r.reservation_date DESC, r.start_time DESC, r.id DESC
+            ''',
+            (normalized_phone,),
+        ).fetchall()
+    return _rows_to_dicts(rows)
+
+
+# chat
+
+def get_member_by_customer_id(shop_id: str, customer_id: int) -> dict[str, Any] | None:
+    with get_connection() as conn:
+        row = conn.execute(
+            '''
+            SELECT id, shop_id, customer_id, name, phone, phone_normalized, email,
+                   email_reminder_enabled, password_hash, is_active, created_at, updated_at
+            FROM members
+            WHERE shop_id = ? AND customer_id = ? AND is_active = 1
+            ORDER BY id ASC
+            LIMIT 1
+            ''',
+            (shop_id, customer_id),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def get_member_by_phone_normalized(shop_id: str, phone_normalized: str) -> dict[str, Any] | None:
+    normalized_phone = normalize_member_phone(phone_normalized)
+    if not normalized_phone:
+        return None
+    with get_connection() as conn:
+        row = conn.execute(
+            '''
+            SELECT id, shop_id, customer_id, name, phone, phone_normalized, email,
+                   email_reminder_enabled, password_hash, is_active, created_at, updated_at
+            FROM members
+            WHERE shop_id = ? AND phone_normalized = ? AND is_active = 1
+            ORDER BY id ASC
+            LIMIT 1
+            ''',
+            (shop_id, normalized_phone),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def get_member_linked_shops(phone_or_normalized: str) -> list[dict[str, Any]]:
+    normalized_phone = normalize_member_phone(phone_or_normalized)
+    if not normalized_phone:
+        return []
+    with get_connection() as conn:
+        rows = conn.execute(
+            '''
+            SELECT m.id AS member_id, m.shop_id, m.customer_id, m.name AS member_name, m.phone,
+                   s.shop_name, s.primary_color, s.primary_dark, s.accent_bg,
+                   c.name AS customer_name
+            FROM members m
+            JOIN shops s ON s.shop_id = m.shop_id
+            LEFT JOIN customers c ON c.id = m.customer_id AND c.shop_id = m.shop_id
+            WHERE m.phone_normalized = ? AND m.is_active = 1
+            ORDER BY s.shop_name COLLATE NOCASE ASC, m.id ASC
+            ''',
+            (normalized_phone,),
+        ).fetchall()
+    return _rows_to_dicts(rows)
+
+
+def deactivate_member(shop_id: str, member_id: int) -> bool:
+    with get_connection() as conn:
+        cursor = conn.execute(
+            '''
+            UPDATE members
+            SET is_active = 0, updated_at = CURRENT_TIMESTAMP
+            WHERE shop_id = ? AND id = ? AND is_active = 1
+            ''',
+            (shop_id, int(member_id)),
+        )
+        conn.commit()
+    return bool(cursor.rowcount)
+
+
+def deactivate_members_by_phone(phone_or_normalized: str) -> int:
+    normalized_phone = normalize_member_phone(phone_or_normalized)
+    if not normalized_phone:
+        return 0
+    with get_connection() as conn:
+        cursor = conn.execute(
+            '''
+            UPDATE members
+            SET is_active = 0, updated_at = CURRENT_TIMESTAMP
+            WHERE phone_normalized = ? AND is_active = 1
+            ''',
+            (normalized_phone,),
+        )
+        conn.commit()
+    return int(cursor.rowcount or 0)
+
+
+def list_chat_messages(shop_id: str, customer_id: int, limit: int = 200, member_id: int | None = None) -> list[dict[str, Any]]:
+    limit = max(1, min(int(limit or 200), 500))
+    params: list[Any] = [shop_id, customer_id]
+    member_clause = ''
+    if member_id is not None:
+        member_clause = ' AND member_id = ?'
+        params.append(int(member_id))
+    params.append(limit)
+    with get_connection() as conn:
+        rows = conn.execute(
+            f"""
+            SELECT id, shop_id, customer_id, member_id, sender_type, body, is_read, created_at
+            FROM chat_messages
+            WHERE shop_id = ? AND customer_id = ?{member_clause}
+            ORDER BY id ASC
+            LIMIT ?
+            """,
+            tuple(params),
+        ).fetchall()
+    return _rows_to_dicts(rows)
+
+
+def get_latest_chat_member_id(shop_id: str, customer_id: int) -> int | None:
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT member_id
+            FROM chat_messages
+            WHERE shop_id = ? AND customer_id = ? AND member_id IS NOT NULL
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (shop_id, customer_id),
+        ).fetchone()
+    if not row:
+        return None
+    try:
+        return int(row['member_id'])
+    except (TypeError, ValueError, KeyError):
+        return None
+
+
+def create_chat_message(shop_id: str, customer_id: int, member_id: int | None, sender_type: str, body: str) -> dict[str, Any]:
+    cleaned = str(body or '').strip()
+    if not cleaned:
+        raise ValueError('メッセージを入力してください。')
+    sender = str(sender_type or '').strip().lower()
+    if sender not in {'member', 'staff'}:
+        raise ValueError('送信種別が不正です。')
+    with get_connection() as conn:
+        cursor = conn.execute(
+            '''
+            INSERT INTO chat_messages (shop_id, customer_id, member_id, sender_type, body, is_read)
+            VALUES (?, ?, ?, ?, ?, 0)
+            ''',
+            (shop_id, customer_id, member_id, sender, cleaned),
+        )
+        message_id = int(cursor.lastrowid)
+        conn.commit()
+        row = conn.execute(
+            '''
+            SELECT id, shop_id, customer_id, member_id, sender_type, body, is_read, created_at
+            FROM chat_messages
+            WHERE id = ?
+            LIMIT 1
+            ''',
+            (message_id,),
+        ).fetchone()
+    if not row:
+        raise RuntimeError('メッセージの保存に失敗しました。')
+    return dict(row)
+
+
+def mark_chat_messages_read_for_admin(shop_id: str, customer_id: int) -> None:
+    with get_connection() as conn:
+        conn.execute(
+            '''
+            UPDATE chat_messages
+            SET is_read = 1
+            WHERE shop_id = ? AND customer_id = ? AND sender_type = 'member' AND is_read = 0
+            ''',
+            (shop_id, customer_id),
+        )
+        conn.commit()
+
+
+def mark_chat_messages_read_for_member(shop_id: str, customer_id: int, member_id: int | None = None) -> None:
+    params = [shop_id, customer_id]
+    member_clause = ''
+    if member_id is not None:
+        member_clause = ' AND member_id = ?'
+        params.append(int(member_id))
+    with get_connection() as conn:
+        conn.execute(
+            f'''
+            UPDATE chat_messages
+            SET is_read = 1
+            WHERE shop_id = ? AND customer_id = ? AND sender_type = 'staff' AND is_read = 0{member_clause}
+            ''',
+            tuple(params),
+        )
+        conn.commit()
+
+
+def count_member_chat_messages_in_month(shop_id: str, customer_id: int, year_month: str | None = None) -> int:
+    target = (year_month or datetime.now().strftime('%Y-%m')).strip()
+    like_value = f'{target}-%'
+    with get_connection() as conn:
+        row = conn.execute(
+            '''
+            SELECT COUNT(*) AS count_value
+            FROM chat_messages
+            WHERE shop_id = ? AND customer_id = ? AND sender_type = 'member' AND created_at LIKE ?
+            ''',
+            (shop_id, customer_id, like_value),
+        ).fetchone()
+    return int((row or {'count_value': 0})['count_value'] or 0)
+
+
+def count_shop_chat_messages_in_month(shop_id: str, year_month: str | None = None) -> int:
+    target = (year_month or datetime.now().strftime('%Y-%m')).strip()
+    like_value = f'{target}-%'
+    with get_connection() as conn:
+        row = conn.execute(
+            '''
+            SELECT COUNT(*) AS count_value
+            FROM chat_messages
+            WHERE shop_id = ? AND sender_type = 'staff' AND created_at LIKE ?
+            ''',
+            (shop_id, like_value),
+        ).fetchone()
+    return int((row or {'count_value': 0})['count_value'] or 0)
+
+
+def get_admin_unread_chat_summary(shop_id: str) -> list[dict[str, Any]]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            '''
+            SELECT
+                c.id AS customer_id,
+                c.name AS customer_name,
+                c.phone AS customer_phone,
+                MAX(cm.created_at) AS latest_created_at,
+                COUNT(CASE WHEN cm.sender_type = 'member' AND cm.is_read = 0 THEN 1 END) AS unread_count,
+                (
+                    SELECT body
+                    FROM chat_messages cm2
+                    WHERE cm2.shop_id = cm.shop_id AND cm2.customer_id = cm.customer_id
+                    ORDER BY cm2.id DESC
+                    LIMIT 1
+                ) AS latest_body
+            FROM chat_messages cm
+            JOIN customers c ON c.id = cm.customer_id AND c.shop_id = cm.shop_id
+            WHERE cm.shop_id = ?
+            GROUP BY c.id, c.name, c.phone
+            HAVING unread_count > 0
+            ORDER BY latest_created_at DESC, c.id DESC
+            ''',
+            (shop_id,),
+        ).fetchall()
+    return _rows_to_dicts(rows)
+
+
+def get_member_unread_chat_summary(phone_or_normalized: str) -> list[dict[str, Any]]:
+    normalized_phone = normalize_member_phone(phone_or_normalized)
+    if not normalized_phone:
+        return []
+    with get_connection() as conn:
+        rows = conn.execute(
+            '''
+            SELECT
+                m.shop_id,
+                m.id AS member_id,
+                m.customer_id,
+                s.shop_name,
+                COUNT(CASE WHEN cm.sender_type = 'staff' AND cm.is_read = 0 THEN 1 END) AS unread_count,
+                MAX(cm.created_at) AS latest_created_at,
+                (
+                    SELECT body
+                    FROM chat_messages cm2
+                    WHERE cm2.shop_id = m.shop_id AND cm2.customer_id = m.customer_id
+                    ORDER BY cm2.id DESC
+                    LIMIT 1
+                ) AS latest_body
+            FROM members m
+            JOIN shops s ON s.shop_id = m.shop_id
+            LEFT JOIN chat_messages cm ON cm.shop_id = m.shop_id AND cm.customer_id = m.customer_id
+            WHERE m.phone_normalized = ? AND m.is_active = 1 AND m.customer_id IS NOT NULL
+            GROUP BY m.shop_id, m.id, m.customer_id, s.shop_name
+            HAVING unread_count > 0
+            ORDER BY latest_created_at DESC, s.shop_name COLLATE NOCASE ASC
+            ''',
+            (normalized_phone,),
         ).fetchall()
     return _rows_to_dicts(rows)

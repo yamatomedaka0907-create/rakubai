@@ -1,132 +1,38 @@
 {% extends "admin/base.html" %}
 {% block content %}
 <style>
-.customer-sections { display:grid; gap:20px; }
-.customer-section-card { display:grid; gap:14px; }
-.customer-section-head { display:flex; justify-content:space-between; align-items:center; gap:12px; }
-.customer-type-badge { display:inline-flex; align-items:center; justify-content:center; min-width:64px; padding:6px 12px; border-radius:999px; font-size:12px; font-weight:800; }
-.customer-type-badge.is-member { background:rgba(59,130,246,0.14); color:#1d4ed8; }
-.customer-type-badge.is-guest { background:#eef2f7; color:#475569; }
-.customer-summary { display:flex; gap:12px; flex-wrap:wrap; margin-top:12px; }
-.customer-summary .badge { min-height:36px; display:inline-flex; align-items:center; }
-.customer-search-grid { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(180px,0.8fr) auto; gap:12px; align-items:end; }
+.chat-unread-banner { display:grid; gap:12px; margin-bottom:18px; }
+.chat-unread-item { border:1px solid #bbf7d0; background:#f0fdf4; border-radius:18px; padding:14px 16px; }
+.chat-unread-item a { text-decoration:none; color:inherit; display:block; }
+.chat-unread-count { display:inline-flex; align-items:center; min-height:26px; padding:0 10px; border-radius:999px; background:#166534; color:#fff; font-size:12px; font-weight:800; }
+.customer-search-grid { display:grid; grid-template-columns:2fr 1fr auto; gap:12px; align-items:end; }
 .customer-actions { display:flex; gap:10px; flex-wrap:wrap; }
-.customer-table td:first-child, .customer-table th:first-child { width:72px; }
-.customer-table td:last-child, .customer-table th:last-child { width:110px; }
-@media (max-width: 900px) {
-  .customer-search-grid { grid-template-columns:1fr; }
-  .customer-section-head { align-items:flex-start; flex-direction:column; }
-}
+.customer-summary { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+.customer-sections { display:grid; gap:18px; }
+.customer-section-card { overflow:hidden; }
+.customer-section-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.customer-type-badge { display:inline-flex; align-items:center; min-height:30px; padding:0 12px; border-radius:999px; font-weight:800; font-size:12px; }
+.customer-type-badge.is-member { background:#dcfce7; color:#166534; }
+.customer-type-badge.is-guest { background:#eff6ff; color:#1d4ed8; }
+.customer-table td .row-links { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.customer-chat-dot { display:inline-flex; align-items:center; justify-content:center; min-width:24px; height:24px; padding:0 8px; border-radius:999px; background:#166534; color:#fff; font-size:12px; font-weight:800; }
+@media (max-width: 900px) { .customer-search-grid { grid-template-columns:1fr; } .customer-section-head { align-items:flex-start; flex-direction:column; } }
 </style>
-
-<div class="hero">
-  <div class="hero-top">
-    <div>
-      <h1>顧客管理</h1>
-      <p>顧客情報を一覧で確認しながら、会員と非会員を分けて管理できます。</p>
-      <div class="customer-summary">
-        <span class="badge">合計 {{ customer_items|length }} 人</span>
-        <span class="badge">会員 {{ member_customer_items|length }} 人</span>
-        <span class="badge">非会員 {{ non_member_customer_items|length }} 人</span>
-      </div>
-    </div>
-  </div>
+<div class="hero"><div class="hero-top"><div><h1>顧客管理</h1><p>顧客情報を一覧で確認しながら、会員と非会員を分けて管理できます。</p><div class="customer-summary"><span class="badge">合計 {{ customer_items|length }} 人</span><span class="badge">会員 {{ member_customer_items|length }} 人</span><span class="badge">非会員 {{ non_member_customer_items|length }} 人</span></div></div></div></div>
+{% if unread_chat_items %}
+<div class="card chat-unread-banner">
+  <div class="card-header"><h2>新着チャット</h2><span class="badge">{{ unread_chat_items|length }}件</span></div>
+  {% for item in unread_chat_items %}
+  <div class="chat-unread-item"><a href="/admin/{{ shop_id }}/customers/{{ item.customer_id }}#chat-panel"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;"><div><strong>{{ item.customer_name }}</strong><div class="section-note">{{ item.latest_body or '新しいメッセージがあります。' }}</div></div><span class="chat-unread-count">{{ item.unread_count }}</span></div></a></div>
+  {% endfor %}
 </div>
-
+{% endif %}
 {% if success_message %}<div class="card" style="margin-bottom:18px;border-color:#bbf7d0;background:#f0fdf4;"><div class="card-header"><h2>完了</h2><span class="badge">保存済み</span></div><p class="section-note">{{ success_message }}</p></div>{% endif %}
 {% if error_message %}<div class="card" style="margin-bottom:18px;border-color:#fecaca;background:#fff1f2;"><div class="card-header"><h2>エラー</h2><span class="badge">確認</span></div><p class="section-note">{{ error_message }}</p></div>{% endif %}
-
-<div class="card" style="margin-bottom:18px;">
-  <div class="card-header"><h2>検索・並び替え</h2><span class="badge">一覧調整</span></div>
-  <form method="get" action="/admin/{{ shop_id }}/customers" class="customer-search-grid">
-    <label>キーワード<input type="text" name="q" value="{{ keyword }}" placeholder="名前・電話番号・メールアドレスで検索"></label>
-    <label>並び替え
-      <select name="sort">
-        <option value="new" {% if sort_order == 'new' %}selected{% endif %}>新しい順</option>
-        <option value="name" {% if sort_order == 'name' %}selected{% endif %}>あいうえお順</option>
-        <option value="visits" {% if sort_order == 'visits' %}selected{% endif %}>来店回数多い順</option>
-      </select>
-    </label>
-    <div class="customer-actions">
-      <button type="submit">適用する</button>
-      <a href="/admin/{{ shop_id }}/customers" class="secondary-link">リセット</a>
-    </div>
-  </form>
-</div>
-
+<div class="card" style="margin-bottom:18px;"><div class="card-header"><h2>検索・並び替え</h2><span class="badge">一覧調整</span></div><form method="get" action="/admin/{{ shop_id }}/customers" class="customer-search-grid"><label>キーワード<input type="text" name="q" value="{{ keyword }}" placeholder="名前・電話番号・メールアドレスで検索"></label><label>並び替え<select name="sort"><option value="new" {% if sort_order == 'new' %}selected{% endif %}>新しい順</option><option value="name" {% if sort_order == 'name' %}selected{% endif %}>あいうえお順</option><option value="visits" {% if sort_order == 'visits' %}selected{% endif %}>来店回数多い順</option></select></label><div class="customer-actions"><button type="submit">適用する</button><a href="/admin/{{ shop_id }}/customers" class="secondary-link">リセット</a></div></form></div>
 <div class="customer-sections">
-  <div class="card customer-section-card">
-    <div class="card-header customer-section-head">
-      <div>
-        <h2>会員顧客</h2>
-        <p class="section-note">会員登録済みの顧客です。</p>
-      </div>
-      <span class="customer-type-badge is-member">{{ member_customer_items|length }} 人</span>
-    </div>
-    {% if member_customer_items %}
-    <div class="table-scroll">
-      <table class="customer-table">
-        <thead><tr><th>ID</th><th>名前</th><th>区分</th><th>電話番号</th><th>メールアドレス</th><th>来店回数</th><th>登録日</th><th>操作</th></tr></thead>
-        <tbody>
-          {% for customer in member_customer_items %}
-          <tr>
-            <td>{{ customer.id }}</td>
-            <td><a href="/admin/{{ shop_id }}/customers/{{ customer.id }}">{{ customer.name }}</a></td>
-            <td><span class="customer-type-badge is-member">会員</span></td>
-            <td>{{ customer.phone or '-' }}</td>
-            <td>{{ customer.email or '-' }}</td>
-            <td>{{ customer.visit_count }}回</td>
-            <td>{{ customer.created_at[:10] if customer.created_at else '-' }}</td>
-            <td><a href="/admin/{{ shop_id }}/customers/{{ customer.id }}" class="secondary-link">詳細</a></td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}<p class="section-note">会員の顧客はいません。</p>{% endif %}
-  </div>
-
-  <div class="card customer-section-card">
-    <div class="card-header customer-section-head">
-      <div>
-        <h2>非会員顧客</h2>
-        <p class="section-note">予約や手動登録のみで作成された顧客です。</p>
-      </div>
-      <span class="customer-type-badge is-guest">{{ non_member_customer_items|length }} 人</span>
-    </div>
-    {% if non_member_customer_items %}
-    <div class="table-scroll">
-      <table class="customer-table">
-        <thead><tr><th>ID</th><th>名前</th><th>区分</th><th>電話番号</th><th>メールアドレス</th><th>来店回数</th><th>登録日</th><th>操作</th></tr></thead>
-        <tbody>
-          {% for customer in non_member_customer_items %}
-          <tr>
-            <td>{{ customer.id }}</td>
-            <td><a href="/admin/{{ shop_id }}/customers/{{ customer.id }}">{{ customer.name }}</a></td>
-            <td><span class="customer-type-badge is-guest">非会員</span></td>
-            <td>{{ customer.phone or '-' }}</td>
-            <td>{{ customer.email or '-' }}</td>
-            <td>{{ customer.visit_count }}回</td>
-            <td>{{ customer.created_at[:10] if customer.created_at else '-' }}</td>
-            <td><a href="/admin/{{ shop_id }}/customers/{{ customer.id }}" class="secondary-link">詳細</a></td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}<p class="section-note">非会員の顧客はいません。</p>{% endif %}
-  </div>
+  <div class="card customer-section-card"><div class="card-header customer-section-head"><div><h2>会員顧客</h2><p class="section-note">会員登録済みの顧客です。</p></div><span class="customer-type-badge is-member">{{ member_customer_items|length }} 人</span></div>{% if member_customer_items %}<div class="table-scroll"><table class="customer-table"><thead><tr><th>ID</th><th>名前</th><th>区分</th><th>電話番号</th><th>メールアドレス</th><th>来店回数</th><th>登録日</th><th>操作</th></tr></thead><tbody>{% for customer in member_customer_items %}<tr><td>{{ customer.id }}</td><td><a href="/admin/{{ shop_id }}/customers/{{ customer.id }}">{{ customer.name }}</a></td><td><span class="customer-type-badge is-member">会員</span></td><td>{{ customer.phone or '-' }}</td><td>{{ customer.email or '-' }}</td><td>{{ customer.visit_count }}回</td><td>{{ customer.created_at[:10] if customer.created_at else '-' }}</td><td><div class="row-links"><a href="/admin/{{ shop_id }}/customers/{{ customer.id }}" class="secondary-link">詳細</a>{% if unread_chat_map.get(customer.id) %}<a href="/admin/{{ shop_id }}/customers/{{ customer.id }}#chat-panel" class="customer-chat-dot">{{ unread_chat_map.get(customer.id) }}</a>{% endif %}</div></td></tr>{% endfor %}</tbody></table></div>{% else %}<p class="section-note">会員の顧客はいません。</p>{% endif %}</div>
+  <div class="card customer-section-card"><div class="card-header customer-section-head"><div><h2>非会員顧客</h2><p class="section-note">予約や手動登録のみで作成された顧客です。</p></div><span class="customer-type-badge is-guest">{{ non_member_customer_items|length }} 人</span></div>{% if non_member_customer_items %}<div class="table-scroll"><table class="customer-table"><thead><tr><th>ID</th><th>名前</th><th>区分</th><th>電話番号</th><th>メールアドレス</th><th>来店回数</th><th>登録日</th><th>操作</th></tr></thead><tbody>{% for customer in non_member_customer_items %}<tr><td>{{ customer.id }}</td><td><a href="/admin/{{ shop_id }}/customers/{{ customer.id }}">{{ customer.name }}</a></td><td><span class="customer-type-badge is-guest">非会員</span></td><td>{{ customer.phone or '-' }}</td><td>{{ customer.email or '-' }}</td><td>{{ customer.visit_count }}回</td><td>{{ customer.created_at[:10] if customer.created_at else '-' }}</td><td><a href="/admin/{{ shop_id }}/customers/{{ customer.id }}" class="secondary-link">詳細</a></td></tr>{% endfor %}</tbody></table></div>{% else %}<p class="section-note">非会員の顧客はいません。</p>{% endif %}</div>
 </div>
-
-<div class="grid" style="margin-top:18px;">
-  <div class="card">
-    <div class="card-header"><h2>新規顧客登録</h2><span class="badge">手動追加</span></div>
-    <form method="post" action="/admin/{{ shop_id }}/customers">
-      <label>顧客名<input type="text" name="name" required></label>
-      <label>電話番号<input type="text" name="phone"></label>
-      <label>メールアドレス<input type="email" name="email"></label>
-      <button type="submit">顧客を追加する</button>
-    </form>
-  </div>
-</div>
+<div class="grid" style="margin-top:18px;"><div class="card"><div class="card-header"><h2>新規顧客登録</h2><span class="badge">手動追加</span></div><form method="post" action="/admin/{{ shop_id }}/customers"><label>顧客名<input type="text" name="name" required></label><label>電話番号<input type="text" name="phone"></label><label>メールアドレス<input type="email" name="email"></label><button type="submit">顧客を追加する</button></form></div></div>
 {% endblock %}

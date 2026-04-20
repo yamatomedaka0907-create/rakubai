@@ -1,107 +1,126 @@
 {% extends "admin/base.html" %}
 {% block content %}
-<div class="hero"><div class="hero-top"><div><h1>予約管理</h1><p>予約登録、予約一覧、日別スケジュール確認に加えて、特定時間の予約受付停止もここで管理できます。</p></div></div></div>
-{% if error_message %}<div class="error-box">{{ error_message }}</div>{% endif %}
-
-<div class="card weekly-card">
-  <div class="card-header">
-    <h2>週間予約状況</h2>
-    <span class="badge">◎ 空き / × 予約あり / 休 定休日</span>
+<div class="hero">
+  <div class="hero-top">
+    <div>
+      <h1>予約管理</h1>
+      <p>現在時刻 {{ current_time_label }} 時点のスタッフ一覧です。名前を押すとスタッフページの週間予定へ移動します。</p>
+    </div>
   </div>
-  <div class="week-board-head">
-    <a class="week-next-link" href="/admin/{{ shop_id }}/reservations?month={{ calendar_month_value }}&date={{ selected_date }}&staff_id={{ filter_staff }}&week_start={{ prev_week_start }}">前週へ戻る</a>
-    <a class="week-next-link" href="/admin/{{ shop_id }}/reservations?month={{ calendar_month_value }}&date={{ selected_date }}&staff_id={{ filter_staff }}&week_start={{ next_week_start }}">翌週を見る</a>
-  </div>
-  <div class="availability-wrap">
-    <table class="availability-table">
-      <thead>
-        <tr>
-          <th class="time-col">時間</th>
-          {% for day in week_days %}
-          <th class="{% if day.is_today %}is-today{% endif %} {% if day.is_selected %}is-selected{% endif %}">
-            <div class="day-head">
-              <strong>{{ day.label }}</strong>
-              <span>{{ day.weekday }}</span>
-            </div>
-          </th>
-          {% endfor %}
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in weekly_rows %}
-        <tr>
-          <th class="time-col">{{ row.time }}</th>
-          {% for cell in row.cells %}
-          <td class="symbol-cell {{ cell.cell_class }} {% if cell.is_selected %}is-selected{% endif %} {% if week_days[loop.index0].is_today %}is-today{% endif %}">{{ cell.symbol }}</td>
-          {% endfor %}
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  <div class="availability-legend">
-    <span>◎ 空きあり</span><span>× 予約あり</span><span>休 定休日</span>
-  </div>
-  <p class="section-note">週間表を上に、月間カレンダーを下に配置しています。日付行と時間列は固定されます。</p>
 </div>
 
 <div class="card">
-  <div class="day-header"><div><h2 class="day-title">{{ selected_date }} の予約</h2><p class="day-sub">予約 {{ selected_day_count }}件</p></div><a href="/admin/{{ shop_id }}/reservations?month={{ calendar_month_value }}&date={{ today }}&staff_id={{ filter_staff }}&week_start={{ week_start }}" class="secondary-link">今日を見る</a></div>
-  {% if selected_day_schedule %}<div class="timeline">{% for reservation in selected_day_schedule %}<div class="timeline-item"><div class="timeline-top"><div class="timeline-time">{{ reservation.start_time }} - {{ reservation.end_time }}</div>{% if reservation.status == "キャンセル" %}<span class="status status-cancelled">キャンセル</span>{% elif reservation.status == "来店済み" %}<span class="status status-done">来店済み</span>{% else %}<span class="status status-reserved">予約済み</span>{% endif %}</div><div class="timeline-main"><div><strong>顧客:</strong> {{ reservation.customer_name }}</div><div><strong>スタッフ:</strong> <a href="/admin/{{ shop_id }}/staff/{{ reservation.staff_id }}?month={{ calendar_month_value }}&date={{ reservation.reservation_date }}">{{ reservation.staff_name }}</a></div><div><strong>メニュー:</strong> {{ reservation.menu_name }} / {{ reservation.duration }}分 / ¥{{ reservation.price }}</div></div></div>{% endfor %}</div>{% else %}<p class="empty">この日の予約はまだありません。</p>{% endif %}
+  <div class="card-header">
+    <h2>スタッフ一覧</h2>
+    <span class="badge">{{ current_slot_label }} 時点</span>
+  </div>
+  {% if staff_now_list %}
+  <table>
+    <thead><tr><th>名前</th><th>現在の内容</th></tr></thead>
+    <tbody>
+      {% for staff in staff_now_list %}
+      <tr>
+        <td><a href="{{ staff.jump_url or ('/admin/' ~ shop_id ~ '/staff/' ~ staff.id ~ '?date=' ~ selected_date ~ '&week_start=' ~ week_start) }}">{{ staff.name }}</a></td>
+        <td><strong>{{ staff.now_status }}</strong><div style="margin-top:6px; color:var(--text-muted);">{{ staff.now_detail }}</div></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">スタッフがまだ登録されていません。</p>
+  {% endif %}
 </div>
 
-<div class="card monthly-calendar-card">
-  <div class="card-header"><h2>月間カレンダー</h2><div class="calendar-nav"><a href="/admin/{{ shop_id }}/reservations?month={{ calendar_prev_month }}&date={{ selected_date }}&staff_id={{ filter_staff }}&week_start={{ week_start }}">← 前月</a><div class="month-label">{{ calendar_month_label }}</div><a href="/admin/{{ shop_id }}/reservations?month={{ calendar_next_month }}&date={{ selected_date }}&staff_id={{ filter_staff }}&week_start={{ week_start }}">次月 →</a></div></div>
-  <div class="calendar-weekdays"><div class="calendar-weekday">日</div><div class="calendar-weekday">月</div><div class="calendar-weekday">火</div><div class="calendar-weekday">水</div><div class="calendar-weekday">木</div><div class="calendar-weekday">金</div><div class="calendar-weekday">土</div></div>
-  <div class="calendar-grid">{% for day in calendar_days %}<a href="/admin/{{ shop_id }}/reservations?month={{ calendar_month_value }}&date={{ day.date }}&staff_id={{ filter_staff }}&week_start={{ day.date }}" class="calendar-day{% if not day.is_current_month %} is-outside{% endif %}{% if day.is_today %} is-today{% endif %}{% if selected_date == day.date %} is-selected{% endif %}{% if day.is_holiday %} is-holiday{% endif %}"><div class="calendar-day-top"><span class="calendar-day-number">{{ day.day }}</span><span class="calendar-count">{{ day.count }}人</span></div><div class="calendar-meta">{% if day.count > 0 %}予約あり{% else %}予約なし{% endif %}</div>{% if day.is_holiday %}<span class="holiday-label">定休日</span>{% endif %}</a>{% endfor %}</div>
-  <p class="section-note">日付を押すと、その日を基準に週間表と右側の予約一覧が切り替わります。</p>
+
+<div class="card">
+  <div class="card-header">
+    <h2>予約登録</h2>
+    <span class="badge">予約</span>
+  </div>
+  {% if error_message %}<div class="error-box">{{ error_message }}</div>{% endif %}
+  <form method="post" action="/admin/{{ shop_id }}/reservations">
+    <label>顧客<select name="customer_id" required><option value="">顧客を選んでください</option>{% for customer in customers %}<option value="{{ customer.id }}">{{ customer.name }}</option>{% endfor %}</select></label>
+    <label>スタッフ<select name="staff_id" required><option value="">スタッフを選んでください</option>{% for staff in staff_list %}<option value="{{ staff.id }}">{{ staff.name }}</option>{% endfor %}</select></label>
+    <label>メニュー<select name="menu_id" required><option value="">メニューを選んでください</option>{% for menu in menus %}<option value="{{ menu.id }}" data-staff-menu-ids="{% for staff in staff_list if not staff.menu_ids or menu.id in staff.menu_ids %}{{ staff.id }}{% if not loop.last %},{% endif %}{% endfor %}">{{ menu.name }}（{{ menu.duration }}分 / ¥{{ menu.price }}）</option>{% endfor %}</select></label>
+    <label>日付<input type="date" name="reservation_date" value="{{ today }}" required></label>
+    <label>開始時間<input type="time" name="start_time" required></label>
+    <button type="submit">予約を登録する</button>
+  </form>
 </div>
 
-<div class="grid" style="margin-top:18px;">
-  <div class="card">
-    <div class="card-header"><h2>予約登録</h2><span class="badge">新規</span></div>
-    <form method="post" action="/admin/{{ shop_id }}/reservations">
-      <label>顧客<select name="customer_id" required><option value="">顧客を選んでください</option>{% for customer in customers %}<option value="{{ customer.id }}">{{ customer.name }}</option>{% endfor %}</select></label>
-      <label>スタッフ<select name="staff_id" required><option value="">スタッフを選んでください</option>{% for staff in staff_list %}<option value="{{ staff.id }}">{{ staff.name }}</option>{% endfor %}</select></label>
-      <label>メニュー<select name="menu_id" required><option value="">メニューを選んでください</option>{% for menu in menus %}<option value="{{ menu.id }}">{{ menu.name }}（{{ menu.duration }}分 / ¥{{ menu.price }}）</option>{% endfor %}</select></label>
-      <label>日付<input type="date" name="reservation_date" value="{{ today }}" required></label>
-      <label>開始時間<input type="time" name="start_time" required></label>
-      <button type="submit">予約を登録する</button>
-    </form>
-  </div>
+<script>
+(function(){
+  const forms = Array.from(document.querySelectorAll('form')).filter(function(form){
+    return form.querySelector('select[name="staff_id"]') && form.querySelector('select[name="menu_id"]');
+  });
+  forms.forEach(function(form){
+    const staffSelect = form.querySelector('select[name="staff_id"]');
+    const menuSelect = form.querySelector('select[name="menu_id"]');
+    if (!staffSelect || !menuSelect) return;
 
-  <div class="card">
-    <div class="card-header"><h2>予約受付停止を設定</h2><span class="badge">ブロック</span></div>
-    <form method="post" action="/admin/{{ shop_id }}/reservation-blocks">
-      <label>スタッフ<select name="staff_id" required><option value="">スタッフを選んでください</option>{% for staff in staff_list %}<option value="{{ staff.id }}">{{ staff.name }}</option>{% endfor %}</select></label>
-      <label>日付<input type="date" name="block_date" value="{{ selected_date or today }}" required></label>
-      <div class="grid">
-        <div><label>開始時間<input type="time" name="start_time" required></label></div>
-        <div><label>終了時間<input type="time" name="end_time" required></label></div>
-      </div>
-      <label>メモ<input type="text" name="note" placeholder="例：休憩 / 外出 / 打ち合わせ"></label>
-      <button type="submit">この時間を予約不可にする</button>
-    </form>
-    <p class="section-note">公開予約画面では、この時間にかかる枠が選べなくなります。</p>
-  </div>
-</div>
-<div class="grid" style="margin-top:18px;">
-  <div class="card">
-    <div class="card-header"><h2>予約受付停止一覧</h2><span class="badge">{{ reservation_blocks|length }}件</span></div>
-    {% if reservation_blocks %}
-    <div class="table-wrap"><table><thead><tr><th>ID</th><th>日付</th><th>開始</th><th>終了</th><th>スタッフ</th><th>メモ</th><th>操作</th></tr></thead><tbody>
-    {% for block in reservation_blocks %}<tr><td>{{ block.id }}</td><td>{{ block.block_date }}</td><td>{{ block.start_time }}</td><td>{{ block.end_time }}</td><td>{{ block.staff_name }}</td><td>{{ block.note or '-' }}</td><td><form method="post" action="/admin/{{ shop_id }}/reservation-blocks/{{ block.id }}/delete" onsubmit="return confirm('この予約停止設定を削除しますか？');"><button type="submit" class="danger-button">削除</button></form></td></tr>{% endfor %}
-    </tbody></table></div>
-    {% else %}<p class="empty">まだ予約受付停止の設定はありません。</p>{% endif %}
-  </div>
+    const allOptions = Array.from(menuSelect.querySelectorAll('option')).map(function(option){
+      return {
+        value: option.value,
+        text: option.textContent,
+        selected: option.selected,
+        menuIds: (option.dataset.staffMenuIds || '').split(',').map(function(item){ return item.trim(); }).filter(Boolean),
+        disabled: option.disabled
+      };
+    });
 
-  <div class="card">
-    <div class="card-header"><h2>予約一覧</h2><span class="badge">{{ reservations|length }}件</span></div>
-    {% if reservations %}
-    <div class="table-wrap"><table><thead><tr><th>ID</th><th>日付</th><th>開始</th><th>終了</th><th>顧客</th><th>スタッフ</th><th>メニュー</th><th>状態</th><th>操作</th></tr></thead><tbody>
-    {% for reservation in reservations %}<tr><td>{{ reservation.id }}</td><td>{{ reservation.reservation_date }}</td><td>{{ reservation.start_time }}</td><td>{{ reservation.end_time }}</td><td>{{ reservation.customer_name }}</td><td><a href="/admin/{{ shop_id }}/staff/{{ reservation.staff_id }}?month={{ reservation.reservation_date[:7] }}&date={{ reservation.reservation_date }}">{{ reservation.staff_name }}</a></td><td>{{ reservation.menu_name }}</td><td>{% if reservation.status == "キャンセル" %}<span class="status status-cancelled">キャンセル</span>{% elif reservation.status == "来店済み" %}<span class="status status-done">来店済み</span>{% else %}<span class="status status-reserved">予約済み</span>{% endif %}</td><td><div class="action-buttons">{% if reservation.status == "予約済み" %}<form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/done"><button type="submit" class="done-button">来店済み</button></form><form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/cancel"><button type="submit" class="danger-button">キャンセル</button></form>{% else %}<span>-</span>{% endif %}</div></td></tr>{% endfor %}
-    </tbody></table></div>
-    {% else %}<p class="empty">まだ予約が登録されていません。</p>{% endif %}
-  </div>
-</div>
+    function renderOptions(){
+      const selectedStaff = staffSelect.value;
+      const currentValue = menuSelect.value;
+      menuSelect.innerHTML = '';
+      let hasVisibleOption = false;
+
+      allOptions.forEach(function(optionData, index){
+        const option = document.createElement('option');
+        option.value = optionData.value;
+        option.textContent = optionData.text;
+        if (optionData.menuIds.length) {
+          option.dataset.staffMenuIds = optionData.menuIds.join(',');
+        }
+        if (index === 0 && !option.value) {
+          option.disabled = false;
+          option.hidden = false;
+          menuSelect.appendChild(option);
+          return;
+        }
+        const visible = !selectedStaff || !optionData.menuIds.length || optionData.menuIds.indexOf(selectedStaff) !== -1;
+        if (!visible) {
+          return;
+        }
+        if (optionData.disabled) {
+          option.disabled = true;
+        }
+        if (optionData.value === currentValue) {
+          option.selected = true;
+        }
+        if (optionData.selected && !currentValue) {
+          option.selected = true;
+        }
+        menuSelect.appendChild(option);
+        hasVisibleOption = true;
+      });
+
+      if (!hasVisibleOption) {
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = '選択できるメニューがありません';
+        placeholder.selected = true;
+        menuSelect.appendChild(placeholder);
+      }
+
+      const availableValues = Array.from(menuSelect.options).map(function(option){ return option.value; });
+      if (currentValue && availableValues.indexOf(currentValue) === -1) {
+        menuSelect.value = '';
+      }
+    }
+
+    staffSelect.addEventListener('change', renderOptions);
+    renderOptions();
+  });
+})();
+</script>
 {% endblock %}

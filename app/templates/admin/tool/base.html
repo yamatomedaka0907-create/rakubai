@@ -43,9 +43,17 @@
           <span class="tool-nav-symbol">◎</span>
           <span class="tool-nav-label">顧客管理</span>
         </a>
+        <a href="/admin/{{ shop_id }}/timeline-karte" class="tool-nav-tile {% if active_page == 'timeline_karte' %}is-active{% endif %}">
+          <span class="tool-nav-symbol">◪</span>
+          <span class="tool-nav-label">タイムラインカルテ{% if not is_premium_subscription(subscription) %}（Premium）{% endif %}</span>
+        </a>
         <a href="/admin/{{ shop_id }}/settings" class="tool-nav-tile {% if active_page == 'settings' %}is-active{% endif %}">
           <span class="tool-nav-symbol">⚙</span>
           <span class="tool-nav-label">店舗設定</span>
+        </a>
+        <a href="/admin/{{ shop_id }}/staff-info" class="tool-nav-tile {% if active_page == 'staff_info' %}is-active{% endif %}">
+          <span class="tool-nav-symbol">◉</span>
+          <span class="tool-nav-label">スタッフ情報</span>
         </a>
         <a href="/admin/{{ shop_id }}/website" class="tool-nav-tile {% if active_page == 'website' %}is-active{% endif %}">
           <span class="tool-nav-symbol">▣</span>

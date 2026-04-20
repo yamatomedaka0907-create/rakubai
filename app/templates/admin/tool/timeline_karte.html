@@ -1,0 +1,131 @@
+{% extends "admin/tool/base.html" %}
+{% block page_title %}タイムラインカルテ
+<script>
+(function(){
+  function centerTimelineNow(){
+    const scrollEl = document.querySelector('.tool-timeline-scroll');
+    const nowLine = document.querySelector('.tool-now-line');
+    if (!scrollEl || !nowLine) return;
+    const target = nowLine.offsetTop - (scrollEl.clientHeight / 2) + (nowLine.offsetHeight / 2);
+    scrollEl.scrollTop = Math.max(0, target);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', centerTimelineNow, { once: true });
+  } else {
+    centerTimelineNow();
+  }
+  window.addEventListener('load', centerTimelineNow, { once: true });
+})();
+</script>
+
+{% endblock %}
+{% block page_subtitle %}スタッフごとの予約を専用ページでフル画面表示します。
+<script>
+(function(){
+  function centerTimelineNow(){
+    const scrollEl = document.querySelector('.tool-timeline-scroll');
+    const nowLine = document.querySelector('.tool-now-line');
+    if (!scrollEl || !nowLine) return;
+    const target = nowLine.offsetTop - (scrollEl.clientHeight / 2) + (nowLine.offsetHeight / 2);
+    scrollEl.scrollTop = Math.max(0, target);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', centerTimelineNow, { once: true });
+  } else {
+    centerTimelineNow();
+  }
+  window.addEventListener('load', centerTimelineNow, { once: true });
+})();
+</script>
+
+{% endblock %}
+{% block content %}
+<style>
+.tool-timeline-head { display:flex; justify-content:space-between; gap:16px; align-items:flex-end; flex-wrap:wrap; }
+.tool-timeline-form { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
+.tool-timeline-form label { display:grid; gap:8px; font-size:13px; font-weight:800; color:#475569; }
+.tool-timeline-shell { border:1px solid var(--tool-line,#d7e3ee); border-radius:24px; background:#fff; overflow:hidden; }
+.tool-timeline-header { display:grid; grid-template-columns:84px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(220px,1fr)); background:#f8fbfd; border-bottom:1px solid var(--tool-line,#d7e3ee); }
+.tool-timeline-header > div { padding:16px 14px; font-weight:900; }
+.tool-timeline-header .time-head { color:#64748b; font-size:12px; text-transform:uppercase; }
+.tool-timeline-header .staff-head { border-left:1px solid var(--tool-line,#d7e3ee); }
+.tool-timeline-scroll { overflow:auto; max-height:calc(100vh - 260px); }
+.tool-timeline-grid { position:relative; display:grid; grid-template-columns:84px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(220px,1fr)); min-width:max-content; }
+.tool-timeline-time-col { position:relative; background:#fff; }
+.tool-timeline-label { position:absolute; left:0; right:0; }
+.tool-timeline-label span { position:absolute; top:-10px; left:10px; font-size:11px; font-weight:900; color:#64748b; background:#fff; padding-right:6px; }
+.tool-timeline-staff { position:relative; border-left:1px solid var(--tool-line,#d7e3ee); background:linear-gradient(180deg,#fff 0%,#f8fbfd 100%); }
+.tool-timeline-staff::before { content:""; position:absolute; inset:0; background-image:repeating-linear-gradient(to bottom, transparent 0, transparent calc({{ timeline_slot_height }}px - 1px), #d7e3ee calc({{ timeline_slot_height }}px - 1px), #d7e3ee {{ timeline_slot_height }}px); pointer-events:none; }
+.tool-timeline-staff.is-empty::after { content:"予約なし"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-weight:800; }
+.tool-now-line { position:absolute; left:0; right:0; height:2px; background:#dc2626; z-index:6; }
+.tool-now-line::before { content:"現在"; position:absolute; left:10px; top:-12px; min-height:22px; padding:0 8px; border-radius:999px; background:#dc2626; color:#fff; font-size:11px; font-weight:900; }
+.tool-reservation { position:absolute; left:8px; right:8px; border-radius:18px; padding:12px; box-shadow:0 12px 28px rgba(15,23,42,.08); z-index:4; }
+.tool-reservation.reserved { background:rgba(46,196,182,.14); border:1px solid rgba(46,196,182,.26); }
+.tool-reservation.done { background:#dcfce7; border:1px solid #86efac; }
+.tool-reservation.cancelled { background:#fee2e2; border:1px solid #fecaca; }
+.tool-reservation-time { font-size:12px; font-weight:900; }
+.tool-reservation-name { margin-top:6px; font-size:14px; font-weight:900; }
+.tool-reservation-meta { margin-top:6px; font-size:12px; color:#334155; }
+.tool-reservation-status { margin-top:8px; display:inline-flex; min-height:22px; padding:0 8px; border-radius:999px; background:rgba(255,255,255,.8); font-size:11px; font-weight:900; align-items:center; }
+</style>
+
+<section class="tool-panel">
+  <div class="tool-panel-head is-wide tool-timeline-head">
+    <div>
+      <h2>タイムラインカルテ</h2>
+      <div class="tool-note">スタッフごとの予約を縦時間軸で表示します。赤線は現在時刻です。</div>
+    </div>
+    <form class="tool-timeline-form" method="get" action="/admin/{{ shop_id }}/timeline-karte">
+      <label>表示日<input class="tool-input" type="date" name="date" value="{{ timeline_selected_date }}"></label>
+      <button class="tool-btn is-primary" type="submit">切り替える</button>
+    </form>
+  </div>
+  <div class="tool-panel-body">
+    <div class="tool-timeline-shell">
+      <div class="tool-timeline-header">
+        <div class="time-head">時間</div>
+        {% for staff in timeline_staff_columns %}<div class="staff-head">{{ staff.name }}</div>{% endfor %}
+      </div>
+      <div class="tool-timeline-scroll">
+        <div class="tool-timeline-grid" style="height:{{ timeline_total_height }}px;">
+          <div class="tool-timeline-time-col">
+            {% for slot in timeline_slots %}<div class="tool-timeline-label" style="top:{{ loop.index0 * timeline_slot_height }}px;"><span>{{ slot.label }}</span></div>{% endfor %}
+          </div>
+          {% for staff in timeline_staff_columns %}
+          <div class="tool-timeline-staff{% if not staff.reservations %} is-empty{% endif %}">
+            {% for item in staff.reservations %}
+            <div class="tool-reservation {{ item.status_class }}" style="top:{{ item.top }}px;height:{{ item.height }}px;">
+              <div class="tool-reservation-time">{{ item.start_time }} - {{ item.end_time }}</div>
+              <div class="tool-reservation-name">{{ item.staff_name or staff.name }} / {{ item.customer_name }}</div>
+              <div class="tool-reservation-meta">{{ item.menu_name }}</div>
+              <span class="tool-reservation-status">{{ item.status }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          {% endfor %}
+          {% if timeline_now_line_top is not none %}<div class="tool-now-line" style="top:{{ timeline_now_line_top }}px;"></div>{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+(function(){
+  function centerTimelineNow(){
+    const scrollEl = document.querySelector('.tool-timeline-scroll');
+    const nowLine = document.querySelector('.tool-now-line');
+    if (!scrollEl || !nowLine) return;
+    const target = nowLine.offsetTop - (scrollEl.clientHeight / 2) + (nowLine.offsetHeight / 2);
+    scrollEl.scrollTop = Math.max(0, target);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', centerTimelineNow, { once: true });
+  } else {
+    centerTimelineNow();
+  }
+  window.addEventListener('load', centerTimelineNow, { once: true });
+})();
+</script>
+
+{% endblock %}

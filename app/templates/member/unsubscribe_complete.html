@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ shop.shop_name }} | 解約完了</title>
+  <style>
+    :root { --primary: {{ shop.primary_color }}; --primary-dark: {{ shop.primary_dark }}; --bg-soft: {{ shop.accent_bg }}; --line: #d8efec; --text: #1f2937; --subtext: #6b7280; --shadow: 0 16px 40px rgba(15,23,42,.08); }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#fff 0%,var(--bg-soft) 100%); color:var(--text); }
+    .wrap { max-width:760px; margin:0 auto; padding:24px; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:28px; box-shadow:var(--shadow); padding:28px; }
+    .badge { display:inline-flex; padding:8px 12px; border-radius:999px; background:rgba(46,196,182,.14); color:var(--primary-dark); font-weight:800; font-size:13px; margin-bottom:14px; }
+    h1 { margin:0 0 12px; color:var(--primary-dark); }
+    p { color:var(--subtext); line-height:1.8; }
+    .actions { display:flex; gap:12px; flex-wrap:wrap; margin-top:20px; }
+    .btn { display:inline-flex; align-items:center; justify-content:center; min-height:48px; padding:0 18px; border-radius:14px; text-decoration:none; font-weight:800; }
+    .btn-primary { background:var(--primary); color:#fff; }
+    .btn-secondary { background:#fff; color:var(--primary-dark); border:1px solid var(--line); }
+    @media (max-width: 640px) { .wrap { padding:16px; } .card { padding:20px; border-radius:22px; } .actions > *, .btn { width:100%; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="badge">解約完了</div>
+      {% if mode == 'shop' %}
+      <h1>{{ shop.shop_name }} の会員解約が完了しました</h1>
+      <p>この店舗の会員ページにはログインできない状態になりました。別の店舗に登録がある場合は、その店舗の会員ページは引き続き利用できます。</p>
+      {% else %}
+      <h1>このサイトの会員解約が完了しました</h1>
+      <p>同じ電話番号で登録されていた会員情報をまとめて解約しました。各店舗の会員ページにはログインできない状態になりました。</p>
+      {% endif %}
+      <div class="actions">
+        <a class="btn btn-primary" href="/shop/{{ shop_id }}">店舗ページへ戻る</a>
+        <a class="btn btn-secondary" href="/member/{{ shop_id }}/login">会員ログインへ</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

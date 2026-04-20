@@ -1,0 +1,74 @@
+{% extends "admin/tool/base.html" %}
+{% block page_title %}{{ staff.name }} の週間予定{% endblock %}
+{% block page_subtitle %}スタッフを選ぶと週間予定カレンダーを確認できます。{% endblock %}
+{% block content %}
+<section class="tool-panel">
+  <div class="tool-panel-head is-wide">
+    <div>
+      <h2>週間予定カレンダー</h2>
+      <div class="tool-note">◎ 空き / × 予約あり / 休 定休日</div>
+    </div>
+    <a class="tool-btn" href="/admin/{{ shop_id }}/staff-info">スタッフ一覧へ戻る</a>
+  </div>
+  <div class="tool-panel-body">
+    <div class="week-board-head">
+      <a class="week-next-link" href="/admin/{{ shop_id }}/staff/{{ staff.id }}?month={{ calendar_month_value }}&date={{ selected_date }}&week_start={{ prev_week_start }}">前週へ戻る</a>
+      <a class="week-next-link" href="/admin/{{ shop_id }}/staff/{{ staff.id }}?month={{ calendar_month_value }}&date={{ selected_date }}&week_start={{ next_week_start }}">翌週を見る</a>
+    </div>
+    <div class="availability-wrap">
+      <table class="availability-table">
+        <thead>
+          <tr>
+            <th class="time-col">時間</th>
+            {% for day in week_days %}
+            <th class="{% if day.is_today %}is-today{% endif %} {% if day.is_selected %}is-selected{% endif %}">
+              <div class="day-head">
+                <strong>{{ day.label }}</strong>
+                <span>{{ day.weekday }}</span>
+              </div>
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in weekly_rows %}
+          <tr>
+            <th class="time-col">{{ row.time }}</th>
+            {% for cell in row.cells %}
+            <td class="symbol-cell {{ cell.cell_class }} {% if cell.is_selected %}is-selected{% endif %} {% if week_days[loop.index0].is_today %}is-today{% endif %}">{{ cell.symbol }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="availability-legend">
+      <span>◎ 空きあり</span><span>× 予約あり</span><span>休 定休日</span>
+    </div>
+  </div>
+</section>
+
+<section class="tool-panel">
+  <div class="tool-panel-head">
+    <h2>{{ selected_date }} の予定</h2>
+    <div class="tool-note">予約 {{ selected_day_count }}件</div>
+  </div>
+  <div class="tool-card-stack">
+    {% if selected_day_schedule %}
+      {% for reservation in selected_day_schedule %}
+      <div class="tool-card-lite">
+        <div class="tool-card-lite-head">
+          <div style="min-width:0;">
+            <div class="tool-card-lite-title">{{ reservation.start_time }} - {{ reservation.end_time }}</div>
+            <div class="tool-note">{{ reservation.customer_name }} / {{ reservation.menu_name }}</div>
+          </div>
+          <span class="tool-badge {% if reservation.status == '来店済み' %}is-primary{% endif %}">{{ reservation.status }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+    <div class="tool-empty">この日の予約はまだありません。</div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

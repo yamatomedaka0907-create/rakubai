@@ -1,0 +1,31 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<div class="hero"><div class="hero-top"><div><h1>スタッフ情報の変更</h1><p>{{ staff.name }} の登録情報を変更できます。</p></div><div class="hero-actions"><a href="/admin/{{ shop_id }}/staff-info">スタッフ一覧へ戻る</a></div></div></div>
+{% if error_message %}<div class="card" style="margin-bottom:16px; color:#b91c1c; font-weight:800;">{{ error_message }}</div>{% endif %}
+<div class="card">
+  <div class="card-header"><h2>登録情報の編集</h2><span class="badge">変更後に保存してください</span></div>
+  <form method="post" action="/admin/{{ shop_id }}/staff-info/{{ staff.id }}/edit" style="display:grid; gap:18px;">
+    <label>スタッフ名<input type="text" name="name" value="{{ staff.name }}" required></label>
+    <div>
+      <label style="display:block; margin-bottom:10px; font-weight:700;">対応メニュー</label>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
+        {% for menu in menus %}
+        <label style="display:flex; gap:10px; align-items:flex-start; padding:14px; border:1px solid var(--line); border-radius:14px; background:#fff;">
+          <input type="checkbox" name="menu_ids" value="{{ menu.id }}" {% if menu.id in selected_menu_ids %}checked{% endif %}>
+          <span>
+            <strong style="display:block;">{{ menu.name }}</strong>
+            <small style="color:var(--subtext);">{{ menu.duration }}分{% if menu.price %} / ¥{{ menu.price }}{% endif %}</small>
+          </span>
+        </label>
+        {% else %}
+        <div class="empty">先に店舗設定でメニューを登録してください。</div>
+        {% endfor %}
+      </div>
+    </div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <button type="submit">保存する</button>
+      <a href="/admin/{{ shop_id }}/staff-info" class="secondary-link">キャンセル</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
