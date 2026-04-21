@@ -67,6 +67,10 @@ from app.db import (
     get_shop_homepage_by_public_path,
     create_member,
     authenticate_member,
+    create_member_registration_verification,
+    get_member_registration_verification,
+    verify_member_registration_code,
+    consume_member_registration_verification,
     get_member_by_id,
     get_member_reservations,
     get_member_all_reservations,
@@ -3368,6 +3372,41 @@ def admin_staff_info_page(request: Request, shop_id: str):
     )
 
 
+def _send_member_registration_verification_mail(*, to_email: str, code: str, shop: dict) -> bool:
+    mail_settings = _get_mail_runtime_settings()
+    smtp_user = str(mail_settings.get('smtp_user') or '').strip()
+    smtp_password = str(mail_settings.get('smtp_password') or '').strip()
+    from_email = str(mail_settings.get('from_email') or '').strip()
+    if not to_email or not from_email or not smtp_user or not smtp_password:
+        print('[_send_member_registration_verification_mail] missing SMTP settings')
+        return False
+
+    shop_name = str(shop.get('shop_name') or 'らくばい').strip() or 'らくばい'
+    subject = f"【{shop_name}】会員登録確認コード"
+    body = (
+        f"{shop_name} の会員登録確認コードです。\n\n"
+        f"確認コード: {code}\n\n"
+        "このコードの有効期限は10分です。\n"
+        "このメールに心当たりがない場合は、このまま破棄してください。\n"
+    )
+
+    msg = MIMEText(body, 'plain', 'utf-8')
+    msg['Subject'] = subject
+    msg['From'] = formataddr((str(mail_settings.get('from_name') or shop_name), from_email))
+    msg['To'] = to_email
+
+    try:
+        with smtplib.SMTP(str(mail_settings.get('smtp_host') or 'smtp.gmail.com'), int(mail_settings.get('smtp_port') or 587), timeout=30) as smtp:
+            smtp.ehlo()
+            smtp.starttls()
+            smtp.ehlo()
+            smtp.login(smtp_user, smtp_password)
+            smtp.send_message(msg)
+        return True
+    except Exception as exc:
+        print(f"[_send_member_registration_verification_mail] failed: {exc}")
+        return False
+
 @app.get("/member/{shop_id}/login", response_class=HTMLResponse)
 def member_login_page(request: Request, shop_id: str, next: str | None = None, error: str | None = None):
     shop = get_shop(shop_id)
@@ -3436,16 +3475,112 @@ def member_register_submit(
     shop = get_shop(shop_id)
     if not shop:
         raise HTTPException(status_code=404, detail="店舗が見つかりません")
+
+    from urllib.parse import quote
+
+    target_url = _member_redirect_target(shop_id, next_url)
+    target = quote(target_url, safe='')
+    normalized_email = (email or '').strip().lower()
+
     if not agree_terms:
-        from urllib.parse import quote
-        target = quote(_member_redirect_target(shop_id, next_url), safe='')
         return RedirectResponse(url=f"/member/{shop_id}/register?next={target}&error=利用規約等への同意が必要です。", status_code=303)
+    if not normalized_email:
+        return RedirectResponse(url=f"/member/{shop_id}/register?next={target}&error=メールアドレスを入力してください。", status_code=303)
+    if '@' not in normalized_email:
+        return RedirectResponse(url=f"/member/{shop_id}/register?next={target}&error=メールアドレスの形式が正しくありません。", status_code=303)
+
+    code = f"{secrets.randbelow(1_000_000):06d}"
+
     try:
-        member = create_member(shop_id, name, phone, password, email)
+        verification = create_member_registration_verification(
+            shop_id=shop_id,
+            name=(name or '').strip(),
+            phone=(phone or '').strip(),
+            password=password or '',
+            email=normalized_email,
+            code=code,
+            next_url=target_url,
+        )
     except ValueError as exc:
-        from urllib.parse import quote
-        target = quote(_member_redirect_target(shop_id, next_url), safe='')
         return RedirectResponse(url=f"/member/{shop_id}/register?next={target}&error={quote(str(exc), safe='')}", status_code=303)
+
+    sent = _send_member_registration_verification_mail(to_email=normalized_email, code=code, shop=shop)
+    if not sent:
+        return RedirectResponse(url=f"/member/{shop_id}/register?next={target}&error=確認コードメールの送信に失敗しました。時間をおいて再度お試しください。", status_code=303)
+
+    verify_url = f"/member/{shop_id}/register/verify?token={quote(str(verification.get('token') or ''), safe='')}&next={target}"
+    return RedirectResponse(url=verify_url, status_code=303)
+
+
+@app.get("/member/{shop_id}/register/verify", response_class=HTMLResponse)
+def member_register_verify_page(request: Request, shop_id: str, token: str, next: str | None = None, error: str | None = None):
+    shop = get_shop(shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+    verification = get_member_registration_verification(shop_id, token)
+    if verification is None:
+        from urllib.parse import quote
+
+        target = quote(_member_redirect_target(shop_id, next), safe='')
+        return RedirectResponse(url=f"/member/{shop_id}/register?next={target}&error=確認コードの有効期限が切れたか、無効になりました。最初からやり直してください。", status_code=303)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="member/register_verify.html",
+        context={
+            "request": request,
+            "shop": shop,
+            "shop_id": shop_id,
+            "token": token,
+            "next_url": _member_redirect_target(shop_id, next or str(verification.get('next_url') or '')),
+            "pending_email": str(verification.get('email') or ''),
+            "error": error or "",
+        },
+    )
+
+
+@app.post("/member/{shop_id}/register/verify")
+def member_register_verify_submit(
+    request: Request,
+    shop_id: str,
+    token: str = Form(...),
+    code: str = Form(...),
+    next_url: str = Form(''),
+):
+    shop = get_shop(shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+
+    from urllib.parse import quote
+
+    target_url = _member_redirect_target(shop_id, next_url)
+    verification = get_member_registration_verification(shop_id, token)
+    if verification is None:
+        target = quote(target_url, safe='')
+        return RedirectResponse(url=f"/member/{shop_id}/register?next={target}&error=確認コードの有効期限が切れたか、無効になりました。最初からやり直してください。", status_code=303)
+
+    normalized_code = ''.join(ch for ch in str(code or '') if ch.isdigit())
+    verify_target = quote(str(verification.get('next_url') or target_url), safe='')
+    if len(normalized_code) != 6:
+        return RedirectResponse(
+            url=f"/member/{shop_id}/register/verify?token={quote(token, safe='')}&next={verify_target}&error=確認コードは6桁の数字で入力してください。",
+            status_code=303,
+        )
+
+    try:
+        verified = verify_member_registration_code(shop_id, token, normalized_code)
+        if verified is None:
+            return RedirectResponse(
+                url=f"/member/{shop_id}/register/verify?token={quote(token, safe='')}&next={verify_target}&error=確認コードが正しくありません。",
+                status_code=303,
+            )
+        member = consume_member_registration_verification(shop_id, token)
+    except ValueError as exc:
+        return RedirectResponse(
+            url=f"/member/{shop_id}/register/verify?token={quote(token, safe='')}&next={verify_target}&error={quote(str(exc), safe='')}",
+            status_code=303,
+        )
+
     _login_member_session(request, shop_id, member)
     return RedirectResponse(url=_member_redirect_target(shop_id, next_url or f"/member/{shop_id}/mypage"), status_code=303)
 

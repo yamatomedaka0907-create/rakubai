@@ -316,6 +316,28 @@ def init_db() -> None:
         _ensure_column(conn, 'members', 'email_reminder_enabled', 'email_reminder_enabled INTEGER NOT NULL DEFAULT 0')
         _ensure_column(conn, 'members', 'updated_at', "updated_at TEXT DEFAULT CURRENT_TIMESTAMP")
 
+
+        conn.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS member_registration_verifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                token TEXT NOT NULL UNIQUE,
+                shop_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                phone TEXT NOT NULL,
+                phone_normalized TEXT NOT NULL,
+                email TEXT NOT NULL,
+                password_hash TEXT NOT NULL,
+                verification_code TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                verified_at TEXT DEFAULT NULL,
+                next_url TEXT DEFAULT '',
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+            '''
+        )
+        _ensure_column(conn, 'member_registration_verifications', 'next_url', "next_url TEXT DEFAULT ''")
+
         conn.execute(
             '''
             CREATE TABLE IF NOT EXISTS chat_messages (
@@ -2407,6 +2429,199 @@ def create_member(shop_id: str, name: str, phone: str, password: str, email: str
         )
         member_id = cursor.lastrowid
         conn.commit()
+    member = get_member_by_id(shop_id, int(member_id))
+    if member is None:
+        raise RuntimeError('会員登録に失敗しました。')
+    return member
+
+
+
+def create_member_registration_verification(
+    *,
+    shop_id: str,
+    name: str,
+    phone: str,
+    password: str,
+    email: str,
+    code: str,
+    next_url: str = '',
+) -> dict[str, Any]:
+    normalized_name = (name or '').strip()
+    normalized_phone = normalize_member_phone(phone)
+    normalized_email = (email or '').strip().lower()
+    normalized_code = ''.join(ch for ch in str(code or '') if ch.isdigit())
+
+    if not normalized_name:
+        raise ValueError('お名前を入力してください。')
+    if not normalized_phone:
+        raise ValueError('電話番号を入力してください。')
+    if len(password or '') < 4:
+        raise ValueError('パスワードは4文字以上で入力してください。')
+    if not normalized_email:
+        raise ValueError('メールアドレスを入力してください。')
+    if '@' not in normalized_email:
+        raise ValueError('メールアドレスの形式が正しくありません。')
+    if len(normalized_code) != 6:
+        raise ValueError('確認コードの生成に失敗しました。')
+
+    existing = get_member_by_phone(shop_id, normalized_phone)
+    if existing is not None:
+        raise ValueError('この電話番号はすでに会員登録されています。')
+
+    token = secrets.token_urlsafe(24)
+    password_hash = hash_password(password)
+    expires_at = (datetime.utcnow() + timedelta(minutes=10)).isoformat()
+
+    with get_connection() as conn:
+        conn.execute(
+            'DELETE FROM member_registration_verifications WHERE shop_id = ? AND (phone_normalized = ? OR email = ?)',
+            (shop_id, normalized_phone, normalized_email),
+        )
+        conn.execute(
+            '''
+            INSERT INTO member_registration_verifications (
+                token, shop_id, name, phone, phone_normalized, email, password_hash, verification_code, expires_at, next_url
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''',
+            (
+                token,
+                shop_id,
+                normalized_name,
+                normalized_phone,
+                normalized_phone,
+                normalized_email,
+                password_hash,
+                normalized_code,
+                expires_at,
+                (next_url or '').strip(),
+            ),
+        )
+        conn.commit()
+
+    verification = get_member_registration_verification(shop_id, token)
+    if verification is None:
+        raise RuntimeError('確認コードの保存に失敗しました。')
+    return verification
+
+
+def get_member_registration_verification(shop_id: str, token: str) -> dict[str, Any] | None:
+    normalized_token = (token or '').strip()
+    if not normalized_token:
+        return None
+    with get_connection() as conn:
+        row = conn.execute(
+            '''
+            SELECT
+                id, token, shop_id, name, phone, phone_normalized, email, password_hash,
+                verification_code, expires_at, verified_at, next_url, created_at
+            FROM member_registration_verifications
+            WHERE shop_id = ? AND token = ?
+            LIMIT 1
+            ''',
+            (shop_id, normalized_token),
+        ).fetchone()
+    if row is None:
+        return None
+    item = dict(row)
+    expires_at = str(item.get('expires_at') or '').strip()
+    verified_at = str(item.get('verified_at') or '').strip()
+    if verified_at:
+        return None
+    try:
+        if expires_at and datetime.fromisoformat(expires_at) < datetime.utcnow():
+            return None
+    except ValueError:
+        return None
+    return item
+
+
+def _get_member_registration_verification_including_verified(shop_id: str, token: str) -> dict[str, Any] | None:
+    normalized_token = (token or '').strip()
+    if not normalized_token:
+        return None
+    with get_connection() as conn:
+        row = conn.execute(
+            '''
+            SELECT
+                id, token, shop_id, name, phone, phone_normalized, email, password_hash,
+                verification_code, expires_at, verified_at, next_url, created_at
+            FROM member_registration_verifications
+            WHERE shop_id = ? AND token = ?
+            LIMIT 1
+            ''',
+            (shop_id, normalized_token),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def verify_member_registration_code(shop_id: str, token: str, code: str) -> dict[str, Any] | None:
+    verification = get_member_registration_verification(shop_id, token)
+    if verification is None:
+        raise ValueError('確認コードの有効期限が切れたか、無効になりました。最初からやり直してください。')
+    normalized_code = ''.join(ch for ch in str(code or '') if ch.isdigit())
+    if str(verification.get('verification_code') or '') != normalized_code:
+        return None
+    with get_connection() as conn:
+        conn.execute(
+            'UPDATE member_registration_verifications SET verified_at = CURRENT_TIMESTAMP WHERE shop_id = ? AND token = ?',
+            (shop_id, token),
+        )
+        conn.commit()
+    return _get_member_registration_verification_including_verified(shop_id, token)
+
+
+def consume_member_registration_verification(shop_id: str, token: str) -> dict[str, Any]:
+    verification = _get_member_registration_verification_including_verified(shop_id, token)
+    if verification is None:
+        raise ValueError('確認コードの有効期限が切れたか、無効になりました。最初からやり直してください。')
+    if not str(verification.get('verified_at') or '').strip():
+        raise ValueError('確認コードが未認証です。')
+
+    try:
+        expires_at = datetime.fromisoformat(str(verification.get('expires_at') or '').strip())
+    except ValueError as exc:
+        raise ValueError('確認コードの有効期限が切れたか、無効になりました。最初からやり直してください。') from exc
+    if expires_at < datetime.utcnow():
+        raise ValueError('確認コードの有効期限が切れました。最初からやり直してください。')
+
+    normalized_phone = str(verification.get('phone_normalized') or '').strip()
+    existing = get_member_by_phone(shop_id, normalized_phone)
+    if existing is not None:
+        raise ValueError('この電話番号はすでに会員登録されています。')
+
+    normalized_name = str(verification.get('name') or '').strip()
+    normalized_email = str(verification.get('email') or '').strip().lower()
+    customer = find_customer(shop_id, normalized_name, normalized_phone, normalized_email)
+    if customer is None:
+        customer = create_customer(shop_id, normalized_name, normalized_phone, normalized_email)
+    else:
+        customer = update_customer_contact(shop_id, int(customer['id']), normalized_name, normalized_phone, normalized_email) or customer
+
+    with get_connection() as conn:
+        cursor = conn.execute(
+            '''
+            INSERT INTO members (
+                shop_id, customer_id, name, phone, phone_normalized, email,
+                email_reminder_enabled, password_hash, is_active, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
+            ''',
+            (
+                shop_id,
+                int(customer['id']) if customer else None,
+                normalized_name,
+                normalized_phone,
+                normalized_phone,
+                normalized_email,
+                1,
+                str(verification.get('password_hash') or ''),
+            ),
+        )
+        member_id = cursor.lastrowid
+        conn.execute('DELETE FROM member_registration_verifications WHERE shop_id = ? AND token = ?', (shop_id, token))
+        conn.commit()
+
     member = get_member_by_id(shop_id, int(member_id))
     if member is None:
         raise RuntimeError('会員登録に失敗しました。')
