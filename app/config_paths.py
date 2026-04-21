@@ -1,8 +1,11 @@
+from __future__ import annotations
+
+import os
 from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = APP_DIR.parent
-DATA_DIR = PROJECT_ROOT / "data"
+DATA_DIR = Path(os.getenv("DATA_DIR", str(PROJECT_ROOT / "data")))
 
 DB_PATH = DATA_DIR / "db" / "salon.db"
 SHOPS_PATH = DATA_DIR / "bootstrap" / "shops.json"
