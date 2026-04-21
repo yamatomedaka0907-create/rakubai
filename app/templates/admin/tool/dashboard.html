@@ -2,6 +2,7 @@
 {% block page_title %}ダッシュボード{% endblock %}
 {% block page_subtitle %}業務ツール風のトップ画面で、今日の運用状況と主要導線をまとめて確認できます。{% endblock %}
 {% block content %}
+{% if visible_data_notice and visible_data_notice.total_hidden_count %}<section class="tool-panel" style="margin-bottom:20px;"><div class="tool-panel-head"><h2>表示制限中</h2><div class="tool-note">{{ visible_data_notice.total_hidden_count }}件非表示</div></div><div class="tool-panel-body"><div class="tool-note">{{ visible_data_notice.message }}</div><div class="tool-note">顧客 {{ visible_data_notice.customers }}件 / 予約 {{ visible_data_notice.reservations }}件 / スタッフ {{ visible_data_notice.staff }}件</div></div></section>{% endif %}
 {% if unread_chat_items %}
 <section class="tool-panel" style="margin-bottom:20px;">
   <div class="tool-panel-head">

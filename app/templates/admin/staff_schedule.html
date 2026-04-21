@@ -4,16 +4,16 @@
   <div class="hero-top">
     <div>
       <h1>{{ staff.name }} の週間予定</h1>
-      <p>スタッフを選ぶと週間予定カレンダーを確認できます。</p>
+      <p>スタッフを選ぶと週間予定カレンダーを確認できます。休日設定は「休日設定を開く」から日付を選んで登録してください。</p>
     </div>
-    <div class="hero-actions"><a href="/admin/{{ shop_id }}/staff-info" class="primary-link">スタッフ一覧へ戻る</a></div>
+    <div class="hero-actions"><a href="/admin/{{ shop_id }}/staff-info/{{ staff.id }}/edit" class="primary-link">休日設定を開く</a><a href="/admin/{{ shop_id }}/staff-info" class="secondary-link">スタッフ一覧へ戻る</a></div>
   </div>
 </div>
 
 <div class="card weekly-card">
   <div class="card-header">
     <h2>週間予定カレンダー</h2>
-    <span class="badge">◎ 空き / × 予約あり / 休 定休日</span>
+    <span class="badge">◎ 空き / × 予約あり / 休 定休日・スタッフ休み</span>
   </div>
   <div class="week-board-head">
     <a class="week-next-link" href="/admin/{{ shop_id }}/staff/{{ staff.id }}?month={{ calendar_month_value }}&date={{ selected_date }}&week_start={{ prev_week_start }}">前週へ戻る</a>

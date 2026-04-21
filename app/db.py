@@ -19,8 +19,8 @@ DEFAULT_PLANS = [
         'name': 'フリー',
         'monthly_price': 0,
         'show_ads': 1,
-        'max_staff': 2,
-        'max_customers': 100,
+        'max_staff': 3,
+        'max_customers': 50,
         'max_reservations_per_month': 50,
         'can_use_line': 1,
         'can_use_reports': 0,
@@ -149,6 +149,7 @@ def init_db() -> None:
                 primary_color TEXT DEFAULT '#2ec4b6',
                 primary_dark TEXT DEFAULT '#159a90',
                 accent_bg TEXT DEFAULT '#f7fffe',
+                heading_bg_color TEXT DEFAULT '#ff6f91',
                 staff_list_json TEXT NOT NULL DEFAULT '[]',
                 menus_json TEXT NOT NULL DEFAULT '[]',
                 admin_ui_mode TEXT NOT NULL DEFAULT 'web',
@@ -156,6 +157,9 @@ def init_db() -> None:
             )
             '''
         )
+        _ensure_column(conn, 'shops', 'parent_shop_id', "parent_shop_id TEXT DEFAULT ''")
+        _ensure_column(conn, 'shops', 'is_child_shop', 'is_child_shop INTEGER NOT NULL DEFAULT 0')
+
         conn.execute(
             '''
             CREATE TABLE IF NOT EXISTS customers (
@@ -409,14 +413,21 @@ def init_db() -> None:
         conn.execute('CREATE INDEX IF NOT EXISTS idx_admin_users_shop_id ON admin_users(shop_id, login_id)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_members_shop_phone ON members(shop_id, phone_normalized)')
 
+        _ensure_column(conn, 'shops', 'reply_to_email', "reply_to_email TEXT DEFAULT ''")
+        _ensure_column(conn, 'shops', 'heading_bg_color', "heading_bg_color TEXT DEFAULT '#ff6f91'")
+        _ensure_column(conn, 'shops', 'admin_ui_mode', "admin_ui_mode TEXT NOT NULL DEFAULT 'web'")
+        _ensure_column(conn, 'customers', 'email', "email TEXT DEFAULT ''")
+        _ensure_column(conn, 'reservations', 'customer_email', "customer_email TEXT DEFAULT ''")
+        _ensure_column(conn, 'reservations', 'receive_email', "receive_email INTEGER NOT NULL DEFAULT 0")
+
         for shop_id, shop in SHOPS.items():
             conn.execute(
                 '''
                 INSERT INTO shops (
                     shop_id, shop_name, catch_copy, description, phone, address, business_hours, holiday,
-                    primary_color, primary_dark, accent_bg, staff_list_json, menus_json, admin_ui_mode
+                    primary_color, primary_dark, accent_bg, heading_bg_color, staff_list_json, menus_json, admin_ui_mode
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(shop_id) DO NOTHING
                 ''',
                 (
@@ -431,6 +442,7 @@ def init_db() -> None:
                     shop.get('primary_color', '#2ec4b6'),
                     shop.get('primary_dark', '#159a90'),
                     shop.get('accent_bg', '#f7fffe'),
+                    shop.get('heading_bg_color', '#ff6f91'),
                     json.dumps(shop.get('staff_list', []), ensure_ascii=False),
                     json.dumps(shop.get('menus', []), ensure_ascii=False),
                     shop.get('admin_ui_mode', 'web'),
@@ -472,17 +484,6 @@ def init_db() -> None:
                 ),
             )
 
-
-        def ensure_column(table: str, column: str, ddl: str):
-            cols = {row['name'] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
-            if column not in cols:
-                conn.execute(f"ALTER TABLE {table} ADD COLUMN {ddl}")
-
-        ensure_column('shops', 'reply_to_email', "reply_to_email TEXT DEFAULT ''")
-        ensure_column('shops', 'admin_ui_mode', "admin_ui_mode TEXT NOT NULL DEFAULT 'web'")
-        ensure_column('customers', 'email', "email TEXT DEFAULT ''")
-        ensure_column('reservations', 'customer_email', "customer_email TEXT DEFAULT ''")
-        ensure_column('reservations', 'receive_email', "receive_email INTEGER NOT NULL DEFAULT 0")
 
         free_plan_id = conn.execute("SELECT id FROM plans WHERE code = 'free' LIMIT 1").fetchone()['id']
         existing_shop_rows = conn.execute('SELECT shop_id FROM shops').fetchall()
@@ -689,11 +690,11 @@ def _deserialize_shop_row(row: sqlite3.Row | None) -> dict[str, Any] | None:
         return None
     shop = dict(row)
     try:
-        shop['staff_list'] = json.loads(shop.pop('staff_list_json') or '[]')
+        shop['staff_list'] = json.loads(shop.pop('staff_list_json', '[]') or '[]')
     except json.JSONDecodeError:
         shop['staff_list'] = []
     try:
-        shop['menus'] = json.loads(shop.pop('menus_json') or '[]')
+        shop['menus'] = json.loads(shop.pop('menus_json', '[]') or '[]')
     except json.JSONDecodeError:
         shop['menus'] = []
     return shop
@@ -705,7 +706,7 @@ def get_shop(shop_id: str) -> dict[str, Any] | None:
             '''
             SELECT
                 shop_id, shop_name, catch_copy, description, phone, address, business_hours, holiday,
-                primary_color, primary_dark, accent_bg, reply_to_email, admin_ui_mode, staff_list_json, menus_json, created_at
+                primary_color, primary_dark, accent_bg, heading_bg_color, reply_to_email, admin_ui_mode, staff_list_json, menus_json, created_at
             FROM shops
             WHERE shop_id = ?
             LIMIT 1
@@ -726,7 +727,7 @@ def get_all_shops() -> list[dict[str, Any]]:
             '''
             SELECT
                 shop_id, shop_name, catch_copy, description, phone, address, business_hours, holiday,
-                primary_color, primary_dark, accent_bg, reply_to_email, admin_ui_mode, staff_list_json, menus_json, created_at
+                primary_color, primary_dark, accent_bg, heading_bg_color, reply_to_email, admin_ui_mode, staff_list_json, menus_json, created_at
             FROM shops
             ORDER BY id ASC
             '''
@@ -1223,14 +1224,14 @@ def create_shop_with_owner(
             '''
             INSERT INTO shops (
                 shop_id, shop_name, catch_copy, description, phone, address, business_hours, holiday,
-                primary_color, primary_dark, accent_bg, reply_to_email, staff_list_json, menus_json, admin_ui_mode
+                primary_color, primary_dark, accent_bg, heading_bg_color, reply_to_email, staff_list_json, menus_json, admin_ui_mode
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''',
             (
                 normalized_shop_id, shop_name.strip(), catch_copy.strip(), description.strip(), phone.strip(),
                 address.strip(), business_hours.strip(), holiday.strip() or '火曜日',
-                '#2ec4b6', '#159a90', '#f7fffe', reply_to_email.strip().lower(),
+                '#2ec4b6', '#159a90', '#f7fffe', '#ff6f91', reply_to_email.strip().lower(),
                 json.dumps(default_staff, ensure_ascii=False),
                 json.dumps(default_menus, ensure_ascii=False),
                 'web',
@@ -1652,6 +1653,128 @@ def update_reservation_status(shop_id: str, reservation_id: int, status: str) ->
         conn.commit()
 
 
+
+def get_child_shops(parent_shop_id: str) -> list[dict[str, Any]]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            '''
+            SELECT
+                s.shop_id,
+                s.shop_name,
+                s.phone,
+                s.address,
+                s.business_hours,
+                s.holiday,
+                s.reply_to_email,
+                s.parent_shop_id,
+                s.is_child_shop,
+                s.created_at
+            FROM shops s
+            WHERE s.parent_shop_id = ? AND s.is_child_shop = 1
+            ORDER BY s.created_at ASC, s.shop_id ASC
+            ''',
+            (parent_shop_id,),
+        ).fetchall()
+    return [_deserialize_shop_row(row) for row in rows]
+
+
+def get_parent_shop(shop_id: str) -> dict[str, Any] | None:
+    with get_connection() as conn:
+        row = conn.execute(
+            '''
+            SELECT parent_shop_id
+            FROM shops
+            WHERE shop_id = ? AND is_child_shop = 1
+            LIMIT 1
+            ''',
+            (shop_id,),
+        ).fetchone()
+    if not row or not row['parent_shop_id']:
+        return None
+    return get_shop_management_data(str(row['parent_shop_id']))
+
+
+def create_child_shop_under_parent(
+    *,
+    parent_shop_id: str,
+    child_shop_id: str,
+    child_shop_name: str,
+    password: str,
+) -> dict[str, Any]:
+    normalized_parent_shop_id = parent_shop_id.strip().lower()
+    normalized_child_shop_id = child_shop_id.strip().lower()
+    if not normalized_parent_shop_id:
+        raise ValueError('親店舗IDが不正です。')
+    if not normalized_child_shop_id:
+        raise ValueError('子店舗IDを入力してください。')
+    allowed = set('abcdefghijklmnopqrstuvwxyz0123456789-')
+    if any(ch not in allowed for ch in normalized_child_shop_id):
+        raise ValueError('子店舗IDは半角英小文字・数字・ハイフンのみで入力してください。')
+    if shop_exists(normalized_child_shop_id):
+        raise ValueError('この子店舗IDはすでに使われています。')
+    parent_shop = get_shop_management_data(normalized_parent_shop_id)
+    if parent_shop is None:
+        raise ValueError('親店舗が見つかりません。')
+    child_shop_name = child_shop_name.strip()
+    if not child_shop_name:
+        raise ValueError('子店舗名を入力してください。')
+    if len(password.strip()) < 4:
+        raise ValueError('子店舗パスワードは4文字以上で入力してください。')
+
+    with get_connection() as conn:
+        conn.execute(
+            '''
+            INSERT INTO shops (
+                shop_id, shop_name, catch_copy, description, phone, address, business_hours, holiday,
+                primary_color, primary_dark, accent_bg, heading_bg_color, reply_to_email,
+                staff_list_json, menus_json, admin_ui_mode, parent_shop_id, is_child_shop
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+            ''',
+            (
+                normalized_child_shop_id,
+                child_shop_name,
+                '',
+                '',
+                '',
+                '',
+                parent_shop.get('business_hours', '10:00〜19:00'),
+                parent_shop.get('holiday', '火曜日'),
+                parent_shop.get('primary_color', '#2ec4b6'),
+                parent_shop.get('primary_dark', '#159a90'),
+                parent_shop.get('accent_bg', '#f7fffe'),
+                parent_shop.get('heading_bg_color', '#ff6f91'),
+                '',
+                json.dumps([], ensure_ascii=False),
+                json.dumps([], ensure_ascii=False),
+                parent_shop.get('admin_ui_mode', 'web'),
+                normalized_parent_shop_id,
+            ),
+        )
+        conn.execute(
+            '''
+            INSERT INTO admin_users (shop_id, name, login_id, password_hash, is_owner, is_active)
+            VALUES (?, ?, ?, ?, 1, 1)
+            ''',
+            (normalized_child_shop_id, child_shop_name, normalized_child_shop_id, hash_password(password.strip())),
+        )
+        conn.commit()
+
+    created = get_shop_management_data(normalized_child_shop_id)
+    if created is None:
+        raise RuntimeError('子店舗の作成に失敗しました。')
+    return created
+
+
+def delete_shop_subscription(shop_id: str) -> None:
+    normalized_shop_id = (shop_id or '').strip().lower()
+    if not normalized_shop_id:
+        return
+    with get_connection() as conn:
+        conn.execute('DELETE FROM subscriptions WHERE shop_id = ?', (normalized_shop_id,))
+        conn.commit()
+
+
 # plans / subscriptions
 
 def get_plans(active_only: bool = False) -> list[dict[str, Any]]:
@@ -1686,12 +1809,25 @@ def get_plan_by_code(code: str) -> dict[str, Any] | None:
 
 
 def get_shop_subscription(shop_id: str) -> dict[str, Any] | None:
+    target_shop_id = (shop_id or '').strip().lower()
     with get_connection() as conn:
+        shop_row = conn.execute(
+            '''
+            SELECT parent_shop_id, is_child_shop
+            FROM shops
+            WHERE shop_id = ?
+            LIMIT 1
+            ''',
+            (target_shop_id,),
+        ).fetchone()
+        if shop_row and int(shop_row['is_child_shop'] or 0) == 1 and str(shop_row['parent_shop_id'] or '').strip():
+            target_shop_id = str(shop_row['parent_shop_id']).strip().lower()
+
         row = conn.execute(
             '''
             SELECT
                 s.id,
-                s.shop_id,
+                ? AS shop_id,
                 s.plan_id,
                 s.status,
                 s.started_at,
@@ -1711,7 +1847,7 @@ def get_shop_subscription(shop_id: str) -> dict[str, Any] | None:
             WHERE s.shop_id = ?
             LIMIT 1
             ''',
-            (shop_id,),
+            (shop_id, target_shop_id),
         ).fetchone()
     return dict(row) if row else None
 
@@ -1756,15 +1892,15 @@ def get_all_shops_for_platform() -> list[dict[str, Any]]:
                 s.holiday,
                 s.reply_to_email,
                 s.created_at,
-                COALESCE(p.id, 0) AS plan_id,
-                COALESCE(p.code, '') AS plan_code,
-                COALESCE(p.name, '未設定') AS plan_name,
-                COALESCE(sub.status, 'inactive') AS subscription_status,
+                CASE WHEN COALESCE(s.is_child_shop, 0) = 1 THEN NULL ELSE p.id END AS plan_id,
+                CASE WHEN COALESCE(s.is_child_shop, 0) = 1 THEN '' ELSE COALESCE(p.code, '') END AS plan_code,
+                CASE WHEN COALESCE(s.is_child_shop, 0) = 1 THEN '' ELSE COALESCE(p.name, '未設定') END AS plan_name,
+                CASE WHEN COALESCE(s.is_child_shop, 0) = 1 THEN '' ELSE COALESCE(sub.status, 'inactive') END AS subscription_status,
                 COUNT(DISTINCT au.id) AS admin_user_count,
                 COUNT(DISTINCT c.id) AS customer_count,
                 COUNT(DISTINCT r.id) AS reservation_count
             FROM shops s
-            LEFT JOIN subscriptions sub ON sub.shop_id = s.shop_id
+            LEFT JOIN subscriptions sub ON sub.shop_id = s.shop_id AND COALESCE(s.is_child_shop, 0) = 0
             LEFT JOIN plans p ON p.id = sub.plan_id
             LEFT JOIN admin_users au ON au.shop_id = s.shop_id
             LEFT JOIN customers c ON c.shop_id = s.shop_id
@@ -1794,17 +1930,20 @@ def get_shop_management_data(shop_id: str) -> dict[str, Any] | None:
                 s.primary_color,
                 s.primary_dark,
                 s.accent_bg,
+                s.heading_bg_color,
                 s.reply_to_email,
                 s.admin_ui_mode,
                 s.staff_list_json,
                 s.menus_json,
+                s.parent_shop_id,
+                s.is_child_shop,
                 s.created_at,
-                COALESCE(p.id, 0) AS plan_id,
-                COALESCE(p.code, '') AS plan_code,
-                COALESCE(p.name, '未設定') AS plan_name,
-                COALESCE(sub.status, 'inactive') AS subscription_status
+                CASE WHEN COALESCE(s.is_child_shop, 0) = 1 THEN NULL ELSE p.id END AS plan_id,
+                CASE WHEN COALESCE(s.is_child_shop, 0) = 1 THEN '' ELSE COALESCE(p.code, '') END AS plan_code,
+                CASE WHEN COALESCE(s.is_child_shop, 0) = 1 THEN '' ELSE COALESCE(p.name, '未設定') END AS plan_name,
+                CASE WHEN COALESCE(s.is_child_shop, 0) = 1 THEN '' ELSE COALESCE(sub.status, 'inactive') END AS subscription_status
             FROM shops s
-            LEFT JOIN subscriptions sub ON sub.shop_id = s.shop_id
+            LEFT JOIN subscriptions sub ON sub.shop_id = s.shop_id AND COALESCE(s.is_child_shop, 0) = 0
             LEFT JOIN plans p ON p.id = sub.plan_id
             WHERE s.shop_id = ?
             LIMIT 1
@@ -1871,10 +2010,24 @@ def _normalize_shop_staff_list(staff_list: list[dict[str, Any]] | None) -> list[
                 menu_ids.append(int(item))
             except (TypeError, ValueError):
                 continue
+        holiday_dates_raw = staff.get('holiday_dates', [])
+        if isinstance(holiday_dates_raw, str):
+            holiday_dates_raw = [item.strip() for item in holiday_dates_raw.split(',') if item.strip()]
+        holiday_dates: list[str] = []
+        for item in holiday_dates_raw or []:
+            value = str(item or '').strip()
+            if not value:
+                continue
+            try:
+                holiday_dates.append(datetime.strptime(value, '%Y-%m-%d').date().isoformat())
+            except ValueError:
+                continue
+
         normalized.append({
             'id': staff_id,
             'name': name,
             'menu_ids': menu_ids,
+            'holiday_dates': sorted(set(holiday_dates)),
         })
 
     for idx, item in enumerate(normalized, start=1):
@@ -1897,6 +2050,7 @@ def update_shop_basic_info(
     primary_color: str = '#2ec4b6',
     primary_dark: str = '#159a90',
     accent_bg: str = '#f7fffe',
+    heading_bg_color: str = '#ff6f91',
     menus: list[dict[str, Any]] | None = None,
 ) -> None:
     normalized_menus = _normalize_shop_menus(menus)
@@ -1916,6 +2070,7 @@ def update_shop_basic_info(
                 primary_color = ?,
                 primary_dark = ?,
                 accent_bg = ?,
+                heading_bg_color = ?,
                 menus_json = ?
             WHERE shop_id = ?
             ''',
@@ -1932,6 +2087,7 @@ def update_shop_basic_info(
                 primary_color.strip() or '#2ec4b6',
                 primary_dark.strip() or '#159a90',
                 accent_bg.strip() or '#f7fffe',
+                heading_bg_color.strip() or '#ff6f91',
                 json.dumps(normalized_menus, ensure_ascii=False),
                 shop_id,
             ),

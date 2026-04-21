@@ -1,0 +1,49 @@
+{% extends "admin/tool/base.html" %}
+{% block page_title %}フリープラン変更の確認{% endblock %}
+{% block page_subtitle %}このページで同意して確定した場合のみ、プランが実際に変更されます。{% endblock %}
+{% block content %}
+<div class="tool-grid">
+  {% if error_message %}<div class="tool-alert" style="background:#fff1f2; border-color:#fecdd3; color:#9f1239;">{{ error_message }}</div>{% endif %}
+  <section class="tool-grid cols-2">
+    <div class="tool-panel">
+      <div class="tool-panel-head"><h2>変更内容</h2></div>
+      <div class="tool-panel-body">
+        <div class="tool-chip" style="margin-bottom:12px;">{{ current_plan_name }} → {{ target_plan_name }}</div>
+        <div class="tool-note" style="margin-bottom:16px;">既存データは削除されませんが、フリープラン上限を超えた分は新しい順から表示されません。</div>
+        <div class="tool-table-wrap">
+          <table class="tool-table">
+            <thead><tr><th>項目</th><th>現在</th><th>フリー上限</th><th>非表示</th></tr></thead>
+            <tbody>
+              {% for row in downgrade_summary.rows %}
+              <tr>
+                <td><strong>{{ row.label }}</strong><div class="tool-note" style="margin-top:6px;">{{ row.message }}</div></td>
+                <td>{{ row.current }}</td>
+                <td>{{ row.limit }}</td>
+                <td>{{ row.hidden or 0 }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="tool-panel">
+      <div class="tool-panel-head"><h2>同意して変更する</h2></div>
+      <div class="tool-panel-body">
+        <form method="post" action="/admin/{{ shop_id }}/subscription/confirm">
+          <input type="hidden" name="plan_id" value="{{ plan_id }}">
+          <input type="hidden" name="status" value="{{ status }}">
+          <label class="tool-label" style="display:flex; gap:10px; align-items:flex-start;">
+            <input type="checkbox" name="consent_free_plan_downgrade" value="yes" style="width:auto; min-height:auto; margin-top:3px;">
+            <span>上限を超えた新しいデータが非表示になることを理解し、フリープランへの変更に同意します。</span>
+          </label>
+          <div class="tool-actions with-top-gap">
+            <button class="tool-btn is-primary" type="submit">同意してフリープランへ変更</button>
+            <a class="tool-btn" href="/admin/{{ shop_id }}/settings">キャンセル</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

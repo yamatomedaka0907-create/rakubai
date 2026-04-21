@@ -133,9 +133,38 @@
       .slot-mark { min-height:34px; font-size:17px; border-radius:10px; }
       .submit-button { width:100%; }
     }
+
+    body.editing-booking-page { padding-top: 78px; }
+    .booking-editor-shell { position:fixed; inset:0 0 auto 0; z-index:9999; background:#111827; color:#fff; border-bottom:1px solid rgba(255,255,255,.08); }
+    .booking-editor-shell .bar { max-width:1180px; margin:0 auto; padding:12px 20px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .booking-editor-shell .note { font-size:13px; color:#cbd5e1; }
+    .booking-editor-shell .spacer { flex:1; }
+    .booking-editor-shell .btn-editor { display:inline-flex; align-items:center; justify-content:center; min-height:40px; padding:0 14px; border:none; border-radius:12px; background:#2563eb; color:#fff; font-weight:800; text-decoration:none; cursor:pointer; }
+    .booking-editor-shell .btn-editor.secondary { background:#1f2937; border:1px solid rgba(255,255,255,.16); }
+    .booking-editable { outline:1px dashed transparent; outline-offset:4px; cursor:text; transition:.18s; }
+    .booking-editable:hover, .booking-editable:focus { outline-color:rgba(37,99,235,.55); background:rgba(37,99,235,.06); }
+    .booking-edit-region { position:relative; }
+    .booking-edit-region:hover { box-shadow: inset 0 0 0 3px rgba(37,99,235,.12); }
+    .booking-edit-region::after { content:attr(data-edit-label); position:absolute; left:14px; top:14px; padding:6px 10px; border-radius:999px; background:rgba(17,24,39,.82); color:#fff; font-size:12px; font-weight:800; letter-spacing:.02em; opacity:0; transform:translateY(-4px); transition:.18s; pointer-events:none; z-index:4; }
+    .booking-edit-region:hover::after { opacity:1; transform:translateY(0); }
+    .booking-editor-toast { position:fixed; left:20px; bottom:20px; z-index:10000; background:#111827; color:#fff; padding:12px 14px; border-radius:14px; box-shadow:0 10px 24px rgba(15,23,42,.22); opacity:0; transform:translateY(8px); transition:.2s; }
+    .booking-editor-toast.show { opacity:1; transform:translateY(0); }
+
   </style>
 </head>
-<body>
+<body {% if edit_mode %}class="editing-booking-page" data-booking-editor-shop-id="{{ shop_id }}"{% endif %}>
+{% if edit_mode %}
+  <div class="booking-editor-shell">
+    <div class="bar">
+      <strong>予約ページ直接編集モード</strong>
+      <span class="note">この画面で実際の予約ページを直接編集できます。文字をそのまま書き換えて保存してください。</span>
+      <div class="spacer"></div>
+      <button type="button" class="btn-editor" data-booking-editor-action="save">保存</button>
+      <a href="/admin/{{ shop_id }}" class="btn-editor secondary">管理トップへ</a>
+    </div>
+  </div>
+  <div class="booking-editor-toast" id="booking-editor-toast"></div>
+{% endif %}
   <div class="wrap">
     {% if subscription.show_ads %}
     <div class="page-branding">
@@ -152,13 +181,13 @@
       </nav>
     </div>
 
-    <section class="hero">
+    <section class="hero {% if edit_mode %}booking-edit-region{% endif %}" {% if edit_mode %}data-edit-label="予約ページ上部を編集"{% endif %}>
       <div class="hero-card">
         <div class="badge">24時間 Web予約受付中</div>
         <div style="margin-top:10px; color:var(--subtext); font-size:14px;">現在プラン: {{ subscription.plan_name }}{% if subscription.show_ads %} / このプランは広告表示対応{% endif %}</div>
-        <h1>{{ shop.shop_name }}</h1>
-        <p class="lead">{{ shop.catch_copy }}</p>
-        <p class="lead">{{ shop.description }}</p>
+        <h1 class="{% if edit_mode %}booking-editable{% endif %}" {% if edit_mode %}contenteditable="true" data-booking-field="shop_name"{% endif %}>{{ shop.shop_name }}</h1>
+        <p class="lead {% if edit_mode %}booking-editable{% endif %}" {% if edit_mode %}contenteditable="true" data-booking-field="catch_copy"{% endif %}>{{ shop.catch_copy }}</p>
+        <p class="lead {% if edit_mode %}booking-editable{% endif %}" {% if edit_mode %}contenteditable="true" data-booking-field="description"{% endif %}>{{ shop.description }}</p>
         <div class="hero-actions">
           <a href="#reserve-form" class="btn-link btn-primary">このまま予約する</a>
           <a href="#menus" class="btn-link btn-secondary">メニューを見る</a>
@@ -174,10 +203,10 @@
       </div>
       <div class="hero-card">
         <div class="info-list">
-          <div class="info-item"><div class="info-label">営業時間</div><div class="info-value">{{ shop.business_hours }}</div></div>
-          <div class="info-item"><div class="info-label">定休日</div><div class="info-value" style="color:var(--danger);">{{ shop.holiday }}</div></div>
-          <div class="info-item"><div class="info-label">電話番号</div><div class="info-value">{{ shop.phone }}</div></div>
-          <div class="info-item"><div class="info-label">住所</div><div class="info-value">{{ shop.address }}</div></div>
+          <div class="info-item"><div class="info-label">営業時間</div><div class="info-value {% if edit_mode %}booking-editable{% endif %}" {% if edit_mode %}contenteditable="true" data-booking-field="business_hours"{% endif %}>{{ shop.business_hours }}</div></div>
+          <div class="info-item"><div class="info-label">定休日</div><div class="info-value {% if edit_mode %}booking-editable{% endif %}" style="color:var(--danger);" {% if edit_mode %}contenteditable="true" data-booking-field="holiday"{% endif %}>{{ shop.holiday }}</div></div>
+          <div class="info-item"><div class="info-label">電話番号</div><div class="info-value {% if edit_mode %}booking-editable{% endif %}" {% if edit_mode %}contenteditable="true" data-booking-field="phone"{% endif %}>{{ shop.phone }}</div></div>
+          <div class="info-item"><div class="info-label">住所</div><div class="info-value {% if edit_mode %}booking-editable{% endif %}" {% if edit_mode %}contenteditable="true" data-booking-field="address"{% endif %}>{{ shop.address }}</div></div>
         </div>
       </div>
     </section>
@@ -304,7 +333,7 @@
           <div class="summary-box">
             選択中の日付: <strong>{{ selected_date }}</strong>
             {% if selected_start_time %}<div style="margin-top:8px;">選択中の時間: <strong>{{ selected_start_time }}</strong>{% if selected_slot %}〜{{ selected_slot.end_time }}{% endif %}</div>{% endif %}
-            {% if selected_date_is_holiday %}<div class="closed-note" style="margin-top:8px;">この日は定休日です。</div>{% endif %}
+            {% if selected_date_is_holiday %}<div class="closed-note" style="margin-top:8px;">この日は予約を受け付けていません。</div>{% endif %}
           </div>
           {% endif %}
 
@@ -413,5 +442,8 @@
     })();
   </script>
 
+{% if edit_mode %}
+  <script src="/static/booking_page_editor.js"></script>
+{% endif %}
 </body>
 </html>

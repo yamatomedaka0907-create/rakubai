@@ -1,14 +1,14 @@
 {% extends "admin/tool/base.html" %}
 {% block page_title %}{{ staff.name }} の週間予定{% endblock %}
-{% block page_subtitle %}スタッフを選ぶと週間予定カレンダーを確認できます。{% endblock %}
+{% block page_subtitle %}スタッフを選ぶと週間予定カレンダーを確認できます。休日設定は日付選択で登録します。{% endblock %}
 {% block content %}
 <section class="tool-panel">
   <div class="tool-panel-head is-wide">
     <div>
       <h2>週間予定カレンダー</h2>
-      <div class="tool-note">◎ 空き / × 予約あり / 休 定休日</div>
+      <div class="tool-note">◎ 空き / × 予約あり / 休 定休日・スタッフ休み</div>
     </div>
-    <a class="tool-btn" href="/admin/{{ shop_id }}/staff-info">スタッフ一覧へ戻る</a>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;"><a class="tool-btn is-primary" href="/admin/{{ shop_id }}/staff-info/{{ staff.id }}/edit">休日設定を開く</a><a class="tool-btn" href="/admin/{{ shop_id }}/staff-info">スタッフ一覧へ戻る</a></div>
   </div>
   <div class="tool-panel-body">
     <div class="week-board-head">

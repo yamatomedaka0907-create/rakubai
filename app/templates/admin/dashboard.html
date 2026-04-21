@@ -1,5 +1,6 @@
 {% extends "admin/base.html" %}
 {% block content %}
+{% if visible_data_notice and visible_data_notice.total_hidden_count %}<div class="card" style="margin-bottom:18px;border-color:#fed7aa;background:#fff7ed;"><div class="card-header"><h2>表示制限中</h2><span class="badge">{{ visible_data_notice.total_hidden_count }}件非表示</span></div><p class="section-note">{{ visible_data_notice.message }}</p><p class="section-note">顧客 {{ visible_data_notice.customers }}件 / 予約 {{ visible_data_notice.reservations }}件 / スタッフ {{ visible_data_notice.staff }}件</p></div>{% endif %}
 {% if unread_chat_items %}
 <div class="card" style="margin-bottom:18px;">
   <div class="card-header"><h2>新着チャット</h2><span class="badge">{{ unread_chat_items|length }}件</span></div>
@@ -47,7 +48,7 @@
         <div>
           <h1>{{ shop.shop_name }} 管理画面</h1>
           <p>{{ shop.description }}</p>
-          <p style="margin-top:10px;"><strong>現在のプラン:</strong> {{ subscription.plan_name }} / ステータス: {{ subscription_status_label }}</p>
+          {% if shop.is_child_shop %}<p style="margin-top:10px;"><strong>契約利用:</strong> 親店舗のプレミアム契約を利用中</p>{% else %}<p style="margin-top:10px;"><strong>現在のプラン:</strong> {{ subscription.plan_name }} / ステータス: {{ subscription_status_label }}</p>{% endif %}
         </div>
       </div>
     </div>
@@ -75,6 +76,7 @@
         </tbody></table></div>
         <div style="margin-top:14px;"><a href="/admin/register/{{ shop_id }}" class="primary-link">新規ユーザー登録</a></div>
       </div>
+      {% if not shop.is_child_shop %}
       <div class="card">
         <div class="card-header"><h2>契約プランの土台</h2><span class="badge">実際の3プラン表示</span></div>
         <p class="plan-actual-note">公開中の料金ページに合わせて、管理トップでも <strong>フリー / スタンダード / プレミアム</strong> の3つだけ表示しています。</p>
@@ -146,6 +148,12 @@
           </table>
         </div>
       </div>
+      {% else %}
+      <div class="card">
+        <div class="card-header"><h2>契約利用情報</h2><span class="badge">子店舗</span></div>
+        <p class="plan-actual-note">この子店舗は独自の契約プランを持ちません。親店舗のプレミアム契約を利用します。</p>
+      </div>
+      {% endif %}
     </div>
 
     <div class="card">

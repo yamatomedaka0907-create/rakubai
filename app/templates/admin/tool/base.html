@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ shop.shop_name }} 管理ツール</title>
   <link rel="stylesheet" href="/static/admin_tool.css">
+  <style>
+    :root { --tool-heading-bg: {{ shop.heading_bg_color or "#ff6f91" }}; }
+  </style>
 </head>
 <body>
   <div class="tool-shell">

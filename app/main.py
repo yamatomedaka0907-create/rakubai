@@ -57,6 +57,9 @@ from app.db import (
     authenticate_admin_user,
     get_admin_users,
     get_shop_subscription,
+    get_child_shops,
+    get_parent_shop,
+    create_child_shop_under_parent,
     get_system_mail_settings,
     update_system_mail_settings,
     get_shop_homepage_settings,
@@ -146,6 +149,11 @@ PLAN_DETAILS = {
             "ホームページ作成無料",
             "チャット機能（月間メッセージ100通まで）",
         ],
+        "max_staff": 3,
+        "max_customers": 50,
+        "max_reservations": 50,
+        "max_photos_per_customer": 1,
+        "max_chat_messages": 100,
         "cta_href": "/signup",
         "cta_label": "無料ではじめる",
     },
@@ -203,6 +211,7 @@ PLAN_DETAILS = {
             "LINE連携",
             "ホームページ作成無料",
             "チャット機能（無制限）",
+            "タイムラインカルテ",
             "複数店舗管理",
             "優先対応",
         ],
@@ -220,6 +229,7 @@ PLAN_COMPARISON_ROWS = [
     {"label": "LINE連携", "cells": {"free": "対応", "standard": "対応", "premium": "対応"}},
     {"label": "ホームページ作成", "cells": {"free": "無料", "standard": "無料", "premium": "無料"}},
     {"label": "チャット機能", "cells": {"free": "月間メッセージ100通まで", "standard": "無制限", "premium": "無制限"}},
+    {"label": "タイムラインカルテ", "cells": {"free": "—", "standard": "—", "premium": "対応"}},
     {"label": "複数店舗管理", "cells": {"free": "—", "standard": "—", "premium": "対応"}},
     {"label": "優先対応", "cells": {"free": "—", "standard": "—", "premium": "対応"}},
 ]
@@ -260,6 +270,122 @@ def _resolve_current_display_plan_code(subscription: dict | None) -> str:
         if plan_code in aliases:
             return display_code
     return "free"
+
+
+def _resolve_display_plan_code_from_plan(plan: dict | None) -> str:
+    plan_code = str((plan or {}).get("code") or "").strip().lower()
+    if plan_code in PLAN_DETAILS:
+        return plan_code
+    for display_code, aliases in ADMIN_PLAN_CODE_ALIASES.items():
+        if plan_code in aliases:
+            return display_code
+    return "free"
+
+
+def _find_plan_by_id(available_plans: list[dict], plan_id: int) -> dict | None:
+    for plan in available_plans:
+        try:
+            if int(plan.get("id") or 0) == int(plan_id):
+                return plan
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def _get_staff_limit_for_subscription(subscription: dict | None) -> int | None:
+    plan_code = _resolve_current_display_plan_code(subscription)
+    plan_detail = PLAN_DETAILS.get(plan_code, PLAN_DETAILS["free"])
+    limit_value = plan_detail.get("max_staff")
+    try:
+        limit_number = int(limit_value)
+    except (TypeError, ValueError):
+        return None
+    if limit_number <= 0:
+        return None
+    return limit_number
+
+
+def _get_visible_staff_list(shop: dict | None, subscription: dict | None) -> list[dict]:
+    staff_list = list((shop or {}).get("staff_list") or [])
+    limit_number = _get_staff_limit_for_subscription(subscription)
+    if limit_number is None:
+        return staff_list
+    return staff_list[:limit_number]
+
+
+def _build_shop_with_visible_staff(shop: dict | None, subscription: dict | None) -> dict:
+    shop_data = dict(shop or {})
+    shop_data["staff_list"] = _get_visible_staff_list(shop_data, subscription)
+    return shop_data
+
+
+def _get_visible_staff_or_404(shop: dict | None, subscription: dict | None, staff_id: int) -> tuple[list[dict], dict]:
+    visible_staff_list = _get_visible_staff_list(shop, subscription)
+    target_staff = next((staff for staff in visible_staff_list if int(staff.get("id") or 0) == int(staff_id)), None)
+    if target_staff is None:
+        raise HTTPException(status_code=404, detail="スタッフが見つかりません")
+    return visible_staff_list, target_staff
+
+
+def _build_free_plan_downgrade_summary(shop: dict, customers: list[dict], reservations: list[dict]) -> dict[str, object]:
+    free_detail = PLAN_DETAILS["free"]
+    free_staff_limit = int(free_detail.get("max_staff") or 0)
+    free_customer_limit = int(free_detail.get("max_customers") or 0)
+    free_monthly_limit = int(free_detail.get("max_reservations") or 0)
+    free_photo_limit = int(free_detail.get("max_photos_per_customer") or 0)
+
+    staff_count = len(shop.get("staff_list", []))
+    current_month = date.today().strftime("%Y-%m")
+    current_month_reservations = sum(
+        1
+        for item in reservations
+        if str(item.get("reservation_date") or "").startswith(current_month) and str(item.get("status") or "") != "キャンセル"
+    )
+
+    hidden_photo_count = 0
+    for customer in customers:
+        customer_id = int(customer.get("id") or 0)
+        if customer_id <= 0:
+            continue
+        photo_count = len(get_customer_photos(str(shop.get("shop_id") or ""), customer_id))
+        hidden_photo_count += max(photo_count - free_photo_limit, 0)
+
+    rows = [
+        {
+            "label": "スタッフ",
+            "current": staff_count,
+            "limit": free_staff_limit,
+            "hidden": max(staff_count - free_staff_limit, 0),
+            "message": "上限を超えた新しい順のスタッフは表示されません。",
+        },
+        {
+            "label": "顧客",
+            "current": len(customers),
+            "limit": free_customer_limit,
+            "hidden": max(len(customers) - free_customer_limit, 0),
+            "message": "上限を超えた新しい順の顧客は表示されません。",
+        },
+        {
+            "label": "当月予約",
+            "current": current_month_reservations,
+            "limit": free_monthly_limit,
+            "hidden": max(current_month_reservations - free_monthly_limit, 0),
+            "message": "上限を超えた新しい順の当月予約は表示されません。",
+        },
+        {
+            "label": "顧客写真",
+            "current": sum(len(get_customer_photos(str(shop.get("shop_id") or ""), int(customer.get("id") or 0))) for customer in customers if int(customer.get("id") or 0) > 0),
+            "limit": f"各顧客{free_photo_limit}枚まで",
+            "hidden": hidden_photo_count,
+            "message": "各顧客で上限を超えた新しい順の写真は表示されません。",
+        },
+    ]
+    impacted = [row for row in rows if int(row.get("hidden") or 0) > 0]
+    return {
+        "rows": rows,
+        "impacted_rows": impacted,
+        "has_impact": bool(impacted),
+    }
 
 
 def _build_admin_plan_context(
@@ -710,19 +836,48 @@ def _normalize_week_start(base_date: date | None) -> date:
     return base - timedelta(days=((base.weekday() + 1) % 7))
 
 
+def _get_staff_holiday_dates(staff: dict | None) -> set[str]:
+    raw = (staff or {}).get('holiday_dates') or []
+    if isinstance(raw, str):
+        raw = [item.strip() for item in raw.split(',') if item.strip()]
+    dates: set[str] = set()
+    for item in raw or []:
+        value = str(item or '').strip()
+        if not value:
+            continue
+        try:
+            dates.add(datetime.strptime(value, '%Y-%m-%d').date().isoformat())
+        except ValueError:
+            continue
+    return dates
+
+
+def _is_shop_holiday(shop: dict, target_day: date) -> bool:
+    holiday_idx = WEEKDAY_MAP.get(str(shop.get('holiday') or ''))
+    return holiday_idx is not None and target_day.weekday() == holiday_idx
+
+
+def _is_staff_holiday(staff: dict | None, target_day: date) -> bool:
+    return target_day.isoformat() in _get_staff_holiday_dates(staff)
+
+
 def _build_week_availability_matrix(*, shop: dict, reservations: list[dict], selected_date: date, week_start: date | None = None, staff_id: int | str | None = None) -> tuple[list[dict], list[str], list[dict]]:
     start_of_week = _normalize_week_start(week_start or selected_date)
-    holiday_idx = WEEKDAY_MAP.get(str(shop.get('holiday') or ''))
     normalized_staff_id = str(staff_id).strip() if staff_id not in (None, '') else ''
+    selected_staff = next((item for item in shop.get('staff_list', []) if str(item.get('id') or '').strip() == normalized_staff_id), None) if normalized_staff_id else None
     week_days: list[dict] = []
     for offset in range(7):
         current_day = start_of_week + timedelta(days=offset)
+        is_shop_holiday = _is_shop_holiday(shop, current_day)
+        is_staff_holiday = _is_staff_holiday(selected_staff, current_day)
         week_days.append({
             'date': current_day.isoformat(),
             'label': f"{current_day.month}/{current_day.day}",
             'weekday': '日月火水木金土'[offset],
             'is_today': current_day == date.today(),
-            'is_holiday': holiday_idx is not None and current_day.weekday() == holiday_idx,
+            'is_holiday': is_shop_holiday or is_staff_holiday,
+            'is_shop_holiday': is_shop_holiday,
+            'is_staff_holiday': is_staff_holiday,
             'is_selected': current_day == selected_date,
         })
 
@@ -775,24 +930,27 @@ def _build_week_availability_matrix(*, shop: dict, reservations: list[dict], sel
 
 def _build_public_week_availability_matrix(*, shop: dict, reservations: list[dict], selected_date: date, selected_staff_id: str, selected_menu: dict | None, week_start: date | None = None) -> tuple[list[dict], list[str], list[dict]]:
     start_of_week = _normalize_week_start(week_start or selected_date)
-    holiday_idx = WEEKDAY_MAP.get(str(shop.get('holiday') or ''))
     duration = int((selected_menu or {}).get('duration') or 60)
     time_slots = _build_half_hour_slots(shop.get('business_hours'))
     now_dt = datetime.now()
     today_obj = date.today()
     active_reservations = [r for r in reservations if str(r.get('status') or '') != 'キャンセル']
+    selected_staff = next((item for item in shop.get('staff_list', []) if str(item.get('id') or '') == str(selected_staff_id)), None) if selected_staff_id else None
 
     week_days: list[dict] = []
     for offset in range(7):
         current_day = start_of_week + timedelta(days=offset)
-        is_holiday = holiday_idx is not None and current_day.weekday() == holiday_idx
+        is_shop_holiday = _is_shop_holiday(shop, current_day)
+        is_staff_holiday = _is_staff_holiday(selected_staff, current_day)
         week_days.append({
             'date': current_day.isoformat(),
             'label': f"{current_day.month}/{current_day.day}",
             'weekday': '日月火水木金土'[offset],
             'is_today': current_day == today_obj,
             'is_selected': current_day == selected_date,
-            'is_holiday': is_holiday,
+            'is_holiday': is_shop_holiday or is_staff_holiday,
+            'is_shop_holiday': is_shop_holiday,
+            'is_staff_holiday': is_staff_holiday,
         })
 
     reservations_by_date: dict[tuple[str, str], list[dict]] = {}
@@ -907,16 +1065,27 @@ def require_platform_login(request: Request):
 
 
 def require_store_login(request: Request, shop_id: str):
+    requested_shop_id = (shop_id or "").strip().lower()
     logged_in_shop_id = str(request.session.get("store_logged_in_shop_id") or "").strip().lower()
-    if logged_in_shop_id != (shop_id or "").strip().lower():
-        return RedirectResponse("/store-login", status_code=303)
-    return None
+    if logged_in_shop_id == requested_shop_id:
+        return None
+
+    if logged_in_shop_id:
+        requested_shop = get_shop_management_data(requested_shop_id)
+        if requested_shop and int(requested_shop.get('is_child_shop') or 0) == 1:
+            parent_shop_id = str(requested_shop.get('parent_shop_id') or '').strip().lower()
+            if parent_shop_id and parent_shop_id == logged_in_shop_id:
+                return None
+
+    return RedirectResponse("/store-login", status_code=303)
 
 
 def build_shop_booking_context(shop_id: str, request: Request, error_message: str = ""):
     shop = get_shop(shop_id)
     if shop is None:
         raise HTTPException(status_code=404, detail="店舗が見つかりません")
+    subscription = get_shop_subscription(shop_id) or {'status': 'active', 'plan_name': 'Free', 'show_ads': False}
+    shop = _build_shop_with_visible_staff(shop, subscription)
 
     month_value = request.query_params.get("month") or date.today().strftime("%Y-%m")
     try:
@@ -932,16 +1101,17 @@ def build_shop_booking_context(shop_id: str, request: Request, error_message: st
     week_start_query = _safe_parse_date(request.query_params.get("week_start"), selected_date_obj)
     week_start = _normalize_week_start(week_start_query)
 
-    holiday_idx = WEEKDAY_MAP.get(str(shop.get("holiday") or ""))
     today = date.today()
     reservations = [r for r in get_reservations(shop_id) if str(r.get('status')) != 'キャンセル']
+    selected_menu = next((m for m in shop.get('menus', []) if str(m.get('id')) == str(selected_menu_id)), None)
+    selected_staff = next((s for s in shop.get('staff_list', []) if str(s.get('id')) == str(selected_staff_id)), None)
 
     cal = calendar.Calendar(firstweekday=6)
     days = []
     for week in cal.monthdatescalendar(current_month.year, current_month.month):
         for day in week:
             is_current = day.month == current_month.month
-            is_closed = holiday_idx is not None and day.weekday() == holiday_idx
+            is_closed = _is_shop_holiday(shop, day) or _is_staff_holiday(selected_staff, day)
             is_past = day < today
             day_reservations = [r for r in reservations if r.get('reservation_date') == day.isoformat()]
             days.append({
@@ -956,8 +1126,11 @@ def build_shop_booking_context(shop_id: str, request: Request, error_message: st
                 'is_clickable': is_current and not is_closed and not is_past,
             })
 
-    selected_menu = next((m for m in shop.get('menus', []) if str(m.get('id')) == str(selected_menu_id)), None)
-    selected_staff = next((s for s in shop.get('staff_list', []) if str(s.get('id')) == str(selected_staff_id)), None)
+    if selected_staff is None and selected_staff_id:
+        selected_staff_id = ""
+        selected_menu_id = ""
+        selected_start_time = ""
+        selected_menu = None
     if selected_staff and selected_menu and not _staff_allows_menu(selected_staff, selected_menu.get('id')):
         selected_menu = None
         selected_menu_id = ""
@@ -969,6 +1142,7 @@ def build_shop_booking_context(shop_id: str, request: Request, error_message: st
         duration = int(selected_menu.get('duration', 60) or 60)
         current_dt = datetime.now()
         selected_reservations = [r for r in reservations if r.get('reservation_date') == selected_date and str(r.get('staff_id')) == str(selected_staff_id)]
+        selected_day_is_holiday = _is_shop_holiday(shop, selected_date_obj) or _is_staff_holiday(selected_staff, selected_date_obj)
         for start_time in _build_half_hour_slots(shop.get('business_hours')):
             start_dt = datetime.strptime(start_time, '%H:%M')
             end_dt = start_dt + timedelta(minutes=duration)
@@ -980,8 +1154,8 @@ def build_shop_booking_context(shop_id: str, request: Request, error_message: st
             slot = {
                 'start_time': start_time,
                 'end_time': end_dt.strftime('%H:%M'),
-                'is_available': not slot_is_past and not slot_is_conflict,
-                'is_conflict': slot_is_conflict,
+                'is_available': (not selected_day_is_holiday) and (not slot_is_past) and (not slot_is_conflict),
+                'is_conflict': slot_is_conflict or selected_day_is_holiday,
             }
             if selected_start_time == start_time:
                 selected_slot = slot
@@ -1007,7 +1181,6 @@ def build_shop_booking_context(shop_id: str, request: Request, error_message: st
         week_start=week_start,
     )
 
-    subscription = get_shop_subscription(shop_id) or {'status': 'active', 'plan_name': 'Free', 'show_ads': False}
 
     return {
         'request': request,
@@ -1029,7 +1202,7 @@ def build_shop_booking_context(shop_id: str, request: Request, error_message: st
         'calendar_next_month': next_month,
         'selected_menu': selected_menu,
         'selected_staff': selected_staff,
-        'selected_date_is_holiday': (selected_date_obj.weekday() == holiday_idx) if holiday_idx is not None else False,
+        'selected_date_is_holiday': (_is_shop_holiday(shop, selected_date_obj) or _is_staff_holiday(selected_staff, selected_date_obj)),
         'public_week_days': public_week_days,
         'public_time_slots': public_time_slots,
         'public_weekly_rows': public_weekly_rows,
@@ -1048,13 +1221,92 @@ def startup():
     init_db()
 
 
+def _send_contact_mail(*, name: str, company: str, email: str, phone: str, category: str, message: str) -> bool:
+    settings = get_system_mail_settings()
+    smtp_user = settings.get('smtp_username') or settings.get('from_email')
+    smtp_password = settings.get('smtp_password')
+    from_email = settings.get('from_email')
+    to_email = 'info@rakubai.net'
+    if not from_email or not smtp_user or not smtp_password:
+        return False
+
+    subject = f"【らくばいお問い合わせ】{category} / {name}"
+    body = f"""らくばいトップページからお問い合わせがありました。
+
+お名前: {name}
+店舗名・会社名: {company or '-'}
+メールアドレス: {email}
+電話番号: {phone or '-'}
+お問い合わせ種別: {category}
+
+お問い合わせ内容:
+{message}
+"""
+    msg = MIMEText(body, 'plain', 'utf-8')
+    msg['Subject'] = subject
+    msg['From'] = formataddr((settings.get('from_name') or 'らくばい', from_email))
+    msg['To'] = to_email
+    msg['Reply-To'] = email
+    try:
+        with smtplib.SMTP(settings.get('smtp_host') or 'smtp.gmail.com', int(settings.get('smtp_port') or '587')) as smtp:
+            smtp.starttls()
+            smtp.login(smtp_user, smtp_password)
+            smtp.send_message(msg)
+        return True
+    except Exception:
+        return False
+
+
 @app.get("/", response_class=HTMLResponse)
 def top_page(request: Request):
+    contact_status = str(request.query_params.get('contact') or '').strip().lower()
+    contact_messages = {
+        'success': 'お問い合わせを受け付けました。内容を確認のうえ、順次ご返信いたします。',
+        'error': 'お問い合わせの送信に失敗しました。時間をおいて再度お試しください。',
+        'invalid': '入力内容を確認してください。必須項目が未入力か、送信内容に不備があります。',
+    }
     return templates.TemplateResponse(
         request=request,
         name="top.html",
-        context={"request": request},
+        context={
+            "request": request,
+            "contact_status": contact_status,
+            "contact_message": contact_messages.get(contact_status, ''),
+        },
     )
+
+
+@app.post("/contact")
+def top_contact_submit(
+    name: str = Form(""),
+    company: str = Form(""),
+    email: str = Form(""),
+    phone: str = Form(""),
+    category: str = Form("サービスについて"),
+    message: str = Form(""),
+    website: str = Form(""),
+    agree: str = Form(""),
+):
+    if website.strip():
+        return RedirectResponse(url='/?contact=success#contact', status_code=303)
+    normalized_name = name.strip()
+    normalized_email = email.strip()
+    normalized_message = message.strip()
+    normalized_category = category.strip() or 'サービスについて'
+    if not normalized_name or not normalized_email or not normalized_message or agree != '1':
+        return RedirectResponse(url='/?contact=invalid#contact', status_code=303)
+    if len(normalized_message) > 3000:
+        return RedirectResponse(url='/?contact=invalid#contact', status_code=303)
+    sent = _send_contact_mail(
+        name=normalized_name,
+        company=company.strip(),
+        email=normalized_email,
+        phone=phone.strip(),
+        category=normalized_category,
+        message=normalized_message,
+    )
+    status = 'success' if sent else 'error'
+    return RedirectResponse(url=f'/?contact={status}#contact', status_code=303)
 
 
 @app.get("/plans/{plan_code}", response_class=HTMLResponse)
@@ -1323,6 +1575,26 @@ def platform_templates_create(
     return RedirectResponse("/platform/templates?saved=テンプレートを追加しました。", status_code=303)
 
 
+@app.get("/terms", response_class=HTMLResponse)
+def terms_page(request: Request):
+    return templates.TemplateResponse(request=request, name="terms.html", context={"request": request})
+
+
+@app.get("/privacy", response_class=HTMLResponse)
+def privacy_page(request: Request):
+    return templates.TemplateResponse(request=request, name="privacy.html", context={"request": request})
+
+
+@app.get("/tokutei", response_class=HTMLResponse)
+def tokutei_page(request: Request):
+    return templates.TemplateResponse(request=request, name="tokutei.html", context={"request": request})
+
+
+@app.get("/policy", response_class=HTMLResponse)
+def policy_page(request: Request):
+    return templates.TemplateResponse(request=request, name="policy.html", context={"request": request})
+
+
 @app.get("/signup", response_class=HTMLResponse)
 def signup_page(request: Request):
     return templates.TemplateResponse(
@@ -1342,6 +1614,7 @@ def signup_submit(
     login_id: str = Form(...),
     password: str = Form(...),
     password_confirm: str = Form(...),
+    agree_terms: str | None = Form(None),
 ):
     shop_id = (login_id or "").strip().lower()
     shop_name = (shop_name or "").strip()
@@ -1360,6 +1633,8 @@ def signup_submit(
         error_message = "メールアドレスを入力してください。"
     elif '@' not in email:
         error_message = "メールアドレスの形式が正しくありません。"
+    elif not agree_terms:
+        error_message = "利用規約等への同意が必要です。"
     elif len(login_id) < 4:
         error_message = "ログインIDは4文字以上で入力してください。"
     elif len(password or "") < 6:
@@ -1444,7 +1719,10 @@ def admin_settings_page(request: Request, shop_id: str):
     admin_users = get_admin_users(normalized_shop_id)
     subscription = get_shop_subscription(normalized_shop_id) or {}
     available_plans = get_plans(active_only=True)
+    child_shops = get_child_shops(normalized_shop_id)
+    parent_shop = get_parent_shop(normalized_shop_id)
     success_message = request.query_params.get("saved", "")
+    error_message = request.query_params.get("error", "")
     template_name = "admin/tool/settings.html" if shop.get("admin_ui_mode") == "tool" else "admin/settings.html"
 
     return templates.TemplateResponse(
@@ -1457,6 +1735,10 @@ def admin_settings_page(request: Request, shop_id: str):
             "admin_users": admin_users,
             "subscription": subscription,
             "available_plans": available_plans,
+            "child_shops": child_shops,
+            "parent_shop": parent_shop,
+            "is_child_shop": int(shop.get("is_child_shop") or 0) == 1,
+            "is_parent_premium": _is_premium_subscription(subscription),
             "current_admin_name": request.session.get("store_logged_in_admin_name") or (admin_users[0].get("name") if admin_users else ""),
             "staff_list": shop.get("staff_list", []),
             "menus": shop.get("menus", []),
@@ -1464,9 +1746,46 @@ def admin_settings_page(request: Request, shop_id: str):
             "today_reservations": [item for item in get_reservations(normalized_shop_id) if str(item.get("reservation_date") or "") == date.today().isoformat()],
             "active_page": "settings",
             "success_message": success_message,
+            "error_message": error_message,
             "message": success_message,
         },
     )
+
+
+@app.post("/admin/{shop_id}/child-shops")
+def admin_child_shop_create(
+    request: Request,
+    shop_id: str,
+    child_shop_name: str = Form(...),
+    child_shop_id: str = Form(...),
+    child_password: str = Form(...),
+):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+
+    normalized_shop_id = (shop_id or "").strip().lower()
+    shop = get_shop_management_data(normalized_shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="見つかりません")
+    if int(shop.get("is_child_shop") or 0) == 1:
+        return RedirectResponse(f"/admin/{normalized_shop_id}/settings?error=子店舗からは子店舗を追加できません。", status_code=303)
+
+    subscription = get_shop_subscription(normalized_shop_id) or {}
+    if not _is_premium_subscription(subscription):
+        return RedirectResponse(f"/admin/{normalized_shop_id}/settings?error=子店舗追加はプレミアムプラン専用です。", status_code=303)
+
+    try:
+        create_child_shop_under_parent(
+            parent_shop_id=normalized_shop_id,
+            child_shop_id=child_shop_id,
+            child_shop_name=child_shop_name,
+            password=child_password,
+        )
+    except ValueError as exc:
+        return RedirectResponse(f"/admin/{normalized_shop_id}/settings?error={str(exc)}", status_code=303)
+
+    return RedirectResponse(f"/admin/{normalized_shop_id}/settings?saved=子店舗を追加しました。", status_code=303)
 
 
 @app.post("/admin/{shop_id}/settings")
@@ -1484,6 +1803,7 @@ def admin_settings_save(
     primary_color: str = Form("#2ec4b6"),
     primary_dark: str = Form("#159a90"),
     accent_bg: str = Form("#f7fffe"),
+    heading_bg_color: str = Form("#ff6f91"),
     menu_name: list[str] = Form([]),
     menu_duration: list[str] = Form([]),
     menu_price: list[str] = Form([]),
@@ -1531,6 +1851,7 @@ def admin_settings_save(
         primary_color=primary_color,
         primary_dark=primary_dark,
         accent_bg=accent_bg,
+        heading_bg_color=heading_bg_color,
         menus=menus,
     )
     return RedirectResponse(f"/admin/{normalized_shop_id}/settings?saved=店舗設定を保存しました。", status_code=303)
@@ -1546,6 +1867,7 @@ def _build_admin_common_context(request: Request, shop_id: str) -> tuple[str, di
     customers = get_customers(normalized_shop_id)
     admin_users = get_admin_users(normalized_shop_id)
     subscription = get_shop_subscription(normalized_shop_id) or {}
+    shop = _build_shop_with_visible_staff(shop, subscription)
     available_plans = get_plans(active_only=True)
     current_admin_name = request.session.get("store_logged_in_admin_name") or (admin_users[0].get("name") if admin_users else "")
     return normalized_shop_id, shop, reservations, customers, admin_users, subscription, available_plans, current_admin_name
@@ -1863,7 +2185,48 @@ def admin_timeline_karte_page(request: Request, shop_id: str):
             "available_plans": available_plans,
             "current_admin_name": current_admin_name,
             "active_page": "timeline_karte",
+            "timeline_auto_refresh_seconds": 60,
             **timeline_context,
+        },
+    )
+
+
+@app.get("/admin/{shop_id}/reservations/{reservation_id}", response_class=HTMLResponse)
+def admin_reservation_detail_page(request: Request, shop_id: str, reservation_id: int):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+
+    shop_id, shop, reservations, customers, admin_users, subscription, available_plans, current_admin_name = _build_admin_common_context(request, shop_id)
+    reservation = next((item for item in reservations if int(item.get("id") or 0) == reservation_id), None)
+    if reservation is None:
+        raise HTTPException(status_code=404, detail="予約が見つかりません")
+
+    customer = None
+    customer_id = int(reservation.get("customer_id") or 0)
+    if customer_id:
+        customer = next((item for item in customers if int(item.get("id") or 0) == customer_id), None)
+
+    template_name = "admin/tool/reservation_detail.html" if shop.get("admin_ui_mode") == "tool" else "admin/reservation_detail.html"
+    return templates.TemplateResponse(
+        request=request,
+        name=template_name,
+        context={
+            "request": request,
+            "shop": shop,
+            "shop_id": shop_id,
+            "reservation": reservation,
+            "customer": customer,
+            "customers": customers,
+            "staff_list": shop.get("staff_list", []),
+            "menus": shop.get("menus", []),
+            "reservations": reservations,
+            "today": date.today().isoformat(),
+            "admin_users": admin_users,
+            "subscription": subscription,
+            "available_plans": available_plans,
+            "current_admin_name": current_admin_name,
+            "active_page": "reservations",
         },
     )
 
@@ -2129,6 +2492,60 @@ def admin_logout(request: Request, shop_id: str):
     return RedirectResponse("/store-login", status_code=303)
 
 
+@app.get("/admin/{shop_id}/subscription/confirm", response_class=HTMLResponse)
+def admin_subscription_confirm_page(
+    request: Request,
+    shop_id: str,
+    plan_id: int,
+    status: str = "active",
+):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+
+    normalized_shop_id, shop, reservations, customers, admin_users, subscription, available_plans, current_admin_name = _build_admin_common_context(request, shop_id)
+    if int(shop.get("is_child_shop") or 0) == 1:
+        return RedirectResponse(f"/admin/{normalized_shop_id}/settings?error=子店舗では契約プランを変更できません。", status_code=303)
+    normalized_status = (status or "").strip().lower()
+    if normalized_status not in {"active", "trial", "canceled"}:
+        return RedirectResponse(f"/admin/{normalized_shop_id}/settings?error=契約状態の指定が正しくありません。", status_code=303)
+
+    target_plan = _find_plan_by_id(available_plans, plan_id)
+    if target_plan is None:
+        return RedirectResponse(f"/admin/{normalized_shop_id}/settings?error=変更先プランが見つかりません。", status_code=303)
+
+    current_display_code = _resolve_current_display_plan_code(subscription)
+    target_display_code = _resolve_display_plan_code_from_plan(target_plan)
+    if not (current_display_code in {"standard", "premium"} and target_display_code == "free"):
+        return RedirectResponse(f"/admin/{normalized_shop_id}/settings", status_code=303)
+
+    template_name = "admin/tool/subscription_confirm.html" if shop.get("admin_ui_mode") == "tool" else "admin/subscription_confirm.html"
+    downgrade_summary = _build_free_plan_downgrade_summary(shop, customers, reservations)
+    return templates.TemplateResponse(
+        request=request,
+        name=template_name,
+        context={
+            "request": request,
+            "shop": shop,
+            "shop_id": normalized_shop_id,
+            "subscription": subscription,
+            "available_plans": available_plans,
+            "current_admin_name": current_admin_name,
+            "admin_users": admin_users,
+            "customers": customers,
+            "today_reservations": [item for item in reservations if str(item.get("reservation_date") or "") == date.today().isoformat()],
+            "staff_list": shop.get("staff_list", []),
+            "active_page": "settings",
+            "current_plan_name": subscription.get("plan_name") or PLAN_DETAILS.get(current_display_code, PLAN_DETAILS["free"])["name"],
+            "target_plan_name": target_plan.get("name") or PLAN_DETAILS["free"]["name"],
+            "plan_id": int(target_plan.get("id") or plan_id),
+            "status": normalized_status,
+            "downgrade_summary": downgrade_summary,
+            "error_message": request.query_params.get("error", ""),
+        },
+    )
+
+
 @app.post("/admin/{shop_id}/subscription")
 def admin_update_subscription(
     request: Request,
@@ -2139,11 +2556,69 @@ def admin_update_subscription(
     redirect = require_store_login(request, shop_id)
     if redirect:
         return redirect
+    normalized_shop_id = (shop_id or "").strip().lower()
+    shop = get_shop_management_data(normalized_shop_id)
+    if shop and int(shop.get("is_child_shop") or 0) == 1:
+        return RedirectResponse(f"/admin/{normalized_shop_id}/settings?error=子店舗では契約プランを変更できません。", status_code=303)
     normalized_status = (status or "").strip().lower()
     if normalized_status not in {"active", "trial", "canceled"}:
-        return admin_page(request, shop_id, error_message="契約状態の指定が正しくありません。")
-    update_shop_subscription((shop_id or "").strip().lower(), plan_id, normalized_status)
-    return RedirectResponse(f"/admin/{(shop_id or '').strip().lower()}", status_code=303)
+        return RedirectResponse(f"/admin/{normalized_shop_id}/settings?error=契約状態の指定が正しくありません。", status_code=303)
+
+    subscription = get_shop_subscription(normalized_shop_id) or {}
+    available_plans = get_plans(active_only=True)
+    target_plan = _find_plan_by_id(available_plans, plan_id)
+    if target_plan is None:
+        return RedirectResponse(f"/admin/{normalized_shop_id}/settings?error=変更先プランが見つかりません。", status_code=303)
+
+    current_display_code = _resolve_current_display_plan_code(subscription)
+    target_display_code = _resolve_display_plan_code_from_plan(target_plan)
+    if current_display_code in {"standard", "premium"} and target_display_code == "free":
+        return RedirectResponse(
+            f"/admin/{normalized_shop_id}/subscription/confirm?plan_id={int(target_plan.get('id') or plan_id)}&status={normalized_status}",
+            status_code=303,
+        )
+
+    update_shop_subscription(normalized_shop_id, int(target_plan.get("id") or plan_id), normalized_status)
+    return RedirectResponse(f"/admin/{normalized_shop_id}/settings?saved=プランを更新しました。", status_code=303)
+
+
+@app.post("/admin/{shop_id}/subscription/confirm")
+def admin_confirm_subscription_update(
+    request: Request,
+    shop_id: str,
+    plan_id: int = Form(...),
+    status: str = Form(...),
+    consent_free_plan_downgrade: str = Form(""),
+):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+
+    normalized_shop_id = (shop_id or "").strip().lower()
+    shop = get_shop_management_data(normalized_shop_id)
+    if shop and int(shop.get("is_child_shop") or 0) == 1:
+        return RedirectResponse(f"/admin/{normalized_shop_id}/settings?error=子店舗では契約プランを変更できません。", status_code=303)
+    normalized_status = (status or "").strip().lower()
+    if normalized_status not in {"active", "trial", "canceled"}:
+        return RedirectResponse(f"/admin/{normalized_shop_id}/settings?error=契約状態の指定が正しくありません。", status_code=303)
+
+    available_plans = get_plans(active_only=True)
+    target_plan = _find_plan_by_id(available_plans, plan_id)
+    if target_plan is None:
+        return RedirectResponse(f"/admin/{normalized_shop_id}/settings?error=変更先プランが見つかりません。", status_code=303)
+
+    subscription = get_shop_subscription(normalized_shop_id) or {}
+    current_display_code = _resolve_current_display_plan_code(subscription)
+    target_display_code = _resolve_display_plan_code_from_plan(target_plan)
+    if current_display_code in {"standard", "premium"} and target_display_code == "free":
+        if consent_free_plan_downgrade != "yes":
+            return RedirectResponse(
+                f"/admin/{normalized_shop_id}/subscription/confirm?plan_id={int(target_plan.get('id') or plan_id)}&status={normalized_status}&error=同意にチェックを入れてください。",
+                status_code=303,
+            )
+
+    update_shop_subscription(normalized_shop_id, int(target_plan.get("id") or plan_id), normalized_status)
+    return RedirectResponse(f"/admin/{normalized_shop_id}/settings?saved=プランを更新しました。", status_code=303)
 
 
 @app.post("/admin/{shop_id}/customers")
@@ -2192,6 +2667,9 @@ def admin_create_reservation(
         return admin_page(request, shop_id, error_message="顧客・スタッフ・メニューの指定を確認してください。")
     if not _staff_allows_menu(staff, menu_id):
         return admin_page(request, shop_id, error_message="選択したスタッフではこのメニューを予約できません。")
+    reservation_day = _safe_parse_date(reservation_date, date.today())
+    if _is_shop_holiday(shop, reservation_day) or _is_staff_holiday(staff, reservation_day):
+        return admin_page(request, shop_id, error_message="選択した日はこのスタッフの休日のため予約できません。")
     try:
         start_dt = datetime.strptime(start_time, "%H:%M")
     except ValueError:
@@ -2236,6 +2714,51 @@ def admin_mark_reservation_cancel(request: Request, shop_id: str, reservation_id
     return RedirectResponse(f"/admin/{shop_id}", status_code=303)
 
 
+@app.get("/admin/{shop_id}/booking-page/editor", response_class=HTMLResponse)
+def admin_booking_page_editor(request: Request, shop_id: str):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+    context = build_shop_booking_context(shop_id, request)
+    context["edit_mode"] = True
+    context["active_page"] = "booking_page_editor"
+    return templates.TemplateResponse(
+        request=request,
+        name="shop/index.html",
+        context=context,
+    )
+
+
+@app.post("/admin/{shop_id}/booking-page/editor/save")
+async def admin_booking_page_editor_save(request: Request, shop_id: str):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        raise HTTPException(status_code=401, detail="ログインしてください")
+    shop = get_shop(shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+
+    payload = await request.json()
+    fields = payload if isinstance(payload, dict) else {}
+    update_shop_basic_info(
+        shop_id,
+        shop_name=str(fields.get("shop_name") or shop.get("shop_name") or "").strip(),
+        phone=str(fields.get("phone") or shop.get("phone") or "").strip(),
+        address=str(fields.get("address") or shop.get("address") or "").strip(),
+        business_hours=str(fields.get("business_hours") or shop.get("business_hours") or "").strip(),
+        holiday=str(fields.get("holiday") or shop.get("holiday") or "").strip(),
+        catch_copy=str(fields.get("catch_copy") or shop.get("catch_copy") or "").strip(),
+        description=str(fields.get("description") or shop.get("description") or "").strip(),
+        reply_to_email=str(shop.get("reply_to_email") or "").strip(),
+        admin_ui_mode=str(shop.get("admin_ui_mode") or "web").strip(),
+        primary_color=str(shop.get("primary_color") or "#2ec4b6").strip(),
+        primary_dark=str(shop.get("primary_dark") or "#159a90").strip(),
+        accent_bg=str(shop.get("accent_bg") or "#f7fffe").strip(),
+        menus=shop.get("menus") or [],
+    )
+    return JSONResponse({"ok": True})
+
+
 @app.get("/shop/{shop_id}", response_class=HTMLResponse)
 def shop_page(request: Request, shop_id: str):
     context = build_shop_booking_context(shop_id, request)
@@ -2262,6 +2785,8 @@ def shop_confirm(
     shop = get_shop(shop_id)
     if not shop:
         raise HTTPException(status_code=404, detail="店舗が見つかりません")
+    subscription = get_shop_subscription(shop_id) or {'status': 'active', 'plan_name': 'Free', 'show_ads': False}
+    shop = _build_shop_with_visible_staff(shop, subscription)
     staff = next((s for s in shop.get("staff_list", []) if int(s["id"]) == int(staff_id)), None)
     menu = next((m for m in shop.get("menus", []) if int(m["id"]) == int(menu_id)), None)
     if not staff or not menu:
@@ -2274,6 +2799,15 @@ def shop_confirm(
         )
     if not _staff_allows_menu(staff, menu_id):
         ctx = build_shop_booking_context(shop_id, request, "選択したスタッフではこのメニューを予約できません。")
+        return templates.TemplateResponse(
+            request=request,
+            name="shop/index.html",
+            context=ctx,
+            status_code=400,
+        )
+    reservation_day = _safe_parse_date(reservation_date, date.today())
+    if _is_shop_holiday(shop, reservation_day) or _is_staff_holiday(staff, reservation_day):
+        ctx = build_shop_booking_context(shop_id, request, "選択した日はこのスタッフの休日のため予約できません。")
         return templates.TemplateResponse(
             request=request,
             name="shop/index.html",
@@ -2338,6 +2872,8 @@ def shop_reserve(
     shop = get_shop(shop_id)
     if not shop:
         raise HTTPException(status_code=404, detail="店舗が見つかりません")
+    subscription = get_shop_subscription(shop_id) or {'status': 'active', 'plan_name': 'Free', 'show_ads': False}
+    shop = _build_shop_with_visible_staff(shop, subscription)
     staff = next((s for s in shop.get("staff_list", []) if int(s["id"]) == int(staff_id)), None)
     menu = next((m for m in shop.get("menus", []) if int(m["id"]) == int(menu_id)), None)
     if not staff or not menu:
@@ -2350,6 +2886,15 @@ def shop_reserve(
         )
     if not _staff_allows_menu(staff, menu_id):
         ctx = build_shop_booking_context(shop_id, request, "選択したスタッフではこのメニューを予約できません。")
+        return templates.TemplateResponse(
+            request=request,
+            name="shop/index.html",
+            context=ctx,
+            status_code=400,
+        )
+    reservation_day = _safe_parse_date(reservation_date, date.today())
+    if _is_shop_holiday(shop, reservation_day) or _is_staff_holiday(staff, reservation_day):
+        ctx = build_shop_booking_context(shop_id, request, "選択した日はこのスタッフの休日のため予約できません。")
         return templates.TemplateResponse(
             request=request,
             name="shop/index.html",
@@ -2519,6 +3064,7 @@ def admin_staff_register_submit(
     shop_id: str,
     name: str = Form(...),
     menu_ids: list[str] = Form([]),
+    holiday_dates: str = Form(""),
 ):
     redirect = require_store_login(request, shop_id)
     if redirect:
@@ -2540,7 +3086,14 @@ def admin_staff_register_submit(
         except (TypeError, ValueError):
             continue
 
+    subscription = get_shop_subscription(normalized_shop_id) or {}
     staff_list = list(shop.get("staff_list", []))
+    visible_staff_list = _get_visible_staff_list(shop, subscription)
+    if len(visible_staff_list) != len(staff_list):
+        return RedirectResponse(f"/admin/{normalized_shop_id}/staff-info?error=現在のプランではこれ以上スタッフを追加できません。", status_code=303)
+    staff_limit = _get_staff_limit_for_subscription(subscription)
+    if staff_limit is not None and len(staff_list) >= int(staff_limit):
+        return RedirectResponse(f"/admin/{normalized_shop_id}/staff-info?error=現在のプランではスタッフは{staff_limit}人までです。", status_code=303)
     staff_list.append({
         "name": staff_name,
         "menu_ids": normalized_menu_ids,
@@ -2561,12 +3114,14 @@ def admin_staff_edit_page(request: Request, shop_id: str, staff_id: int, error_m
     if not shop:
         raise HTTPException(status_code=404, detail="見つかりません")
 
+    subscription = get_shop_subscription(normalized_shop_id) or {}
     raw_staff_list = list(shop.get("staff_list", []))
+    visible_staff_list, visible_target_staff = _get_visible_staff_or_404(shop, subscription, staff_id)
     target_index = next((index for index, staff in enumerate(raw_staff_list) if int(staff.get("id") or 0) == int(staff_id)), None)
     if target_index is None:
         raise HTTPException(status_code=404, detail="スタッフが見つかりません")
 
-    target_staff = dict(raw_staff_list[target_index])
+    target_staff = dict(visible_target_staff)
     selected_menu_ids = {int(menu_id) for menu_id in target_staff.get("menu_ids", []) if str(menu_id).strip()}
     template_name = "admin/tool/staff_edit.html" if shop.get("admin_ui_mode") == "tool" else "admin/staff_edit.html"
     return templates.TemplateResponse(
@@ -2579,6 +3134,7 @@ def admin_staff_edit_page(request: Request, shop_id: str, staff_id: int, error_m
             "staff": target_staff,
             "menus": shop.get("menus", []),
             "selected_menu_ids": selected_menu_ids,
+            "selected_holiday_dates": sorted(_get_staff_holiday_dates(target_staff)),
             "error_message": error_message,
             "active_page": "staff_info",
         },
@@ -2592,6 +3148,7 @@ def admin_staff_edit_submit(
     staff_id: int,
     name: str = Form(...),
     menu_ids: list[str] = Form([]),
+    holiday_dates: str = Form(""),
 ):
     redirect = require_store_login(request, shop_id)
     if redirect:
@@ -2613,6 +3170,15 @@ def admin_staff_edit_submit(
         except (TypeError, ValueError):
             continue
 
+    normalized_holiday_dates: list[str] = sorted({
+        parsed.date().isoformat()
+        for parsed in [
+            (lambda value: datetime.strptime(value.strip(), '%Y-%m-%d') if value.strip() else None)(item)
+            for item in str(holiday_dates or '').split(',')
+        ]
+        if parsed is not None
+    })
+
     staff_list = list(shop.get("staff_list", []))
     updated = False
     for index, staff in enumerate(staff_list):
@@ -2622,6 +3188,7 @@ def admin_staff_edit_submit(
             **staff,
             "name": staff_name,
             "menu_ids": normalized_menu_ids,
+            "holiday_dates": normalized_holiday_dates,
         }
         updated = True
         break
@@ -2645,15 +3212,13 @@ def admin_staff_schedule_page(request: Request, shop_id: str, staff_id: int):
     if not shop:
         raise HTTPException(status_code=404, detail="店舗が見つかりません")
 
-    staff_list = list(shop.get("staff_list", []))
-    target_staff = next((staff for staff in staff_list if int(staff.get("id") or 0) == int(staff_id)), None)
-    if not target_staff:
-        raise HTTPException(status_code=404, detail="スタッフが見つかりません")
+    subscription = get_shop_subscription(normalized_shop_id) or {}
+    staff_list, target_staff = _get_visible_staff_or_404(shop, subscription, staff_id)
+    shop = _build_shop_with_visible_staff(shop, subscription)
 
     reservations = get_reservations(normalized_shop_id)
     customers = get_customers(normalized_shop_id)
     admin_users = get_admin_users(normalized_shop_id)
-    subscription = get_shop_subscription(normalized_shop_id) or {}
     current_admin_name = request.session.get("store_logged_in_admin_name") or (admin_users[0].get("name") if admin_users else "")
 
     month_value = request.query_params.get("month") or date.today().strftime("%Y-%m")
@@ -2731,6 +3296,7 @@ def admin_staff_info_page(request: Request, shop_id: str):
     customers = get_customers(normalized_shop_id)
     admin_users = get_admin_users(normalized_shop_id)
     subscription = get_shop_subscription(normalized_shop_id) or {}
+    shop = _build_shop_with_visible_staff(shop, subscription)
     current_admin_name = request.session.get("store_logged_in_admin_name") or (admin_users[0].get("name") if admin_users else "")
     menu_lookup = {str(item.get("id")): item.get("name") for item in shop.get("menus", [])}
     staff_list = []
@@ -2757,6 +3323,7 @@ def admin_staff_info_page(request: Request, shop_id: str):
             "current_admin_name": current_admin_name,
             "active_page": "staff_info",
             "success_message": request.query_params.get("saved", ""),
+            "error_message": request.query_params.get("error", ""),
         },
     )
 
@@ -2824,10 +3391,15 @@ def member_register_submit(
     password: str = Form(...),
     email: str = Form(''),
     next_url: str = Form(''),
+    agree_terms: str | None = Form(None),
 ):
     shop = get_shop(shop_id)
     if not shop:
         raise HTTPException(status_code=404, detail="店舗が見つかりません")
+    if not agree_terms:
+        from urllib.parse import quote
+        target = quote(_member_redirect_target(shop_id, next_url), safe='')
+        return RedirectResponse(url=f"/member/{shop_id}/register?next={target}&error=利用規約等への同意が必要です。", status_code=303)
     try:
         member = create_member(shop_id, name, phone, password, email)
     except ValueError as exc:

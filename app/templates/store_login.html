@@ -19,6 +19,11 @@
         <p class="text-gray-600 mt-4 text-center">
             ログインID（登録時の店舗ID）とパスワードを入力してログインしてください。
         </p>
+        {% if selected_shop_name %}
+        <div class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            この子店舗はメイン店舗「{{ selected_shop_name }}」から管理します。
+        </div>
+        {% endif %}
 
         {% if request.query_params.get("registered") %}
         <div class="mt-4 rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-700">
@@ -70,6 +75,20 @@
                 新規店舗登録はこちら
             </a>
         </div>
+
+<div style="margin-top:24px;padding-top:20px;border-top:1px solid #d8efec;text-align:center;font-size:13px;line-height:1.8;color:#6b7280;">
+  <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center;">
+    <a href="/terms" style="color:inherit;">利用規約</a>
+    <span>｜</span>
+    <a href="/privacy" style="color:inherit;">プライバシーポリシー</a>
+    <span>｜</span>
+    <a href="/tokutei" style="color:inherit;">特定商取引法に基づく表記</a>
+    <span>｜</span>
+    <a href="/policy" style="color:inherit;">返金・解約ポリシー</a>
+  </div>
+  <p style="margin:10px 0 0;font-size:12px;">当サイトでは、サービス向上および利便性向上のためCookieを使用しています。引き続きご利用いただくことで、Cookieの使用に同意したものとみなします。</p>
+  <p style="margin:8px 0 0;">© 2026 らくばい</p>
+</div>
 
     </div>
 </div>

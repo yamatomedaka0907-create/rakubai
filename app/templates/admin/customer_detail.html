@@ -3,6 +3,7 @@
 <div class="hero"><div class="hero-top"><div><h1>顧客編集</h1><p>顧客の基本情報を編集できます。</p></div></div></div>
 {% if success_message %}<div class="card" style="margin-bottom:18px;border-color:#bbf7d0;background:#f0fdf4;"><div class="card-header"><h2>完了</h2><span class="badge">保存済み</span></div><p class="section-note">{{ success_message }}</p></div>{% endif %}
 {% if error_message %}<div class="card" style="margin-bottom:18px;border-color:#fecaca;background:#fff1f2;"><div class="card-header"><h2>エラー</h2><span class="badge">確認</span></div><p class="section-note">{{ error_message }}</p></div>{% endif %}
+{% if hidden_customer_photo_count %}<div class="card" style="margin-bottom:18px;border-color:#fed7aa;background:#fff7ed;"><div class="card-header"><h2>写真の表示制限中</h2><span class="badge">{{ hidden_customer_photo_count }}枚非表示</span></div><p class="section-note">この顧客の写真は現在のプラン上限を超えた新しい分を非表示にしています。</p></div>{% endif %}
 <div class="card" id="chat-panel" style="margin-bottom:18px;">
   <div class="card-header"><h2>顧客とのチャット</h2><span class="badge">{{ customer.name }}</span></div>
   {% if member_chat_enabled %}

@@ -5,6 +5,7 @@
 <div class="tool-grid">
   {% if success_message %}<div class="tool-alert is-success">{{ success_message }}</div>{% endif %}
   {% if error_message %}<div class="tool-alert is-danger">{{ error_message }}</div>{% endif %}
+  {% if hidden_customer_photo_count %}<div class="tool-alert" style="background:#fff7ed;color:#9a3412;border:1px solid #fdba74;">この顧客の写真は現在のプラン上限を超えた新しい {{ hidden_customer_photo_count }} 枚を非表示にしています。</div>{% endif %}
 
   <section class="tool-panel" id="chat-panel">
     <div class="tool-panel-head"><h2>顧客とのチャット</h2><div class="tool-note">5秒ごとに自動更新</div></div>

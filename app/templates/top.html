@@ -123,6 +123,7 @@
               <li>顧客管理(無制限)</li>
               <li>顧客1人につき写真50枚まで保存可</li>
               <li>登録スタッフ30人まで</li>
+              <li>タイムラインカルテ</li>
               <li>その他etc</li>
             </ul>
             <a href='/plans/premium' class='plan-button plan-button-sub'>プランの詳細はこちら</a>
@@ -171,8 +172,88 @@
         </div>
       </div>
     </section>
-    <section id='contact' class='dummy-section white'><div class='section-inner small'><h2>お問合せ</h2><p>必要に応じてお問い合わせ導線をここに追加してください。</p></div></section>
+    <section id='contact' class='dummy-section white contact-section'>
+      <div class='section-inner small'>
+        <p class='section-label'>CONTACT</p>
+        <h2>お問い合わせ</h2>
+        <p class='contact-lead'>導入のご相談、機能のご質問、料金に関するご相談など、お気軽にお問い合わせください。</p>
+        {% if contact_message %}
+          <div class='contact-alert {% if contact_status == "success" %}is-success{% else %}is-error{% endif %}'>{{ contact_message }}</div>
+        {% endif %}
+        <div class='contact-card'>
+          <div class='contact-card-copy'>
+            <h3>らくばいについて相談する</h3>
+            <p>店舗の予約運用に合わせた使い方や、導入までの流れもご案内できます。通常1〜2営業日以内を目安にご返信します。</p>
+            <ul class='contact-points'>
+              <li>導入前のご相談</li>
+              <li>プラン・料金のご相談</li>
+              <li>操作方法や機能に関するご質問</li>
+            </ul>
+            <div class='contact-direct'>
+              <span>メールでのご連絡先</span>
+              <a href='mailto:info@rakubai.net'>info@rakubai.net</a>
+            </div>
+          </div>
+          <form class='contact-form' method='post' action='/contact'>
+            <input type='text' name='website' class='contact-hp' tabindex='-1' autocomplete='off' aria-hidden='true'>
+            <div class='contact-grid'>
+              <label>
+                <span>お名前<span class='required'>必須</span></span>
+                <input type='text' name='name' required placeholder='山田 太郎'>
+              </label>
+              <label>
+                <span>メールアドレス<span class='required'>必須</span></span>
+                <input type='email' name='email' required placeholder='example@rakubai.net'>
+              </label>
+              <label>
+                <span>店舗名・会社名</span>
+                <input type='text' name='company' placeholder='らくばいサロン'>
+              </label>
+              <label>
+                <span>電話番号</span>
+                <input type='text' name='phone' placeholder='090-1234-5678'>
+              </label>
+            </div>
+            <label>
+              <span>お問い合わせ種別<span class='required'>必須</span></span>
+              <select name='category' required>
+                <option value='サービスについて'>サービスについて</option>
+                <option value='料金について'>料金について</option>
+                <option value='導入相談'>導入相談</option>
+                <option value='操作方法'>操作方法</option>
+                <option value='その他'>その他</option>
+              </select>
+            </label>
+            <label>
+              <span>お問い合わせ内容<span class='required'>必須</span></span>
+              <textarea name='message' rows='7' required placeholder='お問い合わせ内容をご入力ください'></textarea>
+            </label>
+            <label class='contact-agree'>
+              <input type='checkbox' name='agree' value='1' required>
+              <span><a href='/privacy' target='_blank' rel='noopener'>プライバシーポリシー</a>に同意のうえ送信します</span>
+            </label>
+            <button type='submit' class='contact-submit'>お問い合わせを送信する</button>
+          </form>
+        </div>
+      </div>
+    </section>
   </main>
+  <footer style="padding:32px 20px 40px;background:#fff;border-top:1px solid rgba(15,23,42,.08);margin-top:40px;">
+    <div style="max-width:1100px;margin:0 auto;text-align:center;font-size:14px;color:#444;line-height:1.8;">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:center;">
+        <a href="/terms">利用規約</a>
+        <span>｜</span>
+        <a href="/privacy">プライバシーポリシー</a>
+        <span>｜</span>
+        <a href="/tokutei">特定商取引法に基づく表記</a>
+        <span>｜</span>
+        <a href="/policy">返金・解約ポリシー</a>
+      </div>
+      <p style="font-size:12px;color:#888;margin:10px 0 0;">当サイトでは、サービス向上および利便性向上のためCookieを使用しています。引き続きご利用いただくことで、Cookieの使用に同意したものとみなします。</p>
+      <p style="margin:10px 0 0;">© 2026 らくばい</p>
+    </div>
+  </footer>
+
 
   <script>
     const menuToggle = document.getElementById('menuToggle');

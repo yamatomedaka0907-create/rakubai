@@ -4,6 +4,7 @@
 {% block content %}
 <div class="tool-grid">
   {% if success_message %}<div class="tool-alert is-success">{{ success_message }}</div>{% endif %}
+  {% if error_message %}<div class="tool-alert" style="background:#fff1f2; border-color:#fecdd3; color:#9f1239;">{{ error_message }}</div>{% endif %}
 
   <section class="tool-grid cols-2">
     <div class="tool-panel">
@@ -15,10 +16,30 @@
             <div class="tool-field"><label class="tool-label">電話番号</label><input class="tool-input" type="text" name="phone" value="{{ shop.phone }}"></div>
             <div class="tool-field full"><label class="tool-label">住所</label><input class="tool-input" type="text" name="address" value="{{ shop.address }}"></div>
             <div class="tool-field"><label class="tool-label">営業時間</label><input class="tool-input" type="text" name="business_hours" value="{{ shop.business_hours }}"></div>
-            <div class="tool-field"><label class="tool-label">定休日</label><input class="tool-input" type="text" name="holiday" value="{{ shop.holiday }}"></div>
+            <div class="tool-field">
+              <label class="tool-label">定休日</label>
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:8px; margin-top:8px;">
+                {% for day_name in ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日", "日曜日"] %}
+                <label class="tool-card-lite" style="display:flex; gap:8px; align-items:center; padding:10px 12px;">
+                  <input type="checkbox" name="holiday" value="{{ day_name }}" {% if day_name in (shop.holiday or '') %}checked{% endif %}>
+                  <span>{{ day_name }}</span>
+                </label>
+                {% endfor %}
+              </div>
+            </div>
             <div class="tool-field full"><label class="tool-label">キャッチコピー</label><input class="tool-input" type="text" name="catch_copy" value="{{ shop.catch_copy }}"></div>
             <div class="tool-field full"><label class="tool-label">説明文</label><textarea class="tool-textarea" name="description">{{ shop.description }}</textarea></div>
             <div class="tool-field"><label class="tool-label">管理画面タイプ</label><select class="tool-select" name="admin_ui_mode"><option value="web" {% if shop.admin_ui_mode != "tool" %}selected{% endif %}>WEB風</option><option value="tool" {% if shop.admin_ui_mode == "tool" %}selected{% endif %}>ツール風</option></select></div>
+            <div class="tool-field"><label class="tool-label">見出し背景カラー</label><select class="tool-select" name="heading_bg_color">
+              <option value="#ff6f91" {% if (shop.heading_bg_color or '#ff6f91') == '#ff6f91' %}selected{% endif %}>ローズピンク</option>
+              <option value="#f06292" {% if shop.heading_bg_color == '#f06292' %}selected{% endif %}>ピンク</option>
+              <option value="#ec4899" {% if shop.heading_bg_color == '#ec4899' %}selected{% endif %}>ビビッドピンク</option>
+              <option value="#fb7185" {% if shop.heading_bg_color == '#fb7185' %}selected{% endif %}>コーラル</option>
+              <option value="#c084fc" {% if shop.heading_bg_color == '#c084fc' %}selected{% endif %}>ラベンダー</option>
+              <option value="#60a5fa" {% if shop.heading_bg_color == '#60a5fa' %}selected{% endif %}>スカイブルー</option>
+              <option value="#34d399" {% if shop.heading_bg_color == '#34d399' %}selected{% endif %}>ミントグリーン</option>
+              <option value="#f59e0b" {% if shop.heading_bg_color == '#f59e0b' %}selected{% endif %}>ハニー</option>
+            </select></div>
             <div class="tool-field full">
               <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:8px;">
                 <label class="tool-label" style="margin:0;">取り扱いメニュー</label>
@@ -51,15 +72,15 @@
     </div>
 
     <div class="tool-grid">
-      <section class="tool-panel">
-        <div class="tool-panel-head"><h2>契約プラン</h2></div>
+      {% if not is_child_shop %}<section class="tool-panel">
+        <div class="tool-panel-head"><h2>{% if is_child_shop %}契約利用情報{% else %}契約プラン{% endif %}</h2></div>
         <div class="tool-panel-body">
           <form method="post" action="/admin/{{ shop_id }}/subscription">
             <div class="tool-form-grid">
               <div class="tool-field full"><label class="tool-label">現在のプラン</label><select class="tool-select" name="plan_id">{% for plan in available_plans %}<option value="{{ plan.id }}" {% if subscription and subscription.plan_id == plan.id %}selected{% endif %}>{{ plan.name }} / ¥{{ plan.monthly_price }}</option>{% endfor %}</select></div>
               <div class="tool-field full"><label class="tool-label">契約状態</label><select class="tool-select" name="status"><option value="active" {% if subscription and subscription.status == 'active' %}selected{% endif %}>active</option><option value="trial" {% if subscription and subscription.status == 'trial' %}selected{% endif %}>trial</option><option value="canceled" {% if subscription and subscription.status == 'canceled' %}selected{% endif %}>canceled</option></select></div>
             </div>
-            <div class="tool-note" style="margin-top:12px;">現在は3プラン構成です。LINE連携・チャット機能・複数店舗管理は未実装ですが、将来導入予定の前提でプランに反映しています。</div>
+            <div class="tool-note" style="margin-top:12px;">有料プランからフリープランへ変更する場合は、次の確認ページで同意が必要です。</div>
             <div class="tool-actions with-top-gap"><button class="tool-btn is-primary" type="submit">プランを更新</button></div>
           </form>
           <div class="tool-table-wrap" style="margin-top:18px;">
@@ -69,7 +90,13 @@
             </table>
           </div>
         </div>
-      </section>
+      </section>{% else %}
+      <section class="tool-panel">
+        <div class="tool-panel-head"><h2>子店舗情報</h2></div>
+        <div class="tool-panel-body">
+          <div class="tool-note">この店舗は子店舗です。親店舗「{{ parent_shop.shop_name if parent_shop else (shop.parent_shop_id or '-') }}」の契約を利用します。子店舗側でプラン変更はできません。</div>
+        </div>
+      </section>{% endif %}
 
       <section class="tool-panel">
         <div class="tool-panel-head"><h2>管理ユーザー</h2></div>
@@ -123,4 +150,48 @@
   });
 })();
 </script>
+
+
+<div class="tool-grid">
+  <section class="tool-panel">
+    <div class="tool-panel-head"><h2>子店舗管理</h2></div>
+    <div class="tool-panel-body">
+      {% if is_child_shop %}
+      <div class="tool-note">この店舗は子店舗です。子店舗から親店舗の管理画面へは移動できません。</div>
+      {% else %}
+        {% if is_parent_premium %}
+        <form method="post" action="/admin/{{ shop_id }}/child-shops">
+          <div class="tool-form-grid">
+            <div class="tool-field"><label class="tool-label">子店舗名</label><input class="tool-input" type="text" name="child_shop_name" placeholder="例: 渋谷2号店" required></div>
+            <div class="tool-field"><label class="tool-label">子店舗ログインID</label><input class="tool-input" type="text" name="child_shop_id" placeholder="例: shibuya-2" required></div>
+            <div class="tool-field full"><label class="tool-label">子店舗ログインパスワード</label><input class="tool-input" type="password" name="child_password" placeholder="4文字以上" required></div>
+          </div>
+          <div class="tool-note" style="margin-top:12px;">子店舗は完全に新規店舗として作成されます。スタッフ・顧客・予約・メニューは引き継がれません。</div>
+          <div class="tool-actions with-top-gap"><button class="tool-btn is-primary" type="submit">子店舗を追加</button></div>
+        </form>
+        {% else %}
+        <div class="tool-note">子店舗追加はプレミアムプラン専用です。</div>
+        {% endif %}
+
+        <div style="margin-top:18px;">
+          <div class="tool-label" style="margin-bottom:8px;">登録済みの子店舗</div>
+          {% if child_shops %}
+          <div style="display:grid; gap:10px;">
+            {% for child in child_shops %}
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; border:1px solid var(--tool-line); border-radius:14px; padding:12px;">
+              <div>
+                <div style="font-weight:700;">{{ child.shop_name }}</div>
+                <div class="tool-note">ログインID: {{ child.shop_id }}</div>
+              </div>
+              <a class="tool-btn" href="/admin/{{ child.shop_id }}" target="_blank" rel="noopener noreferrer">新しいウィンドウで開く</a>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}<div class="tool-note">まだ子店舗はありません。</div>{% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </section>
+</div>
+
 {% endblock %}

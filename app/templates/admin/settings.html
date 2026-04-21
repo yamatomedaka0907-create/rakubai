@@ -1,6 +1,8 @@
 {% extends "admin/base.html" %}
 {% block content %}
 <div class="hero"><div class="hero-top"><div><h1>店舗情報編集</h1><p>予約ページに表示する店舗情報をここで変更します。</p></div></div></div>
+{% if success_message %}<div class="card" style="margin-bottom:16px; border-color:#bbf7d0; background:#f0fdf4; color:#166534;">{{ success_message }}</div>{% endif %}
+{% if error_message %}<div class="card" style="margin-bottom:16px; border-color:#fecdd3; background:#fff1f2; color:#9f1239;">{{ error_message }}</div>{% endif %}
 <div class="card">
   <div class="card-header"><h2>ショップ設定</h2><span class="badge">公開ページに反映</span></div>
   <form method="post" action="/admin/{{ shop_id }}/settings" id="shop-settings-form">
@@ -11,7 +13,17 @@
     <label>住所<input type="text" name="address" value="{{ shop.address }}"></label>
     <div class="grid">
       <div><label>営業時間<input type="text" name="business_hours" value="{{ shop.business_hours }}" placeholder="10:00〜19:00"></label></div>
-      <div><label>定休日<select name="holiday">{% for day_name in ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日", "日曜日"] %}<option value="{{ day_name }}" {% if shop.holiday == day_name %}selected{% endif %}>{{ day_name }}</option>{% endfor %}</select></label></div>
+      <div>
+        <label style="display:block;">定休日</label>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:8px; margin-top:8px;">
+          {% for day_name in ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日", "日曜日"] %}
+          <label style="display:flex; align-items:center; gap:8px; margin:0; padding:10px 12px; border:1px solid var(--line); border-radius:12px; background:#fff;">
+            <input type="checkbox" name="holiday" value="{{ day_name }}" {% if day_name in (shop.holiday or '') %}checked{% endif %}>
+            <span>{{ day_name }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
     </div>
     <div class="grid">
       <div><label>管理画面タイプ<select name="admin_ui_mode"><option value="web" {% if shop.admin_ui_mode != "tool" %}selected{% endif %}>WEB風</option><option value="tool" {% if shop.admin_ui_mode == "tool" %}selected{% endif %}>ツール風</option></select></label></div>
@@ -48,6 +60,16 @@
       <option value="#fff7ed" {% if shop.accent_bg == '#fff7ed' %}selected{% endif %} style="background:#fff7ed;color:#111827;">薄オレンジ</option>
       <option value="#fdf2f8" {% if shop.accent_bg == '#fdf2f8' %}selected{% endif %} style="background:#fdf2f8;color:#111827;">薄ピンク</option>
       <option value="#fefce8" {% if shop.accent_bg == '#fefce8' %}selected{% endif %} style="background:#fefce8;color:#111827;">薄イエロー</option>
+    </select></label>
+    <label>見出し背景カラー<select name="heading_bg_color" id="heading_bg_color" class="color-select">
+      <option value="#ff6f91" {% if (shop.heading_bg_color or '#ff6f91') == '#ff6f91' %}selected{% endif %} style="background:#ff6f91;color:#ffffff;">ローズピンク</option>
+      <option value="#f06292" {% if shop.heading_bg_color == '#f06292' %}selected{% endif %} style="background:#f06292;color:#ffffff;">ピンク</option>
+      <option value="#ec4899" {% if shop.heading_bg_color == '#ec4899' %}selected{% endif %} style="background:#ec4899;color:#ffffff;">ビビッドピンク</option>
+      <option value="#fb7185" {% if shop.heading_bg_color == '#fb7185' %}selected{% endif %} style="background:#fb7185;color:#ffffff;">コーラル</option>
+      <option value="#c084fc" {% if shop.heading_bg_color == '#c084fc' %}selected{% endif %} style="background:#c084fc;color:#ffffff;">ラベンダー</option>
+      <option value="#60a5fa" {% if shop.heading_bg_color == '#60a5fa' %}selected{% endif %} style="background:#60a5fa;color:#ffffff;">スカイブルー</option>
+      <option value="#34d399" {% if shop.heading_bg_color == '#34d399' %}selected{% endif %} style="background:#34d399;color:#ffffff;">ミントグリーン</option>
+      <option value="#f59e0b" {% if shop.heading_bg_color == '#f59e0b' %}selected{% endif %} style="background:#f59e0b;color:#ffffff;">ハニー</option>
     </select></label>
 
     <div style="margin-top:24px; border:1px solid var(--line); border-radius:18px; padding:18px; background:#fcfffe;">
@@ -131,4 +153,50 @@
   });
 })();
 </script>
+
+<div class="card" style="margin-top:16px;">
+  <div class="card-header"><h2>子店舗管理</h2><span class="badge">プレミアム専用</span></div>
+  {% if is_child_shop %}
+  <div style="color:var(--subtext); line-height:1.8;">
+    この店舗は子店舗です。契約プランは持たず、親店舗「{{ parent_shop.shop_name if parent_shop else (shop.parent_shop_id or '-') }}」のプレミアム契約を利用します。
+    子店舗から親店舗の管理画面へは移動できません。
+  </div>
+  {% else %}
+    {% if is_parent_premium %}
+    <form method="post" action="/admin/{{ shop_id }}/child-shops" style="display:grid; gap:14px; margin-bottom:18px;">
+      <div class="grid">
+        <label>子店舗名<input type="text" name="child_shop_name" placeholder="例: 渋谷2号店" required></label>
+        <label>子店舗ログインID<input type="text" name="child_shop_id" placeholder="例: shibuya-2" required></label>
+      </div>
+      <label>子店舗ログインパスワード<input type="password" name="child_password" placeholder="4文字以上" required></label>
+      <div style="color:var(--subtext); font-size:13px; line-height:1.8;">
+        子店舗は完全に新規店舗として作成されます。スタッフ・顧客・予約・メニューは引き継がれません。
+      </div>
+      <div><button type="submit" style="width:auto; padding:0 18px;">子店舗を追加する</button></div>
+    </form>
+    {% else %}
+    <div style="color:var(--subtext); line-height:1.8; margin-bottom:18px;">子店舗追加はプレミアムプラン専用です。</div>
+    {% endif %}
+
+    <div style="border-top:1px solid var(--line); padding-top:16px;">
+      <div style="font-size:16px; font-weight:800; margin-bottom:10px;">登録済みの子店舗</div>
+      {% if child_shops %}
+      <div style="display:grid; gap:10px;">
+        {% for child in child_shops %}
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px; border:1px solid var(--line); border-radius:14px; background:#fff;">
+          <div>
+            <div style="font-weight:700;">{{ child.shop_name }}</div>
+            <div style="font-size:13px; color:var(--subtext);">ログインID: {{ child.shop_id }}</div>
+          </div>
+          <a href="/admin/{{ child.shop_id }}" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:0 16px; border-radius:12px; background:var(--primary); color:#fff; text-decoration:none; font-weight:700;">新しいウィンドウで開く</a>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="color:var(--subtext);">まだ子店舗はありません。</div>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+
 {% endblock %}

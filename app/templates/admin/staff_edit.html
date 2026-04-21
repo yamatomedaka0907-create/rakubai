@@ -22,10 +22,79 @@
         {% endfor %}
       </div>
     </div>
+
+    <div>
+      <label style="display:block; margin-bottom:10px; font-weight:700;">休日設定</label>
+      <div class="holiday-picker" data-holiday-picker>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px;">
+          <input type="date" data-holiday-date-input>
+          <button type="button" data-holiday-add>追加</button>
+        </div>
+        <input type="hidden" name="holiday_dates" value="{{ selected_holiday_dates|join(',') }}" data-holiday-hidden>
+        <div data-holiday-empty {% if selected_holiday_dates %}style="display:none;"{% endif %}>まだ休日は登録されていません。</div>
+        <div data-holiday-list style="display:grid; gap:8px;">
+          {% for holiday_date in selected_holiday_dates %}
+          <div data-holiday-item="{{ holiday_date }}" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <span style="display:inline-flex; align-items:center; min-height:36px; padding:0 12px; border-radius:999px; border:1px solid var(--line); background:#fff5f5; color:#b91c1c; font-weight:700;">{{ holiday_date }}</span>
+            <button type="button" data-holiday-remove="{{ holiday_date }}">削除</button>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
     <div style="display:flex; gap:10px; flex-wrap:wrap;">
       <button type="submit">保存する</button>
       <a href="/admin/{{ shop_id }}/staff-info" class="secondary-link">キャンセル</a>
     </div>
   </form>
+<script>
+(function(){
+  const picker = document.querySelector('[data-holiday-picker]');
+  if (!picker) return;
+  const hidden = picker.querySelector('[data-holiday-hidden]');
+  const list = picker.querySelector('[data-holiday-list]');
+  const empty = picker.querySelector('[data-holiday-empty]');
+  const input = picker.querySelector('[data-holiday-date-input]');
+  const addButton = picker.querySelector('[data-holiday-add]');
+
+  function values(){
+    return (hidden.value || '').split(',').map(v => v.trim()).filter(Boolean).sort();
+  }
+  function setValues(items){
+    hidden.value = Array.from(new Set(items)).sort().join(',');
+    render();
+  }
+  function render(){
+    const items = values();
+    list.innerHTML = '';
+    empty.style.display = items.length ? 'none' : '';
+    items.forEach(function(value){
+      const row = document.createElement('div');
+      row.setAttribute('data-holiday-item', value);
+      row.style.display = 'flex';
+      row.style.gap = '8px';
+      row.style.flexWrap = 'wrap';
+      row.style.alignItems = 'center';
+      row.innerHTML = '<span style="display:inline-flex; align-items:center; min-height:36px; padding:0 12px; border-radius:999px; border:1px solid var(--line); background:#fff5f5; color:#b91c1c; font-weight:700;">'+value+'</span><button type="button" data-holiday-remove="'+value+'">削除</button>';
+      list.appendChild(row);
+    });
+  }
+  addButton.addEventListener('click', function(){
+    const value = (input.value || '').trim();
+    if (!value) return;
+    setValues(values().concat([value]));
+    input.value = '';
+  });
+  list.addEventListener('click', function(event){
+    const button = event.target.closest('[data-holiday-remove]');
+    if (!button) return;
+    const value = button.getAttribute('data-holiday-remove') || '';
+    setValues(values().filter(item => item !== value));
+  });
+  render();
+})();
+</script>
+
 </div>
 {% endblock %}

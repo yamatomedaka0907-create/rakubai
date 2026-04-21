@@ -1,0 +1,43 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<div class="hero">
+  <div class="hero-top">
+    <div>
+      <h1>予約内容</h1>
+      <p>予約の詳細情報を確認できます。</p>
+    </div>
+    <div class="hero-actions">
+      <a href="/admin/{{ shop_id }}/timeline-karte?date={{ reservation.reservation_date }}" class="secondary-link">タイムラインカルテへ戻る</a>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2>{{ reservation.customer_name }}</h2>
+    <span class="badge">{{ reservation.status }}</span>
+  </div>
+  <div class="detail-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
+    <div><strong>予約日</strong><div>{{ reservation.reservation_date }}</div></div>
+    <div><strong>時間</strong><div>{{ reservation.start_time }} - {{ reservation.end_time }}</div></div>
+    <div><strong>担当スタッフ</strong><div>{% if reservation.staff_id %}<a href="/admin/{{ shop_id }}/staff/{{ reservation.staff_id }}?date={{ reservation.reservation_date }}">{{ reservation.staff_name }}</a>{% else %}{{ reservation.staff_name or '未設定' }}{% endif %}</div></div>
+    <div><strong>メニュー</strong><div>{{ reservation.menu_name or '未設定' }}</div></div>
+    <div><strong>料金</strong><div>{% if reservation.price %}¥{{ reservation.price }}{% else %}-{% endif %}</div></div>
+    <div><strong>所要時間</strong><div>{% if reservation.duration %}{{ reservation.duration }}分{% else %}-{% endif %}</div></div>
+    <div><strong>予約経路</strong><div>{{ reservation.source or '-' }}</div></div>
+    <div><strong>受付日時</strong><div>{{ reservation.created_at or '-' }}</div></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2>お客様情報</h2>
+  </div>
+  <div class="detail-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
+    <div><strong>お名前</strong><div>{{ reservation.customer_name }}</div></div>
+    <div><strong>メール</strong><div>{{ reservation.customer_email or '-' }}</div></div>
+    <div><strong>配信希望</strong><div>{% if reservation.receive_email %}希望する{% else %}希望しない{% endif %}</div></div>
+    <div><strong>顧客ページ</strong><div>{% if customer %}<a href="/admin/{{ shop_id }}/customers/{{ customer.id }}">顧客詳細を開く</a>{% else %}-{% endif %}</div></div>
+  </div>
+</div>
+{% endblock %}

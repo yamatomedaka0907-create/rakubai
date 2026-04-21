@@ -1,0 +1,41 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<div class="hero"><div class="hero-top"><div><h1>フリープラン変更の確認</h1><p>このページで同意して確定した場合のみ、プランが実際に変更されます。</p></div><a class="secondary-link" href="/admin/{{ shop_id }}/settings">戻る</a></div></div>
+{% if error_message %}<div class="card" style="margin-bottom:16px; border-color:#fecdd3; background:#fff1f2; color:#9f1239;">{{ error_message }}</div>{% endif %}
+<div class="page-grid">
+  <section class="card">
+    <div class="card-header"><h2>変更内容</h2><span class="badge">{{ current_plan_name }} → {{ target_plan_name }}</span></div>
+    <p class="section-note">有料プランからフリープランに変更すると、既存データは削除されません。ただし上限を超えた分は新しい順から表示されません。</p>
+    <div class="table-wrap" style="margin-top:16px;">
+      <table>
+        <thead><tr><th>項目</th><th>現在</th><th>フリー上限</th><th>非表示になる件数</th></tr></thead>
+        <tbody>
+          {% for row in downgrade_summary.rows %}
+          <tr>
+            <td><strong>{{ row.label }}</strong><div class="section-note" style="margin-top:6px;">{{ row.message }}</div></td>
+            <td>{{ row.current }}</td>
+            <td>{{ row.limit }}</td>
+            <td>{% if row.hidden %}{{ row.hidden }}{% else %}0{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <section class="card">
+    <div class="card-header"><h2>同意して変更する</h2><span class="badge">確認必須</span></div>
+    <form method="post" action="/admin/{{ shop_id }}/subscription/confirm">
+      <input type="hidden" name="plan_id" value="{{ plan_id }}">
+      <input type="hidden" name="status" value="{{ status }}">
+      <label style="display:flex; gap:10px; align-items:flex-start; font-weight:700;">
+        <input type="checkbox" name="consent_free_plan_downgrade" value="yes" style="width:auto; min-height:auto; margin-top:3px;">
+        <span>フリープラン変更後、上限を超えた新しいデータが非表示になることを理解し、変更に同意します。</span>
+      </label>
+      <div class="action-buttons" style="margin-top:16px;">
+        <button type="submit">同意してフリープランへ変更</button>
+        <a class="secondary-link" href="/admin/{{ shop_id }}/settings">キャンセル</a>
+      </div>
+    </form>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "admin/tool/base.html" %}
+{% block page_title %}予約内容{% endblock %}
+{% block page_subtitle %}予約の詳細情報を確認できます。{% endblock %}
+{% block content %}
+<div class="tool-grid cols-2">
+<section class="tool-panel">
+  <div class="tool-panel-head is-wide">
+    <div>
+      <h2>{{ reservation.customer_name }}</h2>
+      <div class="tool-note">{{ reservation.reservation_date }} {{ reservation.start_time }} - {{ reservation.end_time }}</div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <span class="tool-badge {% if reservation.status == '来店済み' %}is-primary{% endif %}">{{ reservation.status }}</span>
+      <a class="tool-btn" href="/admin/{{ shop_id }}/timeline-karte?date={{ reservation.reservation_date }}">タイムラインカルテへ戻る</a>
+    </div>
+  </div>
+  <div class="tool-panel-body">
+    <div class="tool-card-stack" style="margin-top:0;">
+      <div class="tool-card-lite"><strong>担当スタッフ</strong><div class="tool-note" style="margin-top:8px;">{% if reservation.staff_id %}<a href="/admin/{{ shop_id }}/staff/{{ reservation.staff_id }}?date={{ reservation.reservation_date }}">{{ reservation.staff_name }}</a>{% else %}{{ reservation.staff_name or '未設定' }}{% endif %}</div></div>
+      <div class="tool-card-lite"><strong>メニュー</strong><div class="tool-note" style="margin-top:8px;">{{ reservation.menu_name or '未設定' }}</div></div>
+      <div class="tool-card-lite"><strong>料金</strong><div class="tool-note" style="margin-top:8px;">{% if reservation.price %}¥{{ reservation.price }}{% else %}-{% endif %}</div></div>
+      <div class="tool-card-lite"><strong>所要時間</strong><div class="tool-note" style="margin-top:8px;">{% if reservation.duration %}{{ reservation.duration }}分{% else %}-{% endif %}</div></div>
+      <div class="tool-card-lite"><strong>予約経路</strong><div class="tool-note" style="margin-top:8px;">{{ reservation.source or '-' }}</div></div>
+      <div class="tool-card-lite"><strong>受付日時</strong><div class="tool-note" style="margin-top:8px;">{{ reservation.created_at or '-' }}</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="tool-panel">
+  <div class="tool-panel-head">
+    <h2>お客様情報</h2>
+  </div>
+  <div class="tool-panel-body">
+    <div class="tool-card-stack" style="margin-top:0;">
+      <div class="tool-card-lite"><strong>お名前</strong><div class="tool-note" style="margin-top:8px;">{{ reservation.customer_name }}</div></div>
+      <div class="tool-card-lite"><strong>メール</strong><div class="tool-note" style="margin-top:8px;">{{ reservation.customer_email or '-' }}</div></div>
+      <div class="tool-card-lite"><strong>配信希望</strong><div class="tool-note" style="margin-top:8px;">{% if reservation.receive_email %}希望する{% else %}希望しない{% endif %}</div></div>
+      <div class="tool-card-lite"><strong>顧客ページ</strong><div class="tool-note" style="margin-top:8px;">{% if customer %}<a href="/admin/{{ shop_id }}/customers/{{ customer.id }}">顧客詳細を開く</a>{% else %}-{% endif %}</div></div>
+    </div>
+  </div>
+</section>
+</div>
+{% endblock %}
