@@ -11,7 +11,8 @@
 <div class="bg-white p-8 rounded-2xl shadow-md w-full max-w-md">
 
 <h1 class="text-2xl font-bold text-teal-600 mb-2 text-center">新規店舗登録</h1>
-<p class="text-sm text-gray-500 text-center mb-6">登録したログインIDが、そのまま店舗IDとして使われます。</p>
+<p class="text-sm text-gray-500 text-center mb-2">登録したログインIDが、そのまま店舗IDとして使われます。</p>
+<p class="text-xs text-gray-500 text-center mb-6">登録完了前に、メールアドレス宛へ6桁の確認コードを送信します。</p>
 
 {% if error_message %}
 <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -65,7 +66,7 @@
     </label>
 </div>
 
-<button class="w-full bg-teal-500 text-white p-2 rounded hover:bg-teal-600">登録</button>
+<button class="w-full bg-teal-500 text-white p-2 rounded hover:bg-teal-600">確認コードを送信する</button>
 </form>
 
 <div class="mt-6 text-center text-sm">

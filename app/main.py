@@ -37,6 +37,10 @@ from app.db import (
     update_shop_staff_list,
     update_shop_subscription,
     create_shop_with_owner,
+    create_shop_registration_verification,
+    get_shop_registration_verification,
+    verify_shop_registration_code,
+    consume_shop_registration_verification,
     create_customer,
     create_reservation,
     find_customer,
@@ -1261,6 +1265,41 @@ def _get_mail_runtime_settings() -> dict[str, object]:
     }
 
 
+def _send_shop_registration_verification_mail(*, to_email: str, code: str) -> bool:
+    mail_settings = _get_mail_runtime_settings()
+    smtp_user = str(mail_settings.get('smtp_user') or '').strip()
+    smtp_password = str(mail_settings.get('smtp_password') or '').strip()
+    from_email = str(mail_settings.get('from_email') or '').strip()
+    if not to_email or not from_email or not smtp_user or not smtp_password:
+        print('[_send_shop_registration_verification_mail] missing SMTP settings')
+        return False
+
+    subject = '【らくばい】店舗登録確認コード'
+    body = (
+        'らくばい の店舗登録確認コードです。\n\n'
+        f'確認コード: {code}\n\n'
+        'このコードの有効期限は10分です。\n'
+        'このメールに心当たりがない場合は、このまま破棄してください。\n'
+    )
+
+    msg = MIMEText(body, 'plain', 'utf-8')
+    msg['Subject'] = subject
+    msg['From'] = formataddr((str(mail_settings.get('from_name') or 'らくばい'), from_email))
+    msg['To'] = to_email
+
+    try:
+        with smtplib.SMTP(str(mail_settings.get('smtp_host') or 'smtp.gmail.com'), int(mail_settings.get('smtp_port') or 587), timeout=30) as smtp:
+            smtp.ehlo()
+            smtp.starttls()
+            smtp.ehlo()
+            smtp.login(smtp_user, smtp_password)
+            smtp.send_message(msg)
+        return True
+    except Exception as exc:
+        print(f"[_send_shop_registration_verification_mail] failed: {exc}")
+        return False
+
+
 def _send_contact_mail(*, name: str, company: str, email: str, phone: str, category: str, message: str) -> bool:
     mail_settings = _get_mail_runtime_settings()
     smtp_user = str(mail_settings.get('smtp_user') or '').strip()
@@ -1640,11 +1679,11 @@ def policy_page(request: Request):
 
 
 @app.get("/signup", response_class=HTMLResponse)
-def signup_page(request: Request):
+def signup_page(request: Request, error: str | None = None):
     return templates.TemplateResponse(
         request=request,
         name="shop_signup.html",
-        context={"shops": get_all_shops_for_platform(), "error_message": ""},
+        context={"shops": get_all_shops_for_platform(), "error_message": error or ""},
     )
 
 
@@ -1660,11 +1699,13 @@ def signup_submit(
     password_confirm: str = Form(...),
     agree_terms: str | None = Form(None),
 ):
+    from urllib.parse import quote
+
     shop_id = (login_id or "").strip().lower()
     shop_name = (shop_name or "").strip()
     owner_name = (owner_name or "").strip()
     phone = (phone or "").strip()
-    email = (email or "").strip()
+    email = (email or "").strip().lower()
     login_id = (login_id or "").strip()
 
     if not shop_name:
@@ -1706,15 +1747,17 @@ def signup_submit(
             status_code=400,
         )
 
+    code = f"{secrets.randbelow(1_000_000):06d}"
+
     try:
-        create_shop_with_owner(
-            shop_id=shop_id,
+        verification = create_shop_registration_verification(
             shop_name=shop_name,
             owner_name=owner_name,
+            phone=phone,
+            email=email,
             login_id=login_id,
             password=password,
-            phone=phone,
-            reply_to_email=email,
+            code=code,
         )
     except Exception as exc:
         return templates.TemplateResponse(
@@ -1733,6 +1776,83 @@ def signup_submit(
             },
             status_code=400,
         )
+
+    sent = _send_shop_registration_verification_mail(to_email=email, code=code)
+    if not sent:
+        return templates.TemplateResponse(
+            request=request,
+            name="shop_signup.html",
+            context={
+                "shops": get_all_shops_for_platform(),
+                "error_message": "確認コードメールの送信に失敗しました。時間をおいて再度お試しください。",
+                "form": {
+                    "shop_name": shop_name,
+                    "owner_name": owner_name,
+                    "phone": phone,
+                    "email": email,
+                    "login_id": login_id,
+                },
+            },
+            status_code=400,
+        )
+
+    verify_url = f"/signup/verify?shop_id={quote(str(verification.get('shop_id') or ''), safe='')}&token={quote(str(verification.get('token') or ''), safe='')}"
+    return RedirectResponse(url=verify_url, status_code=303)
+
+
+@app.get("/signup/verify", response_class=HTMLResponse)
+def signup_verify_page(request: Request, shop_id: str, token: str, error: str | None = None):
+    verification = get_shop_registration_verification(shop_id, token)
+    if verification is None:
+        return RedirectResponse(url="/signup?error=確認コードの有効期限が切れたか、無効になりました。最初からやり直してください。", status_code=303)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="shop_signup_verify.html",
+        context={
+            "request": request,
+            "token": token,
+            "shop_id": shop_id,
+            "pending_email": str(verification.get('email') or ''),
+            "error_message": error or "",
+        },
+    )
+
+
+@app.post("/signup/verify")
+def signup_verify_submit(
+    request: Request,
+    shop_id: str = Form(...),
+    token: str = Form(...),
+    code: str = Form(...),
+):
+    from urllib.parse import quote
+
+    verification = get_shop_registration_verification(shop_id, token)
+    if verification is None:
+        return RedirectResponse(url="/signup?error=確認コードの有効期限が切れたか、無効になりました。最初からやり直してください。", status_code=303)
+
+    normalized_code = ''.join(ch for ch in str(code or '') if ch.isdigit())
+    if len(normalized_code) != 6:
+        return RedirectResponse(
+            url=f"/signup/verify?shop_id={quote(shop_id, safe='')}&token={quote(token, safe='')}&error=確認コードは6桁の数字で入力してください。",
+            status_code=303,
+        )
+
+    try:
+        verified = verify_shop_registration_code(shop_id, token, normalized_code)
+        if verified is None:
+            return RedirectResponse(
+                url=f"/signup/verify?shop_id={quote(shop_id, safe='')}&token={quote(token, safe='')}&error=確認コードが正しくありません。",
+                status_code=303,
+            )
+        consume_shop_registration_verification(shop_id, token)
+    except ValueError as exc:
+        return RedirectResponse(
+            url=f"/signup/verify?shop_id={quote(shop_id, safe='')}&token={quote(token, safe='')}&error={quote(str(exc), safe='')}",
+            status_code=303,
+        )
+
     return RedirectResponse(
         url="/store-login?registered=店舗を登録しました。ログインしてください。",
         status_code=303,

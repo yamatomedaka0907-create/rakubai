@@ -340,6 +340,26 @@ def init_db() -> None:
 
         conn.execute(
             '''
+            CREATE TABLE IF NOT EXISTS shop_registration_verifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                token TEXT NOT NULL UNIQUE,
+                shop_id TEXT NOT NULL,
+                shop_name TEXT NOT NULL,
+                owner_name TEXT NOT NULL,
+                phone TEXT NOT NULL,
+                email TEXT NOT NULL,
+                login_id TEXT NOT NULL,
+                password_hash TEXT NOT NULL,
+                verification_code TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                verified_at TEXT DEFAULT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+            '''
+        )
+
+        conn.execute(
+            '''
             CREATE TABLE IF NOT EXISTS chat_messages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 shop_id TEXT NOT NULL,
@@ -1210,7 +1230,8 @@ def create_shop_with_owner(
     shop_name: str,
     owner_name: str,
     login_id: str,
-    password: str,
+    password: str = '',
+    password_hash: str = '',
     plan_code: str = 'free',
     catch_copy: str = 'LINE予約もできる、やさしく使いやすい店舗予約システム',
     description: str = '新しく登録された店舗です。管理画面から店舗情報を編集してください。',
@@ -1271,7 +1292,7 @@ def create_shop_with_owner(
             INSERT INTO admin_users (shop_id, name, login_id, password_hash, is_owner, is_active)
             VALUES (?, ?, ?, ?, 1, 1)
             ''',
-            (normalized_shop_id, owner_name.strip(), login_id.strip(), hash_password(password)),
+            (normalized_shop_id, owner_name.strip(), login_id.strip(), password_hash.strip() or hash_password(password)),
         )
         conn.commit()
 
@@ -2628,6 +2649,187 @@ def consume_member_registration_verification(shop_id: str, token: str) -> dict[s
     return member
 
 
+
+
+
+def create_shop_registration_verification(
+    *,
+    shop_name: str,
+    owner_name: str,
+    phone: str,
+    email: str,
+    login_id: str,
+    password: str,
+    code: str,
+) -> dict[str, Any]:
+    normalized_shop_name = (shop_name or '').strip()
+    normalized_owner_name = (owner_name or '').strip()
+    normalized_phone = (phone or '').strip()
+    normalized_email = (email or '').strip().lower()
+    normalized_login_id = (login_id or '').strip().lower()
+    normalized_code = ''.join(ch for ch in str(code or '') if ch.isdigit())
+
+    if not normalized_shop_name:
+        raise ValueError('店舗名を入力してください。')
+    if not normalized_owner_name:
+        raise ValueError('管理者名を入力してください。')
+    if not normalized_phone:
+        raise ValueError('電話番号を入力してください。')
+    if not normalized_email:
+        raise ValueError('メールアドレスを入力してください。')
+    if '@' not in normalized_email:
+        raise ValueError('メールアドレスの形式が正しくありません。')
+    if len(normalized_login_id) < 4:
+        raise ValueError('ログインIDは4文字以上で入力してください。')
+    allowed = set('abcdefghijklmnopqrstuvwxyz0123456789-')
+    if any(ch not in allowed for ch in normalized_login_id):
+        raise ValueError('ログインIDは半角英小文字・数字・ハイフンのみで入力してください。')
+    if len(password or '') < 6:
+        raise ValueError('パスワードは6文字以上で入力してください。')
+    if len(normalized_code) != 6:
+        raise ValueError('確認コードの生成に失敗しました。')
+    if shop_exists(normalized_login_id):
+        raise ValueError('この店舗IDはすでに使われています。')
+
+    token = secrets.token_urlsafe(24)
+    password_hash = hash_password(password)
+    expires_at = (datetime.utcnow() + timedelta(minutes=10)).isoformat()
+
+    with get_connection() as conn:
+        conn.execute(
+            'DELETE FROM shop_registration_verifications WHERE shop_id = ? OR email = ? OR login_id = ?',
+            (normalized_login_id, normalized_email, normalized_login_id),
+        )
+        conn.execute(
+            '''
+            INSERT INTO shop_registration_verifications (
+                token, shop_id, shop_name, owner_name, phone, email, login_id, password_hash, verification_code, expires_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''',
+            (
+                token,
+                normalized_login_id,
+                normalized_shop_name,
+                normalized_owner_name,
+                normalized_phone,
+                normalized_email,
+                normalized_login_id,
+                password_hash,
+                normalized_code,
+                expires_at,
+            ),
+        )
+        conn.commit()
+
+    verification = get_shop_registration_verification(normalized_login_id, token)
+    if verification is None:
+        raise RuntimeError('確認コードの保存に失敗しました。')
+    return verification
+
+
+def get_shop_registration_verification(shop_id: str, token: str) -> dict[str, Any] | None:
+    normalized_shop_id = (shop_id or '').strip().lower()
+    normalized_token = (token or '').strip()
+    if not normalized_shop_id or not normalized_token:
+        return None
+    with get_connection() as conn:
+        row = conn.execute(
+            '''
+            SELECT
+                id, token, shop_id, shop_name, owner_name, phone, email, login_id, password_hash,
+                verification_code, expires_at, verified_at, created_at
+            FROM shop_registration_verifications
+            WHERE shop_id = ? AND token = ?
+            LIMIT 1
+            ''',
+            (normalized_shop_id, normalized_token),
+        ).fetchone()
+    if row is None:
+        return None
+    item = dict(row)
+    expires_at = str(item.get('expires_at') or '').strip()
+    verified_at = str(item.get('verified_at') or '').strip()
+    if verified_at:
+        return None
+    try:
+        if expires_at and datetime.fromisoformat(expires_at) < datetime.utcnow():
+            return None
+    except ValueError:
+        return None
+    return item
+
+
+def _get_shop_registration_verification_including_verified(shop_id: str, token: str) -> dict[str, Any] | None:
+    normalized_shop_id = (shop_id or '').strip().lower()
+    normalized_token = (token or '').strip()
+    if not normalized_shop_id or not normalized_token:
+        return None
+    with get_connection() as conn:
+        row = conn.execute(
+            '''
+            SELECT
+                id, token, shop_id, shop_name, owner_name, phone, email, login_id, password_hash,
+                verification_code, expires_at, verified_at, created_at
+            FROM shop_registration_verifications
+            WHERE shop_id = ? AND token = ?
+            LIMIT 1
+            ''',
+            (normalized_shop_id, normalized_token),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def verify_shop_registration_code(shop_id: str, token: str, code: str) -> dict[str, Any] | None:
+    verification = get_shop_registration_verification(shop_id, token)
+    if verification is None:
+        raise ValueError('確認コードの有効期限が切れたか、無効になりました。最初からやり直してください。')
+    normalized_code = ''.join(ch for ch in str(code or '') if ch.isdigit())
+    if str(verification.get('verification_code') or '') != normalized_code:
+        return None
+    with get_connection() as conn:
+        conn.execute(
+            'UPDATE shop_registration_verifications SET verified_at = CURRENT_TIMESTAMP WHERE shop_id = ? AND token = ?',
+            ((shop_id or '').strip().lower(), token),
+        )
+        conn.commit()
+    return _get_shop_registration_verification_including_verified(shop_id, token)
+
+
+def consume_shop_registration_verification(shop_id: str, token: str) -> dict[str, Any]:
+    verification = _get_shop_registration_verification_including_verified(shop_id, token)
+    if verification is None:
+        raise ValueError('確認コードの有効期限が切れたか、無効になりました。最初からやり直してください。')
+    if not str(verification.get('verified_at') or '').strip():
+        raise ValueError('確認コードが未認証です。')
+
+    try:
+        expires_at = datetime.fromisoformat(str(verification.get('expires_at') or '').strip())
+    except ValueError as exc:
+        raise ValueError('確認コードの有効期限が切れたか、無効になりました。最初からやり直してください。') from exc
+    if expires_at < datetime.utcnow():
+        raise ValueError('確認コードの有効期限が切れました。最初からやり直してください。')
+
+    normalized_shop_id = str(verification.get('shop_id') or '').strip().lower()
+    if shop_exists(normalized_shop_id):
+        raise ValueError('この店舗IDはすでに使われています。')
+
+    created = create_shop_with_owner(
+        shop_id=normalized_shop_id,
+        shop_name=str(verification.get('shop_name') or '').strip(),
+        owner_name=str(verification.get('owner_name') or '').strip(),
+        login_id=str(verification.get('login_id') or '').strip(),
+        password_hash=str(verification.get('password_hash') or '').strip(),
+        phone=str(verification.get('phone') or '').strip(),
+        reply_to_email=str(verification.get('email') or '').strip().lower(),
+        password='',
+    )
+
+    with get_connection() as conn:
+        conn.execute('DELETE FROM shop_registration_verifications WHERE shop_id = ? AND token = ?', (normalized_shop_id, token))
+        conn.commit()
+
+    return created
 def authenticate_member(shop_id: str, phone: str, password: str) -> dict[str, Any] | None:
     member = get_member_by_phone(shop_id, phone)
     if member is None or not int(member.get('is_active') or 0):

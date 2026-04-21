@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>店舗登録 確認コード入力</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+<div class="min-h-screen flex items-center justify-center p-4">
+<div class="bg-white p-8 rounded-2xl shadow-md w-full max-w-md">
+
+<h1 class="text-2xl font-bold text-teal-600 mb-2 text-center">確認コードを入力してください</h1>
+<p class="text-sm text-gray-500 text-center mb-6">メールアドレス宛に送信した6桁の確認コードを入力すると、店舗登録が完了します。</p>
+
+<div class="mb-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+    送信先メールアドレス：<strong>{{ pending_email }}</strong>
+</div>
+
+{% if error_message %}
+<div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+    {{ error_message }}
+</div>
+{% endif %}
+
+<form method="POST" action="/signup/verify" class="space-y-4">
+<input type="hidden" name="shop_id" value="{{ shop_id }}">
+<input type="hidden" name="token" value="{{ token }}">
+
+<div>
+<label class="block mb-1 text-sm font-medium text-gray-700">確認コード</label>
+<input name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required class="w-full border p-2 rounded text-center tracking-[0.4em] text-xl" placeholder="123456">
+<p class="mt-1 text-xs text-gray-500">有効期限は10分です。半角数字6桁で入力してください。</p>
+</div>
+
+<button class="w-full bg-teal-500 text-white p-2 rounded hover:bg-teal-600">店舗登録を完了する</button>
+</form>
+
+<div class="mt-6 text-center text-sm">
+    <a href="/signup" class="text-teal-600 hover:underline">店舗登録に戻る</a>
+</div>
+
+</div>
+</div>
+</body>
+</html>
