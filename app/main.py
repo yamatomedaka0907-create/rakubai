@@ -993,10 +993,10 @@ def _build_public_week_availability_matrix(*, shop: dict, reservations: list[dic
     return week_days, time_slots, weekly_rows
 
 def _send_reservation_mail(*, to_email: str, shop: dict, reservation_date: str, start_time: str, reply_to_email: str = '') -> None:
-    settings = get_system_mail_settings()
-    smtp_user = settings.get('smtp_username') or settings.get('from_email')
-    smtp_password = settings.get('smtp_password')
-    from_email = settings.get('from_email')
+    mail_settings = _get_mail_runtime_settings()
+    smtp_user = str(mail_settings.get('smtp_user') or '').strip()
+    smtp_password = str(mail_settings.get('smtp_password') or '').strip()
+    from_email = str(mail_settings.get('from_email') or '').strip()
     if not to_email or not from_email or not smtp_user or not smtp_password:
         return
 
@@ -1009,17 +1009,19 @@ def _send_reservation_mail(*, to_email: str, shop: dict, reservation_date: str, 
 ご来店をお待ちしております。"""
     msg = MIMEText(body, 'plain', 'utf-8')
     msg['Subject'] = subject
-    msg['From'] = formataddr((settings.get('from_name') or '予約システム', from_email))
+    msg['From'] = formataddr((str(mail_settings.get('from_name') or '予約システム'), from_email))
     msg['To'] = to_email
     if reply_to_email:
         msg['Reply-To'] = reply_to_email
     try:
-        with smtplib.SMTP(settings.get('smtp_host') or 'smtp.gmail.com', int(settings.get('smtp_port') or '587')) as smtp:
+        with smtplib.SMTP(str(mail_settings.get('smtp_host') or 'smtp.gmail.com'), int(mail_settings.get('smtp_port') or 587), timeout=30) as smtp:
+            smtp.ehlo()
             smtp.starttls()
+            smtp.ehlo()
             smtp.login(smtp_user, smtp_password)
             smtp.send_message(msg)
-    except Exception:
-        pass
+    except Exception as exc:
+        print(f"[_send_reservation_mail] failed: {exc}")
 
 
 def parse_month_string(month_text: str | None) -> tuple[int, int]:
@@ -1221,13 +1223,48 @@ def startup():
     init_db()
 
 
+def _get_mail_runtime_settings() -> dict[str, object]:
+    settings = get_system_mail_settings() or {}
+
+    smtp_host = _first_env("SMTP_HOST") or str(settings.get("smtp_host") or "").strip() or "smtp.gmail.com"
+    smtp_port_raw = _first_env("SMTP_PORT") or str(settings.get("smtp_port") or "").strip() or "587"
+    try:
+        smtp_port = int(smtp_port_raw)
+    except (TypeError, ValueError):
+        smtp_port = 587
+
+    smtp_user = (
+        _first_env("SMTP_USER", "SMTP_USERNAME")
+        or str(settings.get("smtp_username") or "").strip()
+        or _first_env("MAIL_FROM", "FROM_EMAIL")
+        or str(settings.get("from_email") or "").strip()
+    )
+    smtp_password = _first_env("SMTP_PASS", "SMTP_PASSWORD") or str(settings.get("smtp_password") or "").strip()
+    from_email = (
+        _first_env("MAIL_FROM", "FROM_EMAIL")
+        or str(settings.get("from_email") or "").strip()
+        or smtp_user
+    )
+    from_name = str(settings.get("from_name") or "").strip() or "らくばい"
+
+    return {
+        "smtp_host": smtp_host,
+        "smtp_port": smtp_port,
+        "smtp_user": smtp_user,
+        "smtp_password": smtp_password,
+        "from_email": from_email,
+        "from_name": from_name,
+    }
+
+
 def _send_contact_mail(*, name: str, company: str, email: str, phone: str, category: str, message: str) -> bool:
-    settings = get_system_mail_settings()
-    smtp_user = settings.get('smtp_username') or settings.get('from_email')
-    smtp_password = settings.get('smtp_password')
-    from_email = settings.get('from_email')
+    mail_settings = _get_mail_runtime_settings()
+    smtp_user = str(mail_settings.get('smtp_user') or '').strip()
+    smtp_password = str(mail_settings.get('smtp_password') or '').strip()
+    from_email = str(mail_settings.get('from_email') or '').strip()
     to_email = 'info@rakubai.net'
     if not from_email or not smtp_user or not smtp_password:
+        print('[_send_contact_mail] missing SMTP settings')
         return False
 
     subject = f"【らくばいお問い合わせ】{category} / {name}"
@@ -1244,16 +1281,19 @@ def _send_contact_mail(*, name: str, company: str, email: str, phone: str, categ
 """
     msg = MIMEText(body, 'plain', 'utf-8')
     msg['Subject'] = subject
-    msg['From'] = formataddr((settings.get('from_name') or 'らくばい', from_email))
+    msg['From'] = formataddr((str(mail_settings.get('from_name') or 'らくばい'), from_email))
     msg['To'] = to_email
     msg['Reply-To'] = email
     try:
-        with smtplib.SMTP(settings.get('smtp_host') or 'smtp.gmail.com', int(settings.get('smtp_port') or '587')) as smtp:
+        with smtplib.SMTP(str(mail_settings.get('smtp_host') or 'smtp.gmail.com'), int(mail_settings.get('smtp_port') or 587), timeout=30) as smtp:
+            smtp.ehlo()
             smtp.starttls()
+            smtp.ehlo()
             smtp.login(smtp_user, smtp_password)
             smtp.send_message(msg)
         return True
-    except Exception:
+    except Exception as exc:
+        print(f"[_send_contact_mail] failed: {exc}")
         return False
 
 
