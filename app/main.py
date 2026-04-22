@@ -271,25 +271,16 @@ def _normalize_api_datetime(value: str | None, *, end_of_day: bool = False) -> s
 
 
 def _serialize_audit_log_row(row: dict[str, object]) -> dict[str, object]:
-    raw_detail = row.get("detail_json")
-    if raw_detail in (None, ""):
-        raw_detail = row.get("detail")
-
-    detail: object
-    if isinstance(raw_detail, dict):
-        detail = raw_detail
-    else:
-        detail_text = str(raw_detail or "{}")
-        try:
-            detail = json.loads(detail_text)
-        except Exception:
-            detail = {"raw": detail_text} if detail_text else {}
+    detail_raw = str(row.get("detail_json") or "{}")
+    try:
+        detail = json.loads(detail_raw)
+    except Exception:
+        detail = detail_raw
 
     occurred_at = row.get("occurred_at")
     if occurred_at:
         try:
-            raw_occurred_at = str(occurred_at).replace("Z", "+00:00")
-            dt = datetime.fromisoformat(raw_occurred_at)
+            dt = datetime.fromisoformat(str(occurred_at))
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=timezone.utc)
             occurred_at = dt.astimezone(JST).strftime("%Y-%m-%d %H:%M:%S")
@@ -4389,7 +4380,7 @@ def member_chat_send_api(request: Request, shop_id: str, message: str = Form(...
     if not customer_id:
         return JSONResponse({"ok": False, "error": "顧客データが見つかりません。"}, status_code=400)
     try:
-        create_chat_message(shop_id, customer_id, int(member['id']), 'member', message)
+        created_message = create_chat_message(shop_id, customer_id, int(member['id']), 'member', message)
     except ValueError as exc:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
     _record_audit_log(
@@ -4402,7 +4393,11 @@ def member_chat_send_api(request: Request, shop_id: str, message: str = Form(...
         target_type="customer",
         target_id=customer_id,
         target_label=str(member.get('name') or ''),
-        detail={"sender_type": "member"},
+        detail={
+            "sender_type": "member",
+            "chat_message_id": int(created_message.get("id") or 0),
+            "customer_id": customer_id,
+        },
     )
     messages = [_serialize_chat_message(item) for item in list_chat_messages(shop_id, customer_id, limit=200, member_id=int(member['id']))]
     return JSONResponse({"ok": True, "messages": messages})
@@ -4441,7 +4436,7 @@ def admin_chat_send_api(request: Request, shop_id: str, customer_id: int, messag
     if chat_limit is not None and sent_count >= chat_limit:
         return JSONResponse({"ok": False, "error": f"このプランではチャット送信は月{chat_limit}通までです。"}, status_code=400)
     try:
-        create_chat_message(shop_id, customer_id, int(linked_member['id']) if linked_member else None, 'staff', message)
+        created_message = create_chat_message(shop_id, customer_id, int(linked_member['id']) if linked_member else None, 'staff', message)
     except ValueError as exc:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
     _record_audit_log(
@@ -4454,7 +4449,11 @@ def admin_chat_send_api(request: Request, shop_id: str, customer_id: int, messag
         target_type="customer",
         target_id=customer_id,
         target_label=str((customer or {}).get("name") or ""),
-        detail={"sender_type": "staff"},
+        detail={
+            "sender_type": "staff",
+            "chat_message_id": int(created_message.get("id") or 0),
+            "customer_id": customer_id,
+        },
     )
     mark_chat_messages_read_for_admin(shop_id, customer_id)
     messages = [_serialize_chat_message(item) for item in list_chat_messages(shop_id, customer_id, limit=200, member_id=active_member_id or (int(linked_member['id']) if linked_member else None))]
@@ -4668,6 +4667,43 @@ def audit_api_logs(
                 "limit": max(1, min(int(limit or 500), 1000)),
                 "offset": max(0, int(offset or 0)),
             },
+        }
+    )
+
+
+@app.get("/admin/api/audit-log-chat-detail")
+def audit_api_chat_detail(
+    request: Request,
+    shop_id: str,
+    customer_id: int,
+    chat_message_id: int,
+):
+    _require_audit_api_token(request)
+    normalized_shop_id = (shop_id or "").strip().lower()
+    if not normalized_shop_id:
+        raise HTTPException(status_code=400, detail="shop_id は必須です")
+    if int(customer_id or 0) <= 0:
+        raise HTTPException(status_code=400, detail="customer_id は必須です")
+    if int(chat_message_id or 0) <= 0:
+        raise HTTPException(status_code=400, detail="chat_message_id は必須です")
+
+    messages = list_chat_messages(normalized_shop_id, int(customer_id), limit=500)
+    target = next((item for item in messages if int(item.get("id") or 0) == int(chat_message_id)), None)
+    if target is None:
+        raise HTTPException(status_code=404, detail="チャットメッセージが見つかりません")
+
+    return JSONResponse(
+        {
+            "item": {
+                "id": int(target.get("id") or 0),
+                "shop_id": str(target.get("shop_id") or normalized_shop_id),
+                "customer_id": int(target.get("customer_id") or 0),
+                "member_id": int(target.get("member_id") or 0) if target.get("member_id") is not None else None,
+                "sender_type": str(target.get("sender_type") or ""),
+                "body": str(target.get("body") or ""),
+                "is_read": int(target.get("is_read") or 0),
+                "created_at": _format_chat_datetime(target.get("created_at")),
+            }
         }
     )
 
