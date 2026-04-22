@@ -66,7 +66,142 @@
               </div>
             </div>
           </div>
+          <div class="tool-panel" style="margin-top:18px;">
+            <div class="tool-panel-head"><h2>リマインド設定</h2></div>
+            <div class="tool-panel-body">
+              <div class="tool-actions" style="justify-content:flex-start; margin-bottom:14px;">
+                <label class="tool-note" style="display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" name="reminder_enabled" value="1" {% if shop.reminder_enabled %}checked{% endif %} style="width:auto;">リマインドを有効にする</label>
+              </div>
+              <div class="tool-grid" style="grid-template-columns:repeat(2, minmax(0, 1fr)); gap:16px;">
+                <section class="tool-card">
+                  <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+                    <div class="tool-title" style="font-size:16px; font-weight:800;">前日リマインド</div>
+                    <label class="tool-note" style="display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" name="reminder_day_before_enabled" value="1" {% if shop.reminder_day_before_enabled %}checked{% endif %} style="width:auto;">送る</label>
+                  </div>
+                  <div class="tool-form-grid">
+                    <div class="tool-field"><label class="tool-label">送信時間</label><input class="tool-input" type="time" name="reminder_day_before_time" value="{{ shop.reminder_day_before_time or '20:00' }}"></div>
+                    <div class="tool-field"></div>
+                    <div class="tool-field full"><label class="tool-label">件名</label><input class="tool-input" type="text" name="reminder_day_before_subject" value="{{ shop.reminder_day_before_subject or '【{{shop_name}}】明日のご予約について' }}"></div>
+                    <div class="tool-field full"><label class="tool-label">本文</label><textarea class="tool-textarea" name="reminder_day_before_body" rows="10">{{ shop.reminder_day_before_body or '{{customer_name}}様
+
+いつも{{shop_name}}をご利用いただきありがとうございます。
+
+明日、以下の内容でご予約をいただいております。
+
+■日時
+{{reservation_date}} {{reservation_time}}
+
+ご来店を心よりお待ちしております。
+
+※本メールは送信専用です。' }}</textarea></div>
+                  </div>
+                </section>
+                <section class="tool-card">
+                  <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+                    <div class="tool-title" style="font-size:16px; font-weight:800;">当日リマインド</div>
+                    <label class="tool-note" style="display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" name="reminder_same_day_enabled" value="1" {% if shop.reminder_same_day_enabled %}checked{% endif %} style="width:auto;">送る</label>
+                  </div>
+                  <div class="tool-form-grid">
+                    <div class="tool-field"><label class="tool-label">何時間前</label><input class="tool-input" type="number" name="reminder_same_day_hours_before" min="0" step="1" value="{{ shop.reminder_same_day_hours_before if shop.reminder_same_day_hours_before is not none else 1 }}"></div>
+                    <div class="tool-field"></div>
+                    <div class="tool-field full"><label class="tool-label">件名</label><input class="tool-input" type="text" name="reminder_same_day_subject" value="{{ shop.reminder_same_day_subject or '【{{shop_name}}】まもなくご予約のお時間です' }}"></div>
+                    <div class="tool-field full"><label class="tool-label">本文</label><textarea class="tool-textarea" name="reminder_same_day_body" rows="10">{{ shop.reminder_same_day_body or '{{customer_name}}様
+
+{{shop_name}}でございます。
+
+本日、以下のお時間でご予約をいただいております。
+
+■日時
+{{reservation_date}} {{reservation_time}}
+
+ご来店の際はお気をつけてお越しください。
+
+※本メールは送信専用です。' }}</textarea></div>
+                  </div>
+                </section>
+              </div>
+              <div class="tool-note" style="margin-top:12px;">使用できる差し込み項目：{% raw %}{{customer_name}} / {{shop_name}} / {{reservation_date}} / {{reservation_time}} / {{staff_name}} / {{menu_name}}{% endraw %}</div>
+            </div>
+          </div>
+
+          
+          <div class="tool-field full">
+            <div class="tool-panel" style="border:1px solid var(--tool-line); box-shadow:none;">
+              <div class="tool-panel-head"><h2>リマインド設定</h2></div>
+              <div class="tool-panel-body">
+                <div class="tool-form-grid">
+                  <div class="tool-field full">
+                    <label class="tool-card-lite" style="display:flex; gap:8px; align-items:center; padding:12px 14px;">
+                      <input type="checkbox" name="reminder_enabled" value="1" {% if shop.reminder_enabled %}checked{% endif %}>
+                      <span>リマインドを有効にする</span>
+                    </label>
+                  </div>
+
+                  <div class="tool-field full">
+                    <div class="tool-card-lite" style="padding:14px; display:grid; gap:12px;">
+                      <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;">
+                        <label class="tool-card-lite" style="display:flex; gap:8px; align-items:center; padding:10px 12px; margin:0;">
+                          <input type="checkbox" name="reminder_day_before_enabled" value="1" {% if shop.reminder_day_before_enabled %}checked{% endif %}>
+                          <span>前日に送る</span>
+                        </label>
+                        <div class="tool-field" style="margin:0; min-width:180px;">
+                          <label class="tool-label">送信時間</label>
+                          <input class="tool-input" type="time" name="reminder_day_before_time" value="{{ shop.reminder_day_before_time or '20:00' }}">
+                        </div>
+                      </div>
+                      <div class="tool-field"><label class="tool-label">件名</label><input class="tool-input" type="text" name="reminder_day_before_subject" value="{{ shop.reminder_day_before_subject or '【{{shop_name}}】明日のご予約について' }}"></div>
+                      <div class="tool-field"><label class="tool-label">本文</label><textarea class="tool-textarea" name="reminder_day_before_body" rows="10">{{ shop.reminder_day_before_body or '{{customer_name}}様
+
+いつも{{shop_name}}をご利用いただきありがとうございます。
+
+明日、以下の内容でご予約をいただいております。
+
+■日時
+{{reservation_date}} {{reservation_time}}
+
+ご来店を心よりお待ちしております。
+
+※本メールは送信専用です。' }}</textarea></div>
+                    </div>
+                  </div>
+
+                  <div class="tool-field full">
+                    <div class="tool-card-lite" style="padding:14px; display:grid; gap:12px;">
+                      <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;">
+                        <label class="tool-card-lite" style="display:flex; gap:8px; align-items:center; padding:10px 12px; margin:0;">
+                          <input type="checkbox" name="reminder_same_day_enabled" value="1" {% if shop.reminder_same_day_enabled %}checked{% endif %}>
+                          <span>当日に送る</span>
+                        </label>
+                        <div class="tool-field" style="margin:0; min-width:180px;">
+                          <label class="tool-label">何時間前</label>
+                          <input class="tool-input" type="number" name="reminder_same_day_hours_before" min="0" step="1" value="{{ shop.reminder_same_day_hours_before if shop.reminder_same_day_hours_before is not none else 1 }}">
+                        </div>
+                      </div>
+                      <div class="tool-field"><label class="tool-label">件名</label><input class="tool-input" type="text" name="reminder_same_day_subject" value="{{ shop.reminder_same_day_subject or '【{{shop_name}}】まもなくご予約のお時間です' }}"></div>
+                      <div class="tool-field"><label class="tool-label">本文</label><textarea class="tool-textarea" name="reminder_same_day_body" rows="10">{{ shop.reminder_same_day_body or '{{customer_name}}様
+
+{{shop_name}}でございます。
+
+本日、以下のお時間でご予約をいただいております。
+
+■日時
+{{reservation_date}} {{reservation_time}}
+
+ご来店の際はお気をつけてお越しください。
+
+※本メールは送信専用です。' }}</textarea></div>
+                    </div>
+                  </div>
+
+                  <div class="tool-field full">
+                    <div class="tool-note" style="line-height:1.8;">使用できる差し込み項目：<strong>{{customer_name}}</strong> / <strong>{{shop_name}}</strong> / <strong>{{reservation_date}}</strong> / <strong>{{reservation_time}}</strong> / <strong>{{staff_name}}</strong> / <strong>{{menu_name}}</strong><br>送信元は no-reply アドレスで送信されます。</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
           <div class="tool-actions with-top-gap"><button class="tool-btn is-primary" type="submit">店舗情報を保存</button></div>
+
         </form>
       </div>
     </div>

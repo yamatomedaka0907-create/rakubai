@@ -5,7 +5,7 @@ import json
 import os
 import secrets
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from pathlib import Path
 from typing import Any
 
@@ -379,6 +379,33 @@ def init_db() -> None:
 
         conn.execute(
             '''
+            CREATE TABLE IF NOT EXISTS audit_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                shop_id TEXT DEFAULT '',
+                actor_type TEXT NOT NULL,
+                actor_id TEXT NOT NULL DEFAULT '',
+                actor_name TEXT NOT NULL DEFAULT '',
+                action TEXT NOT NULL,
+                target_type TEXT NOT NULL DEFAULT '',
+                target_id TEXT NOT NULL DEFAULT '',
+                target_label TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'success',
+                method TEXT NOT NULL DEFAULT '',
+                path TEXT NOT NULL DEFAULT '',
+                ip_address TEXT NOT NULL DEFAULT '',
+                user_agent TEXT NOT NULL DEFAULT '',
+                detail_json TEXT NOT NULL DEFAULT '{}',
+                occurred_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+            '''
+        )
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_occurred_at ON audit_logs(occurred_at, id)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_actor ON audit_logs(actor_type, actor_id, occurred_at, id)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_shop ON audit_logs(shop_id, occurred_at, id)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action, occurred_at, id)')
+
+        conn.execute(
+            '''
             CREATE TABLE IF NOT EXISTS homepage_templates (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 code TEXT NOT NULL UNIQUE,
@@ -458,9 +485,20 @@ def init_db() -> None:
         _ensure_column(conn, 'shops', 'reply_to_email', "reply_to_email TEXT DEFAULT ''")
         _ensure_column(conn, 'shops', 'heading_bg_color', "heading_bg_color TEXT DEFAULT '#ff6f91'")
         _ensure_column(conn, 'shops', 'admin_ui_mode', "admin_ui_mode TEXT NOT NULL DEFAULT 'web'")
+        _ensure_column(conn, 'shops', 'reminder_enabled', 'reminder_enabled INTEGER NOT NULL DEFAULT 0')
+        _ensure_column(conn, 'shops', 'reminder_day_before_enabled', 'reminder_day_before_enabled INTEGER NOT NULL DEFAULT 1')
+        _ensure_column(conn, 'shops', 'reminder_day_before_time', "reminder_day_before_time TEXT NOT NULL DEFAULT '20:00'")
+        _ensure_column(conn, 'shops', 'reminder_same_day_enabled', 'reminder_same_day_enabled INTEGER NOT NULL DEFAULT 1')
+        _ensure_column(conn, 'shops', 'reminder_same_day_hours_before', 'reminder_same_day_hours_before INTEGER NOT NULL DEFAULT 1')
+        _ensure_column(conn, 'shops', 'reminder_day_before_subject', "reminder_day_before_subject TEXT DEFAULT ''")
+        _ensure_column(conn, 'shops', 'reminder_day_before_body', "reminder_day_before_body TEXT DEFAULT ''")
+        _ensure_column(conn, 'shops', 'reminder_same_day_subject', "reminder_same_day_subject TEXT DEFAULT ''")
+        _ensure_column(conn, 'shops', 'reminder_same_day_body', "reminder_same_day_body TEXT DEFAULT ''")
         _ensure_column(conn, 'customers', 'email', "email TEXT DEFAULT ''")
         _ensure_column(conn, 'reservations', 'customer_email', "customer_email TEXT DEFAULT ''")
         _ensure_column(conn, 'reservations', 'receive_email', "receive_email INTEGER NOT NULL DEFAULT 0")
+        _ensure_column(conn, 'reservations', 'reminder_day_before_sent_at', "reminder_day_before_sent_at TEXT DEFAULT ''")
+        _ensure_column(conn, 'reservations', 'reminder_same_day_sent_at', "reminder_same_day_sent_at TEXT DEFAULT ''")
 
         for shop_id, shop in SHOPS.items():
             conn.execute(
@@ -748,7 +786,12 @@ def get_shop(shop_id: str) -> dict[str, Any] | None:
             '''
             SELECT
                 shop_id, shop_name, catch_copy, description, phone, address, business_hours, holiday,
-                primary_color, primary_dark, accent_bg, heading_bg_color, reply_to_email, admin_ui_mode, staff_list_json, menus_json, created_at
+                primary_color, primary_dark, accent_bg, heading_bg_color, reply_to_email, admin_ui_mode,
+                reminder_enabled, reminder_day_before_enabled, reminder_day_before_time,
+                reminder_same_day_enabled, reminder_same_day_hours_before,
+                reminder_day_before_subject, reminder_day_before_body,
+                reminder_same_day_subject, reminder_same_day_body,
+                staff_list_json, menus_json, created_at
             FROM shops
             WHERE shop_id = ?
             LIMIT 1
@@ -769,7 +812,12 @@ def get_all_shops() -> list[dict[str, Any]]:
             '''
             SELECT
                 shop_id, shop_name, catch_copy, description, phone, address, business_hours, holiday,
-                primary_color, primary_dark, accent_bg, heading_bg_color, reply_to_email, admin_ui_mode, staff_list_json, menus_json, created_at
+                primary_color, primary_dark, accent_bg, heading_bg_color, reply_to_email, admin_ui_mode,
+                reminder_enabled, reminder_day_before_enabled, reminder_day_before_time,
+                reminder_same_day_enabled, reminder_same_day_hours_before,
+                reminder_day_before_subject, reminder_day_before_body,
+                reminder_same_day_subject, reminder_same_day_body,
+                staff_list_json, menus_json, created_at
             FROM shops
             ORDER BY id ASC
             '''
@@ -1976,6 +2024,15 @@ def get_shop_management_data(shop_id: str) -> dict[str, Any] | None:
                 s.heading_bg_color,
                 s.reply_to_email,
                 s.admin_ui_mode,
+                s.reminder_enabled,
+                s.reminder_day_before_enabled,
+                s.reminder_day_before_time,
+                s.reminder_same_day_enabled,
+                s.reminder_same_day_hours_before,
+                s.reminder_day_before_subject,
+                s.reminder_day_before_body,
+                s.reminder_same_day_subject,
+                s.reminder_same_day_body,
                 s.staff_list_json,
                 s.menus_json,
                 s.parent_shop_id,
@@ -2094,6 +2151,15 @@ def update_shop_basic_info(
     primary_dark: str = '#159a90',
     accent_bg: str = '#f7fffe',
     heading_bg_color: str = '#ff6f91',
+    reminder_enabled: int = 0,
+    reminder_day_before_enabled: int = 1,
+    reminder_day_before_time: str = '20:00',
+    reminder_same_day_enabled: int = 1,
+    reminder_same_day_hours_before: int = 1,
+    reminder_day_before_subject: str = '',
+    reminder_day_before_body: str = '',
+    reminder_same_day_subject: str = '',
+    reminder_same_day_body: str = '',
     menus: list[dict[str, Any]] | None = None,
 ) -> None:
     normalized_menus = _normalize_shop_menus(menus)
@@ -2108,12 +2174,22 @@ def update_shop_basic_info(
                 business_hours = ?,
                 holiday = ?,
                 catch_copy = ?,
-                description = ?,                reply_to_email = ?,
+                description = ?,
+                reply_to_email = ?,
                 admin_ui_mode = ?,
                 primary_color = ?,
                 primary_dark = ?,
                 accent_bg = ?,
                 heading_bg_color = ?,
+                reminder_enabled = ?,
+                reminder_day_before_enabled = ?,
+                reminder_day_before_time = ?,
+                reminder_same_day_enabled = ?,
+                reminder_same_day_hours_before = ?,
+                reminder_day_before_subject = ?,
+                reminder_day_before_body = ?,
+                reminder_same_day_subject = ?,
+                reminder_same_day_body = ?,
                 menus_json = ?
             WHERE shop_id = ?
             ''',
@@ -2131,6 +2207,15 @@ def update_shop_basic_info(
                 primary_dark.strip() or '#159a90',
                 accent_bg.strip() or '#f7fffe',
                 heading_bg_color.strip() or '#ff6f91',
+                1 if int(reminder_enabled or 0) else 0,
+                1 if int(reminder_day_before_enabled or 0) else 0,
+                (reminder_day_before_time or '20:00').strip() or '20:00',
+                1 if int(reminder_same_day_enabled or 0) else 0,
+                max(0, int(reminder_same_day_hours_before or 0)),
+                reminder_day_before_subject.strip(),
+                reminder_day_before_body.strip(),
+                reminder_same_day_subject.strip(),
+                reminder_same_day_body.strip(),
                 json.dumps(normalized_menus, ensure_ascii=False),
                 shop_id,
             ),
@@ -2324,6 +2409,97 @@ def update_admin_user_password(shop_id: str, login_id: str, new_password: str) -
         )
         conn.commit()
     return bool(cursor.rowcount)
+
+
+def get_due_reservation_reminders(now: datetime | None = None) -> list[dict[str, Any]]:
+    now = now or datetime.now()
+    current_minute = now.replace(second=0, microsecond=0)
+    items: list[dict[str, Any]] = []
+    with get_connection() as conn:
+        rows = conn.execute(
+            '''
+            SELECT
+                r.id,
+                r.shop_id,
+                r.customer_id,
+                r.customer_name,
+                r.customer_email,
+                r.receive_email,
+                r.staff_name,
+                r.menu_name,
+                r.reservation_date,
+                r.start_time,
+                r.status,
+                r.reminder_day_before_sent_at,
+                r.reminder_same_day_sent_at,
+                s.shop_name,
+                s.reminder_enabled,
+                s.reminder_day_before_enabled,
+                s.reminder_day_before_time,
+                s.reminder_same_day_enabled,
+                s.reminder_same_day_hours_before,
+                s.reminder_day_before_subject,
+                s.reminder_day_before_body,
+                s.reminder_same_day_subject,
+                s.reminder_same_day_body
+            FROM reservations r
+            JOIN shops s ON s.shop_id = r.shop_id
+            WHERE COALESCE(s.reminder_enabled, 0) = 1
+              AND COALESCE(r.receive_email, 0) = 1
+              AND TRIM(COALESCE(r.customer_email, '')) <> ''
+              AND r.status = '予約済み'
+            ORDER BY r.reservation_date ASC, r.start_time ASC, r.id ASC
+            '''
+        ).fetchall()
+
+    for row in rows:
+        item = dict(row)
+        reservation_date_text = str(item.get('reservation_date') or '').strip()
+        start_time_text = str(item.get('start_time') or '').strip()
+        try:
+            reservation_date_obj = datetime.strptime(reservation_date_text, '%Y-%m-%d').date()
+            start_time_obj = datetime.strptime(start_time_text, '%H:%M').time()
+        except ValueError:
+            continue
+
+        reservation_dt = datetime.combine(reservation_date_obj, start_time_obj)
+        item['reservation_at'] = reservation_dt.isoformat(timespec='minutes')
+
+        if int(item.get('reminder_day_before_enabled') or 0) and not str(item.get('reminder_day_before_sent_at') or '').strip():
+            time_text = str(item.get('reminder_day_before_time') or '20:00').strip() or '20:00'
+            try:
+                reminder_time = datetime.strptime(time_text, '%H:%M').time()
+            except ValueError:
+                reminder_time = time(20, 0)
+            day_before_dt = datetime.combine(reservation_date_obj - timedelta(days=1), reminder_time)
+            if day_before_dt == current_minute:
+                item['reminder_kind'] = 'day_before'
+                item['scheduled_at'] = day_before_dt.isoformat(timespec='minutes')
+                items.append(item.copy())
+
+        if int(item.get('reminder_same_day_enabled') or 0) and not str(item.get('reminder_same_day_sent_at') or '').strip():
+            try:
+                before_hours = int(item.get('reminder_same_day_hours_before') or 0)
+            except (TypeError, ValueError):
+                before_hours = 0
+            same_day_dt = reservation_dt - timedelta(hours=max(0, before_hours))
+            if same_day_dt == current_minute:
+                item['reminder_kind'] = 'same_day'
+                item['scheduled_at'] = same_day_dt.isoformat(timespec='minutes')
+                items.append(item.copy())
+
+    return items
+
+
+def mark_reservation_reminder_sent(shop_id: str, reservation_id: int, reminder_kind: str, sent_at: str | None = None) -> None:
+    column = 'reminder_day_before_sent_at' if reminder_kind == 'day_before' else 'reminder_same_day_sent_at'
+    timestamp = str(sent_at or datetime.now().replace(second=0, microsecond=0).isoformat(timespec='minutes'))
+    with get_connection() as conn:
+        conn.execute(
+            f'''UPDATE reservations SET {column} = ? WHERE shop_id = ? AND id = ?''',
+            (timestamp, shop_id, reservation_id),
+        )
+        conn.commit()
 
 
 # system settings
@@ -3086,6 +3262,368 @@ def create_chat_message(shop_id: str, customer_id: int, member_id: int | None, s
         raise RuntimeError('メッセージの保存に失敗しました。')
     return dict(row)
 
+
+
+def purge_old_audit_logs(retention_days: int = 90) -> int:
+    cutoff = (datetime.utcnow() - timedelta(days=max(int(retention_days or 90), 1))).strftime('%Y-%m-%d %H:%M:%S')
+    with get_connection() as conn:
+        cursor = conn.execute('DELETE FROM audit_logs WHERE occurred_at < ?', (cutoff,))
+        return int(cursor.rowcount or 0)
+
+
+def create_audit_log(
+    *,
+    actor_type: str,
+    action: str,
+    actor_id: str = '',
+    actor_name: str = '',
+    shop_id: str = '',
+    target_type: str = '',
+    target_id: str = '',
+    target_label: str = '',
+    status: str = 'success',
+    method: str = '',
+    path: str = '',
+    ip_address: str = '',
+    user_agent: str = '',
+    detail: dict[str, Any] | None = None,
+    retention_days: int = 90,
+) -> dict[str, Any]:
+    detail_json = json.dumps(detail or {}, ensure_ascii=False)
+    with get_connection() as conn:
+        cursor = conn.execute(
+            '''
+            INSERT INTO audit_logs (
+                shop_id, actor_type, actor_id, actor_name, action,
+                target_type, target_id, target_label, status,
+                method, path, ip_address, user_agent, detail_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''',
+            (
+                (shop_id or '').strip(),
+                (actor_type or '').strip(),
+                (actor_id or '').strip(),
+                (actor_name or '').strip(),
+                (action or '').strip(),
+                (target_type or '').strip(),
+                str(target_id or '').strip(),
+                (target_label or '').strip(),
+                (status or 'success').strip(),
+                (method or '').strip().upper(),
+                (path or '').strip(),
+                (ip_address or '').strip(),
+                (user_agent or '').strip(),
+                detail_json,
+            ),
+        )
+        log_id = int(cursor.lastrowid or 0)
+        row = conn.execute('SELECT * FROM audit_logs WHERE id = ?', (log_id,)).fetchone()
+    try:
+        purge_old_audit_logs(retention_days=retention_days)
+    except Exception:
+        pass
+    return dict(row) if row else {}
+
+
+
+def list_members_for_audit_api(shop_id: str) -> list[dict[str, Any]]:
+    normalized_shop_id = (shop_id or '').strip().lower()
+    if not normalized_shop_id:
+        return []
+    with get_connection() as conn:
+        rows = conn.execute(
+            '''
+            SELECT id, shop_id, customer_id, name, phone, email, is_active, created_at, updated_at
+            FROM members
+            WHERE shop_id = ?
+            ORDER BY is_active DESC, name COLLATE NOCASE ASC, id ASC
+            ''',
+            (normalized_shop_id,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+
+def list_audit_logs_for_api(
+    *,
+    shop_id: str = '',
+    member_id: int | None = None,
+    date_from: str = '',
+    date_to: str = '',
+    limit: int = 500,
+    offset: int = 0,
+) -> list[dict[str, Any]]:
+    clauses: list[str] = []
+    params: list[Any] = []
+    normalized_shop_id = (shop_id or '').strip().lower()
+    if normalized_shop_id:
+        clauses.append('al.shop_id = ?')
+        params.append(normalized_shop_id)
+    if member_id is not None:
+        clauses.append("al.actor_type = 'member'")
+        clauses.append('CAST(al.actor_id AS INTEGER) = ?')
+        params.append(int(member_id))
+    normalized_from = (date_from or '').strip()
+    if normalized_from:
+        clauses.append('al.occurred_at >= ?')
+        params.append(normalized_from)
+    normalized_to = (date_to or '').strip()
+    if normalized_to:
+        clauses.append('al.occurred_at <= ?')
+        params.append(normalized_to)
+    where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ''
+    safe_limit = max(1, min(int(limit or 500), 1000))
+    safe_offset = max(0, int(offset or 0))
+    with get_connection() as conn:
+        rows = conn.execute(
+            f'''
+            SELECT
+                al.id,
+                al.occurred_at,
+                al.shop_id,
+                s.shop_name,
+                al.actor_type,
+                al.actor_id,
+                al.actor_name,
+                m.name AS member_name,
+                al.action,
+                al.target_type,
+                al.target_id,
+                al.target_label,
+                al.status,
+                al.method,
+                al.path,
+                al.ip_address,
+                al.user_agent,
+                al.detail_json
+            FROM audit_logs al
+            LEFT JOIN shops s ON s.shop_id = al.shop_id
+            LEFT JOIN members m ON al.actor_type = 'member' AND CAST(m.id AS TEXT) = al.actor_id AND m.shop_id = al.shop_id
+            {where_sql}
+            ORDER BY al.occurred_at DESC, al.id DESC
+            LIMIT ? OFFSET ?
+            ''',
+            (*params, safe_limit, safe_offset),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+
+def get_shop_detail_for_audit_api(shop_id: str) -> dict[str, Any] | None:
+    normalized_shop_id = (shop_id or '').strip().lower()
+    if not normalized_shop_id:
+        return None
+    shop = get_shop_management_data(normalized_shop_id)
+    if shop is None:
+        return None
+    subscription = get_shop_subscription(normalized_shop_id) or {}
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                (SELECT COUNT(*) FROM members WHERE shop_id = ? AND is_active = 1) AS active_member_count,
+                (SELECT COUNT(*) FROM members WHERE shop_id = ?) AS total_member_count,
+                (SELECT COUNT(*) FROM admin_users WHERE shop_id = ? AND is_active = 1) AS active_admin_count,
+                (SELECT COUNT(*) FROM customers WHERE shop_id = ?) AS customer_count,
+                (SELECT COUNT(*) FROM reservations WHERE shop_id = ?) AS reservation_count
+            """,
+            (normalized_shop_id, normalized_shop_id, normalized_shop_id, normalized_shop_id, normalized_shop_id),
+        ).fetchone()
+    detail = dict(shop)
+    detail['subscription_status'] = str(subscription.get('status') or detail.get('subscription_status') or '')
+    detail['plan_name'] = str(subscription.get('plan_name') or detail.get('plan_name') or '')
+    if row:
+        detail.update(dict(row))
+    return detail
+
+
+def get_member_detail_for_audit_api(shop_id: str, member_id: int) -> dict[str, Any] | None:
+    normalized_shop_id = (shop_id or '').strip().lower()
+    member = get_member_by_id(normalized_shop_id, int(member_id))
+    if member is None:
+        return None
+    customer = None
+    customer_id = member.get('customer_id')
+    if customer_id:
+        customer = get_customer_by_id(normalized_shop_id, int(customer_id))
+    detail = dict(member)
+    detail['customer'] = customer
+    reservation_customer_id = int(customer_id) if customer_id else -1
+    with get_connection() as conn:
+        counts = conn.execute(
+            """
+            SELECT
+                (SELECT COUNT(*) FROM reservations WHERE shop_id = ? AND customer_id = ?) AS reservation_count,
+                (SELECT COUNT(*) FROM chat_messages WHERE shop_id = ? AND member_id = ?) AS chat_count
+            """,
+            (normalized_shop_id, reservation_customer_id, normalized_shop_id, int(member_id)),
+        ).fetchone()
+    if counts:
+        detail.update(dict(counts))
+    return detail
+
+
+def update_shop_for_audit_api(
+    shop_id: str,
+    *,
+    shop_name: str,
+    phone: str = '',
+    address: str = '',
+) -> dict[str, Any]:
+    normalized_shop_id = (shop_id or '').strip().lower()
+    current = get_shop_management_data(normalized_shop_id)
+    if current is None:
+        raise ValueError('店舗が見つかりません。')
+    update_shop_basic_info(
+        normalized_shop_id,
+        shop_name=(shop_name or current.get('shop_name') or '').strip(),
+        phone=(phone or '').strip(),
+        address=(address or '').strip(),
+        business_hours=str(current.get('business_hours') or '10:00〜19:00'),
+        holiday=str(current.get('holiday') or '火曜日'),
+        catch_copy=str(current.get('catch_copy') or ''),
+        description=str(current.get('description') or ''),
+        reply_to_email=str(current.get('reply_to_email') or ''),
+        admin_ui_mode=str(current.get('admin_ui_mode') or 'web'),
+        primary_color=str(current.get('primary_color') or '#2ec4b6'),
+        primary_dark=str(current.get('primary_dark') or '#159a90'),
+        accent_bg=str(current.get('accent_bg') or '#f7fffe'),
+        heading_bg_color=str(current.get('heading_bg_color') or '#ff6f91'),
+        menus=current.get('menus') or current.get('menus_json') or [],
+    )
+    return get_shop_detail_for_audit_api(normalized_shop_id) or {}
+
+
+def update_member_for_audit_api(
+    shop_id: str,
+    member_id: int,
+    *,
+    name: str,
+    phone: str,
+    email: str = '',
+) -> dict[str, Any]:
+    normalized_shop_id = (shop_id or '').strip().lower()
+    current = get_member_by_id(normalized_shop_id, int(member_id))
+    if current is None:
+        raise ValueError('会員が見つかりません。')
+    cleaned_name = str(name or '').strip()
+    normalized_phone = normalize_member_phone(phone)
+    normalized_email = str(email or '').strip().lower()
+    if not cleaned_name:
+        raise ValueError('名前を入力してください。')
+    if not normalized_phone:
+        raise ValueError('電話番号を入力してください。')
+    with get_connection() as conn:
+        existing = conn.execute(
+            """
+            SELECT id FROM members
+            WHERE shop_id = ? AND phone_normalized = ? AND id <> ?
+            LIMIT 1
+            """,
+            (normalized_shop_id, normalized_phone, int(member_id)),
+        ).fetchone()
+        if existing:
+            raise ValueError('この電話番号は別会員で使用されています。')
+        conn.execute(
+            """
+            UPDATE members
+            SET name = ?,
+                phone = ?,
+                phone_normalized = ?,
+                email = ?,
+                email_reminder_enabled = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE shop_id = ? AND id = ?
+            """,
+            (
+                cleaned_name,
+                normalized_phone,
+                normalized_phone,
+                normalized_email,
+                1 if normalized_email else 0,
+                normalized_shop_id,
+                int(member_id),
+            ),
+        )
+        customer_id = current.get('customer_id')
+        if customer_id:
+            conn.execute(
+                """
+                UPDATE customers
+                SET name = ?, phone = ?, email = ?
+                WHERE shop_id = ? AND id = ?
+                """,
+                (cleaned_name, normalized_phone, normalized_email, normalized_shop_id, int(customer_id)),
+            )
+        conn.commit()
+    return get_member_detail_for_audit_api(normalized_shop_id, int(member_id)) or {}
+
+
+def force_cancel_member_for_audit_api(shop_id: str, member_id: int) -> dict[str, Any]:
+    normalized_shop_id = (shop_id or '').strip().lower()
+    with get_connection() as conn:
+        conn.execute(
+            """
+            UPDATE members
+            SET is_active = 0, updated_at = CURRENT_TIMESTAMP
+            WHERE shop_id = ? AND id = ?
+            """,
+            (normalized_shop_id, int(member_id)),
+        )
+        conn.commit()
+    return get_member_detail_for_audit_api(normalized_shop_id, int(member_id)) or {}
+
+
+def force_cancel_shop_for_audit_api(shop_id: str) -> dict[str, Any]:
+    normalized_shop_id = (shop_id or '').strip().lower()
+    with get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO subscriptions (shop_id, plan_id, status)
+            VALUES (?, COALESCE((SELECT plan_id FROM subscriptions WHERE shop_id = ?), 1), 'cancelled')
+            ON CONFLICT(shop_id) DO UPDATE SET
+                status = 'cancelled'
+            """,
+            (normalized_shop_id, normalized_shop_id),
+        )
+        conn.execute('UPDATE admin_users SET is_active = 0 WHERE shop_id = ?', (normalized_shop_id,))
+        conn.execute('UPDATE members SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE shop_id = ?', (normalized_shop_id,))
+        conn.commit()
+    return get_shop_detail_for_audit_api(normalized_shop_id) or {}
+
+
+def restore_member_for_audit_api(shop_id: str, member_id: int) -> dict[str, Any]:
+    normalized_shop_id = (shop_id or '').strip().lower()
+    with get_connection() as conn:
+        conn.execute(
+            """
+            UPDATE members
+            SET is_active = 1, updated_at = CURRENT_TIMESTAMP
+            WHERE shop_id = ? AND id = ?
+            """,
+            (normalized_shop_id, int(member_id)),
+        )
+        conn.commit()
+    return get_member_detail_for_audit_api(normalized_shop_id, int(member_id)) or {}
+
+
+def restore_shop_for_audit_api(shop_id: str) -> dict[str, Any]:
+    normalized_shop_id = (shop_id or '').strip().lower()
+    with get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO subscriptions (shop_id, plan_id, status)
+            VALUES (?, COALESCE((SELECT plan_id FROM subscriptions WHERE shop_id = ?), 1), 'active')
+            ON CONFLICT(shop_id) DO UPDATE SET
+                status = 'active'
+            """,
+            (normalized_shop_id, normalized_shop_id),
+        )
+        conn.execute('UPDATE admin_users SET is_active = 1 WHERE shop_id = ?', (normalized_shop_id,))
+        conn.execute('UPDATE members SET is_active = 1, updated_at = CURRENT_TIMESTAMP WHERE shop_id = ?', (normalized_shop_id,))
+        conn.commit()
+    return get_shop_detail_for_audit_api(normalized_shop_id) or {}
 
 def mark_chat_messages_read_for_admin(shop_id: str, customer_id: int) -> None:
     with get_connection() as conn:
