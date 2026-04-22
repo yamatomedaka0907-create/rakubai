@@ -75,6 +75,68 @@
     <div style="margin-top:24px; border:1px solid var(--line); border-radius:18px; padding:18px; background:#fcfffe;">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
         <div>
+          <div style="font-size:18px; font-weight:800; color:var(--primary-dark);">リマインド設定</div>
+          <div style="color:var(--subtext); font-size:14px; line-height:1.7; margin-top:4px;">予約会員へ no-reply から自動で送信するリマインドメールを店舗ごとに設定できます。</div>
+        </div>
+        <label style="display:flex; align-items:center; gap:8px; margin:0; font-weight:700;"><input type="checkbox" name="reminder_enabled" value="1" {% if shop.reminder_enabled %}checked{% endif %} style="width:auto; min-height:auto;">リマインドを有効にする</label>
+      </div>
+      <div style="display:grid; gap:16px;">
+        <div style="border:1px solid var(--line); border-radius:16px; padding:16px; background:#fff;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+            <div style="font-size:16px; font-weight:800; color:var(--primary-dark);">前日リマインド</div>
+            <label style="display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" name="reminder_day_before_enabled" value="1" {% if shop.reminder_day_before_enabled %}checked{% endif %} style="width:auto; min-height:auto;">送る</label>
+          </div>
+          <div class="grid">
+            <div><label>送信時間<input type="time" name="reminder_day_before_time" value="{{ shop.reminder_day_before_time or '20:00' }}"></label></div>
+            <div></div>
+          </div>
+          <label>件名<input type="text" name="reminder_day_before_subject" value="{{ shop.reminder_day_before_subject or '【{{shop_name}}】明日のご予約について' }}"></label>
+          <label>本文<textarea name="reminder_day_before_body" rows="10">{{ shop.reminder_day_before_body or '{{customer_name}}様
+
+いつも{{shop_name}}をご利用いただきありがとうございます。
+
+明日、以下の内容でご予約をいただいております。
+
+■日時
+{{reservation_date}} {{reservation_time}}
+
+ご来店を心よりお待ちしております。
+
+※本メールは送信専用です。' }}</textarea></label>
+        </div>
+        <div style="border:1px solid var(--line); border-radius:16px; padding:16px; background:#fff;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+            <div style="font-size:16px; font-weight:800; color:var(--primary-dark);">当日リマインド</div>
+            <label style="display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" name="reminder_same_day_enabled" value="1" {% if shop.reminder_same_day_enabled %}checked{% endif %} style="width:auto; min-height:auto;">送る</label>
+          </div>
+          <div class="grid">
+            <div><label>何時間前<input type="number" name="reminder_same_day_hours_before" min="0" step="1" value="{{ shop.reminder_same_day_hours_before if shop.reminder_same_day_hours_before is not none else 1 }}"></label></div>
+            <div></div>
+          </div>
+          <label>件名<input type="text" name="reminder_same_day_subject" value="{{ shop.reminder_same_day_subject or '【{{shop_name}}】まもなくご予約のお時間です' }}"></label>
+          <label>本文<textarea name="reminder_same_day_body" rows="10">{{ shop.reminder_same_day_body or '{{customer_name}}様
+
+{{shop_name}}でございます。
+
+本日、以下のお時間でご予約をいただいております。
+
+■日時
+{{reservation_date}} {{reservation_time}}
+
+ご来店の際はお気をつけてお越しください。
+
+※本メールは送信専用です。' }}</textarea></label>
+        </div>
+      </div>
+      <div style="margin-top:14px; padding:14px; border-radius:14px; background:#f8fafc; color:var(--subtext); font-size:13px; line-height:1.8;">
+        使用できる差し込み項目：{% raw %}<strong>{{customer_name}}</strong> / <strong>{{shop_name}}</strong> / <strong>{{reservation_date}}</strong> / <strong>{{reservation_time}}</strong> / <strong>{{staff_name}}</strong> / <strong>{{menu_name}}</strong>{% endraw %}
+      </div>
+    </div>
+
+
+    <div style="margin-top:24px; border:1px solid var(--line); border-radius:18px; padding:18px; background:#fcfffe;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
+        <div>
           <div style="font-size:18px; font-weight:800; color:var(--primary-dark);">取り扱いメニュー</div>
           <div style="color:var(--subtext); font-size:14px; line-height:1.7; margin-top:4px;">ここで追加・削除した内容が取り扱いメニュー一覧と選択肢に反映されます。</div>
         </div>
