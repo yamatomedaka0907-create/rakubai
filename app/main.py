@@ -271,16 +271,25 @@ def _normalize_api_datetime(value: str | None, *, end_of_day: bool = False) -> s
 
 
 def _serialize_audit_log_row(row: dict[str, object]) -> dict[str, object]:
-    detail_raw = str(row.get("detail_json") or "{}")
-    try:
-        detail = json.loads(detail_raw)
-    except Exception:
-        detail = detail_raw
+    raw_detail = row.get("detail_json")
+    if raw_detail in (None, ""):
+        raw_detail = row.get("detail")
+
+    detail: object
+    if isinstance(raw_detail, dict):
+        detail = raw_detail
+    else:
+        detail_text = str(raw_detail or "{}")
+        try:
+            detail = json.loads(detail_text)
+        except Exception:
+            detail = {"raw": detail_text} if detail_text else {}
 
     occurred_at = row.get("occurred_at")
     if occurred_at:
         try:
-            dt = datetime.fromisoformat(str(occurred_at))
+            raw_occurred_at = str(occurred_at).replace("Z", "+00:00")
+            dt = datetime.fromisoformat(raw_occurred_at)
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=timezone.utc)
             occurred_at = dt.astimezone(JST).strftime("%Y-%m-%d %H:%M:%S")
