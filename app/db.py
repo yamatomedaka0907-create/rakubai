@@ -5,7 +5,7 @@ import json
 import os
 import secrets
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from pathlib import Path
 from typing import Any
 
@@ -485,9 +485,20 @@ def init_db() -> None:
         _ensure_column(conn, 'shops', 'reply_to_email', "reply_to_email TEXT DEFAULT ''")
         _ensure_column(conn, 'shops', 'heading_bg_color', "heading_bg_color TEXT DEFAULT '#ff6f91'")
         _ensure_column(conn, 'shops', 'admin_ui_mode', "admin_ui_mode TEXT NOT NULL DEFAULT 'web'")
+        _ensure_column(conn, 'shops', 'reminder_enabled', 'reminder_enabled INTEGER NOT NULL DEFAULT 0')
+        _ensure_column(conn, 'shops', 'reminder_day_before_enabled', 'reminder_day_before_enabled INTEGER NOT NULL DEFAULT 1')
+        _ensure_column(conn, 'shops', 'reminder_day_before_time', "reminder_day_before_time TEXT NOT NULL DEFAULT '20:00'")
+        _ensure_column(conn, 'shops', 'reminder_same_day_enabled', 'reminder_same_day_enabled INTEGER NOT NULL DEFAULT 1')
+        _ensure_column(conn, 'shops', 'reminder_same_day_hours_before', 'reminder_same_day_hours_before INTEGER NOT NULL DEFAULT 1')
+        _ensure_column(conn, 'shops', 'reminder_day_before_subject', "reminder_day_before_subject TEXT DEFAULT ''")
+        _ensure_column(conn, 'shops', 'reminder_day_before_body', "reminder_day_before_body TEXT DEFAULT ''")
+        _ensure_column(conn, 'shops', 'reminder_same_day_subject', "reminder_same_day_subject TEXT DEFAULT ''")
+        _ensure_column(conn, 'shops', 'reminder_same_day_body', "reminder_same_day_body TEXT DEFAULT ''")
         _ensure_column(conn, 'customers', 'email', "email TEXT DEFAULT ''")
         _ensure_column(conn, 'reservations', 'customer_email', "customer_email TEXT DEFAULT ''")
         _ensure_column(conn, 'reservations', 'receive_email', "receive_email INTEGER NOT NULL DEFAULT 0")
+        _ensure_column(conn, 'reservations', 'reminder_day_before_sent_at', "reminder_day_before_sent_at TEXT DEFAULT ''")
+        _ensure_column(conn, 'reservations', 'reminder_same_day_sent_at', "reminder_same_day_sent_at TEXT DEFAULT ''")
 
         for shop_id, shop in SHOPS.items():
             conn.execute(
@@ -775,7 +786,12 @@ def get_shop(shop_id: str) -> dict[str, Any] | None:
             '''
             SELECT
                 shop_id, shop_name, catch_copy, description, phone, address, business_hours, holiday,
-                primary_color, primary_dark, accent_bg, heading_bg_color, reply_to_email, admin_ui_mode, staff_list_json, menus_json, created_at
+                primary_color, primary_dark, accent_bg, heading_bg_color, reply_to_email, admin_ui_mode,
+                reminder_enabled, reminder_day_before_enabled, reminder_day_before_time,
+                reminder_same_day_enabled, reminder_same_day_hours_before,
+                reminder_day_before_subject, reminder_day_before_body,
+                reminder_same_day_subject, reminder_same_day_body,
+                staff_list_json, menus_json, created_at
             FROM shops
             WHERE shop_id = ?
             LIMIT 1
@@ -796,7 +812,12 @@ def get_all_shops() -> list[dict[str, Any]]:
             '''
             SELECT
                 shop_id, shop_name, catch_copy, description, phone, address, business_hours, holiday,
-                primary_color, primary_dark, accent_bg, heading_bg_color, reply_to_email, admin_ui_mode, staff_list_json, menus_json, created_at
+                primary_color, primary_dark, accent_bg, heading_bg_color, reply_to_email, admin_ui_mode,
+                reminder_enabled, reminder_day_before_enabled, reminder_day_before_time,
+                reminder_same_day_enabled, reminder_same_day_hours_before,
+                reminder_day_before_subject, reminder_day_before_body,
+                reminder_same_day_subject, reminder_same_day_body,
+                staff_list_json, menus_json, created_at
             FROM shops
             ORDER BY id ASC
             '''
@@ -2003,6 +2024,15 @@ def get_shop_management_data(shop_id: str) -> dict[str, Any] | None:
                 s.heading_bg_color,
                 s.reply_to_email,
                 s.admin_ui_mode,
+                s.reminder_enabled,
+                s.reminder_day_before_enabled,
+                s.reminder_day_before_time,
+                s.reminder_same_day_enabled,
+                s.reminder_same_day_hours_before,
+                s.reminder_day_before_subject,
+                s.reminder_day_before_body,
+                s.reminder_same_day_subject,
+                s.reminder_same_day_body,
                 s.staff_list_json,
                 s.menus_json,
                 s.parent_shop_id,
@@ -2121,6 +2151,15 @@ def update_shop_basic_info(
     primary_dark: str = '#159a90',
     accent_bg: str = '#f7fffe',
     heading_bg_color: str = '#ff6f91',
+    reminder_enabled: int = 0,
+    reminder_day_before_enabled: int = 1,
+    reminder_day_before_time: str = '20:00',
+    reminder_same_day_enabled: int = 1,
+    reminder_same_day_hours_before: int = 1,
+    reminder_day_before_subject: str = '',
+    reminder_day_before_body: str = '',
+    reminder_same_day_subject: str = '',
+    reminder_same_day_body: str = '',
     menus: list[dict[str, Any]] | None = None,
 ) -> None:
     normalized_menus = _normalize_shop_menus(menus)
@@ -2135,12 +2174,22 @@ def update_shop_basic_info(
                 business_hours = ?,
                 holiday = ?,
                 catch_copy = ?,
-                description = ?,                reply_to_email = ?,
+                description = ?,
+                reply_to_email = ?,
                 admin_ui_mode = ?,
                 primary_color = ?,
                 primary_dark = ?,
                 accent_bg = ?,
                 heading_bg_color = ?,
+                reminder_enabled = ?,
+                reminder_day_before_enabled = ?,
+                reminder_day_before_time = ?,
+                reminder_same_day_enabled = ?,
+                reminder_same_day_hours_before = ?,
+                reminder_day_before_subject = ?,
+                reminder_day_before_body = ?,
+                reminder_same_day_subject = ?,
+                reminder_same_day_body = ?,
                 menus_json = ?
             WHERE shop_id = ?
             ''',
@@ -2158,6 +2207,15 @@ def update_shop_basic_info(
                 primary_dark.strip() or '#159a90',
                 accent_bg.strip() or '#f7fffe',
                 heading_bg_color.strip() or '#ff6f91',
+                1 if int(reminder_enabled or 0) else 0,
+                1 if int(reminder_day_before_enabled or 0) else 0,
+                (reminder_day_before_time or '20:00').strip() or '20:00',
+                1 if int(reminder_same_day_enabled or 0) else 0,
+                max(0, int(reminder_same_day_hours_before or 0)),
+                reminder_day_before_subject.strip(),
+                reminder_day_before_body.strip(),
+                reminder_same_day_subject.strip(),
+                reminder_same_day_body.strip(),
                 json.dumps(normalized_menus, ensure_ascii=False),
                 shop_id,
             ),
@@ -2351,6 +2409,97 @@ def update_admin_user_password(shop_id: str, login_id: str, new_password: str) -
         )
         conn.commit()
     return bool(cursor.rowcount)
+
+
+def get_due_reservation_reminders(now: datetime | None = None) -> list[dict[str, Any]]:
+    now = now or datetime.now()
+    current_minute = now.replace(second=0, microsecond=0)
+    items: list[dict[str, Any]] = []
+    with get_connection() as conn:
+        rows = conn.execute(
+            '''
+            SELECT
+                r.id,
+                r.shop_id,
+                r.customer_id,
+                r.customer_name,
+                r.customer_email,
+                r.receive_email,
+                r.staff_name,
+                r.menu_name,
+                r.reservation_date,
+                r.start_time,
+                r.status,
+                r.reminder_day_before_sent_at,
+                r.reminder_same_day_sent_at,
+                s.shop_name,
+                s.reminder_enabled,
+                s.reminder_day_before_enabled,
+                s.reminder_day_before_time,
+                s.reminder_same_day_enabled,
+                s.reminder_same_day_hours_before,
+                s.reminder_day_before_subject,
+                s.reminder_day_before_body,
+                s.reminder_same_day_subject,
+                s.reminder_same_day_body
+            FROM reservations r
+            JOIN shops s ON s.shop_id = r.shop_id
+            WHERE COALESCE(s.reminder_enabled, 0) = 1
+              AND COALESCE(r.receive_email, 0) = 1
+              AND TRIM(COALESCE(r.customer_email, '')) <> ''
+              AND r.status = '予約済み'
+            ORDER BY r.reservation_date ASC, r.start_time ASC, r.id ASC
+            '''
+        ).fetchall()
+
+    for row in rows:
+        item = dict(row)
+        reservation_date_text = str(item.get('reservation_date') or '').strip()
+        start_time_text = str(item.get('start_time') or '').strip()
+        try:
+            reservation_date_obj = datetime.strptime(reservation_date_text, '%Y-%m-%d').date()
+            start_time_obj = datetime.strptime(start_time_text, '%H:%M').time()
+        except ValueError:
+            continue
+
+        reservation_dt = datetime.combine(reservation_date_obj, start_time_obj)
+        item['reservation_at'] = reservation_dt.isoformat(timespec='minutes')
+
+        if int(item.get('reminder_day_before_enabled') or 0) and not str(item.get('reminder_day_before_sent_at') or '').strip():
+            time_text = str(item.get('reminder_day_before_time') or '20:00').strip() or '20:00'
+            try:
+                reminder_time = datetime.strptime(time_text, '%H:%M').time()
+            except ValueError:
+                reminder_time = time(20, 0)
+            day_before_dt = datetime.combine(reservation_date_obj - timedelta(days=1), reminder_time)
+            if day_before_dt == current_minute:
+                item['reminder_kind'] = 'day_before'
+                item['scheduled_at'] = day_before_dt.isoformat(timespec='minutes')
+                items.append(item.copy())
+
+        if int(item.get('reminder_same_day_enabled') or 0) and not str(item.get('reminder_same_day_sent_at') or '').strip():
+            try:
+                before_hours = int(item.get('reminder_same_day_hours_before') or 0)
+            except (TypeError, ValueError):
+                before_hours = 0
+            same_day_dt = reservation_dt - timedelta(hours=max(0, before_hours))
+            if same_day_dt == current_minute:
+                item['reminder_kind'] = 'same_day'
+                item['scheduled_at'] = same_day_dt.isoformat(timespec='minutes')
+                items.append(item.copy())
+
+    return items
+
+
+def mark_reservation_reminder_sent(shop_id: str, reservation_id: int, reminder_kind: str, sent_at: str | None = None) -> None:
+    column = 'reminder_day_before_sent_at' if reminder_kind == 'day_before' else 'reminder_same_day_sent_at'
+    timestamp = str(sent_at or datetime.now().replace(second=0, microsecond=0).isoformat(timespec='minutes'))
+    with get_connection() as conn:
+        conn.execute(
+            f'''UPDATE reservations SET {column} = ? WHERE shop_id = ? AND id = ?''',
+            (timestamp, shop_id, reservation_id),
+        )
+        conn.commit()
 
 
 # system settings

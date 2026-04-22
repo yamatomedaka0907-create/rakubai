@@ -7,6 +7,8 @@ import json
 from datetime import date, datetime, timedelta, timezone
 import os
 import smtplib
+import threading
+import time
 from urllib.parse import urlparse
 
 import boto3
@@ -67,6 +69,8 @@ from app.db import (
     create_child_shop_under_parent,
     get_system_mail_settings,
     update_system_mail_settings,
+    get_due_reservation_reminders,
+    mark_reservation_reminder_sent,
     get_shop_homepage_settings,
     get_shop_homepage_sections,
     get_shop_homepage_by_public_path,
@@ -1224,6 +1228,142 @@ def _send_reservation_mail(*, to_email: str, shop: dict, reservation_date: str, 
         print(f"[_send_reservation_mail] failed: {exc}")
 
 
+
+def _get_no_reply_from_email() -> str:
+    mail_settings = _get_mail_runtime_settings()
+    configured = (
+        _first_env('NO_REPLY_FROM_EMAIL', 'MAIL_NO_REPLY_FROM')
+        or str(mail_settings.get('no_reply_from_email') or '').strip()
+        or ''
+    )
+    if configured:
+        return configured
+    base_from = str(mail_settings.get('from_email') or '').strip()
+    if '@' not in base_from:
+        return base_from
+    local_part, domain_part = base_from.split('@', 1)
+    if local_part.lower() == 'no-reply':
+        return base_from
+    return f"no-reply@{domain_part}"
+
+
+def _render_reminder_template(template: str, reminder: dict) -> str:
+    reservation_at_text = str(reminder.get('reservation_at') or '').strip()
+    reservation_date = str(reminder.get('reservation_date') or '').strip()
+    reservation_time = str(reminder.get('start_time') or '').strip()
+    if reservation_at_text:
+        try:
+            reservation_at = datetime.fromisoformat(reservation_at_text)
+            reservation_date = reservation_at.strftime('%Y-%m-%d')
+            reservation_time = reservation_at.strftime('%H:%M')
+        except ValueError:
+            pass
+    replacements = {
+        '{{shop_name}}': str(reminder.get('shop_name') or '').strip(),
+        '{{customer_name}}': str(reminder.get('customer_name') or '').strip(),
+        '{{reservation_date}}': reservation_date,
+        '{{reservation_time}}': reservation_time,
+        '{{staff_name}}': str(reminder.get('staff_name') or '').strip(),
+        '{{menu_name}}': str(reminder.get('menu_name') or '').strip(),
+    }
+    content = str(template or '')
+    for key, value in replacements.items():
+        content = content.replace(key, value)
+    return content
+
+
+def _send_reservation_reminder_mail(reminder: dict) -> bool:
+    mail_settings = _get_mail_runtime_settings()
+    smtp_user = str(mail_settings.get('smtp_user') or '').strip()
+    smtp_password = str(mail_settings.get('smtp_password') or '').strip()
+    from_email = _get_no_reply_from_email().strip()
+    if not str(reminder.get('customer_email') or '').strip() or not from_email or not smtp_user or not smtp_password:
+        return False
+
+    is_day_before = str(reminder.get('reminder_kind') or '') == 'day_before'
+    default_subject = '【{{shop_name}}】明日のご予約について' if is_day_before else '【{{shop_name}}】まもなくご予約のお時間です'
+    default_body = (
+        '''{{customer_name}}様
+
+いつも{{shop_name}}をご利用いただきありがとうございます。
+
+明日、以下の内容でご予約をいただいております。
+
+■日時
+{{reservation_date}} {{reservation_time}}
+
+ご来店を心よりお待ちしております。
+
+※本メールは送信専用です。'''
+        if is_day_before else
+        '''{{customer_name}}様
+
+{{shop_name}}でございます。
+
+本日、以下のお時間でご予約をいただいております。
+
+■日時
+{{reservation_date}} {{reservation_time}}
+
+ご来店の際はお気をつけてお越しください。
+
+※本メールは送信専用です。'''
+    )
+    subject_template_value = reminder.get('reminder_day_before_subject') if is_day_before else reminder.get('reminder_same_day_subject')
+    body_template_value = reminder.get('reminder_day_before_body') if is_day_before else reminder.get('reminder_same_day_body')
+    subject_template = str(subject_template_value or '').strip() or default_subject
+    body_template = str(body_template_value or '').strip() or default_body
+
+    subject = _render_reminder_template(subject_template, reminder)
+    body = _render_reminder_template(body_template, reminder)
+
+    msg = MIMEText(body, 'plain', 'utf-8')
+    msg['Subject'] = subject
+    msg['From'] = formataddr((str(mail_settings.get('from_name') or '予約システム'), from_email))
+    msg['To'] = str(reminder.get('customer_email') or '').strip()
+    try:
+        with smtplib.SMTP(str(mail_settings.get('smtp_host') or 'smtp.gmail.com'), int(mail_settings.get('smtp_port') or 587), timeout=30) as smtp:
+            smtp.ehlo()
+            smtp.starttls()
+            smtp.ehlo()
+            smtp.login(smtp_user, smtp_password)
+            smtp.send_message(msg)
+        return True
+    except Exception as exc:
+        print(f"[_send_reservation_reminder_mail] failed: {exc}")
+        return False
+
+
+def _process_reservation_reminders() -> None:
+    reminder_now = datetime.now(ZoneInfo('Asia/Tokyo')).replace(second=0, microsecond=0).replace(tzinfo=None)
+    for reminder in get_due_reservation_reminders(reminder_now):
+        if _send_reservation_reminder_mail(reminder):
+            mark_reservation_reminder_sent(
+                str(reminder.get('shop_id') or ''),
+                int(reminder.get('id') or 0),
+                str(reminder.get('reminder_kind') or ''),
+                reminder_now.isoformat(timespec='minutes'),
+            )
+
+
+def _start_reservation_reminder_worker() -> None:
+    if getattr(app.state, 'reservation_reminder_worker_started', False):
+        return
+    app.state.reservation_reminder_worker_started = True
+
+    def _worker() -> None:
+        while True:
+            try:
+                _process_reservation_reminders()
+            except Exception as exc:
+                print(f"[_start_reservation_reminder_worker] failed: {exc}")
+            time.sleep(60)
+
+    thread = threading.Thread(target=_worker, name='reservation-reminder-worker', daemon=True)
+    thread.start()
+    app.state.reservation_reminder_worker = thread
+
+
 def parse_month_string(month_text: str | None) -> tuple[int, int]:
     today = date.today()
     if not month_text:
@@ -1421,6 +1561,7 @@ def build_shop_booking_context(shop_id: str, request: Request, error_message: st
 @app.on_event("startup")
 def startup():
     init_db()
+    _start_reservation_reminder_worker()
 
 
 def _get_mail_runtime_settings() -> dict[str, object]:
@@ -2223,6 +2364,15 @@ def admin_settings_save(
     primary_dark: str = Form("#159a90"),
     accent_bg: str = Form("#f7fffe"),
     heading_bg_color: str = Form("#ff6f91"),
+    reminder_enabled: str = Form("0"),
+    reminder_day_before_enabled: str = Form("0"),
+    reminder_day_before_time: str = Form("20:00"),
+    reminder_same_day_enabled: str = Form("0"),
+    reminder_same_day_hours_before: str = Form("1"),
+    reminder_day_before_subject: str = Form(""),
+    reminder_day_before_body: str = Form(""),
+    reminder_same_day_subject: str = Form(""),
+    reminder_same_day_body: str = Form(""),
     menu_name: list[str] = Form([]),
     menu_duration: list[str] = Form([]),
     menu_price: list[str] = Form([]),
@@ -2257,6 +2407,11 @@ def admin_settings_save(
             "description": description_text,
         })
 
+    try:
+        reminder_same_day_hours_before_value = max(0, int(str(reminder_same_day_hours_before or '0').strip() or 0))
+    except ValueError:
+        reminder_same_day_hours_before_value = 1
+
     update_shop_basic_info(
         normalized_shop_id,
         shop_name=shop_name,
@@ -2271,6 +2426,15 @@ def admin_settings_save(
         primary_dark=primary_dark,
         accent_bg=accent_bg,
         heading_bg_color=heading_bg_color,
+        reminder_enabled=1 if reminder_enabled == '1' else 0,
+        reminder_day_before_enabled=1 if reminder_day_before_enabled == '1' else 0,
+        reminder_day_before_time=str(reminder_day_before_time or '20:00').strip() or '20:00',
+        reminder_same_day_enabled=1 if reminder_same_day_enabled == '1' else 0,
+        reminder_same_day_hours_before=reminder_same_day_hours_before_value,
+        reminder_day_before_subject=reminder_day_before_subject,
+        reminder_day_before_body=reminder_day_before_body,
+        reminder_same_day_subject=reminder_same_day_subject,
+        reminder_same_day_body=reminder_same_day_body,
         menus=menus,
     )
     return RedirectResponse(f"/admin/{normalized_shop_id}/settings?saved=店舗設定を保存しました。", status_code=303)
