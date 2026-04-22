@@ -93,6 +93,7 @@ from app.db import (
     get_admin_unread_chat_summary,
     get_member_unread_chat_summary,
     normalize_member_phone,
+    create_audit_log,
 )
 from app.runtime_data import (
     get_platform_admin,
@@ -115,6 +116,88 @@ templates = Jinja2Templates(directory="app/templates")
 templates.env.globals["is_premium_subscription"] = lambda subscription: _is_premium_subscription(subscription)
 PLATFORM_ADMIN = get_platform_admin()
 JST = ZoneInfo("Asia/Tokyo")
+
+
+def _request_client_ip(request: Request) -> str:
+    forwarded_for = str(request.headers.get("x-forwarded-for") or "").strip()
+    if forwarded_for:
+        return forwarded_for.split(",", 1)[0].strip()
+    client = request.client
+    return str(client.host if client else "")
+
+
+def _current_actor_context(request: Request) -> dict[str, str]:
+    if bool(request.session.get("platform_logged_in")):
+        return {
+            "actor_type": "platform_admin",
+            "actor_id": str(PLATFORM_ADMIN.get("login_id") or ""),
+            "actor_name": str(request.session.get("platform_admin_name") or PLATFORM_ADMIN.get("name") or "運営管理者"),
+            "shop_id": "",
+        }
+    store_shop_id = str(request.session.get("store_logged_in_shop_id") or "").strip()
+    if store_shop_id:
+        return {
+            "actor_type": "store_admin",
+            "actor_id": str(request.session.get("store_logged_in_login_id") or store_shop_id),
+            "actor_name": str(request.session.get("store_logged_in_admin_name") or ""),
+            "shop_id": store_shop_id,
+        }
+    member_id = str(request.session.get("member_logged_in_id") or "").strip()
+    member_shop_id = str(request.session.get("member_logged_in_shop_id") or "").strip()
+    if member_id and member_shop_id:
+        return {
+            "actor_type": "member",
+            "actor_id": member_id,
+            "actor_name": str(request.session.get("member_logged_in_name") or ""),
+            "shop_id": member_shop_id,
+        }
+    return {
+        "actor_type": "anonymous",
+        "actor_id": "",
+        "actor_name": "",
+        "shop_id": "",
+    }
+
+
+def _record_audit_log(
+    request: Request,
+    *,
+    actor_type: str | None = None,
+    actor_id: str | int | None = None,
+    actor_name: str | None = None,
+    action: str,
+    shop_id: str | None = None,
+    target_type: str = "",
+    target_id: str | int | None = None,
+    target_label: str = "",
+    status: str = "success",
+    detail: dict[str, object] | None = None,
+) -> None:
+    context = _current_actor_context(request)
+    resolved_actor_type = (actor_type or context.get("actor_type") or "anonymous").strip()
+    resolved_actor_id = str(actor_id if actor_id is not None else context.get("actor_id") or "").strip()
+    resolved_actor_name = str(actor_name if actor_name is not None else context.get("actor_name") or "").strip()
+    resolved_shop_id = str(shop_id if shop_id is not None else context.get("shop_id") or "").strip()
+    try:
+        create_audit_log(
+            actor_type=resolved_actor_type,
+            actor_id=resolved_actor_id,
+            actor_name=resolved_actor_name,
+            action=(action or "").strip(),
+            shop_id=resolved_shop_id,
+            target_type=(target_type or "").strip(),
+            target_id="" if target_id is None else str(target_id),
+            target_label=str(target_label or "").strip(),
+            status=(status or "success").strip(),
+            method=str(request.method or "").upper(),
+            path=str(request.url.path or ""),
+            ip_address=_request_client_ip(request),
+            user_agent=str(request.headers.get("user-agent") or ""),
+            detail=detail or {},
+            retention_days=90,
+        )
+    except Exception:
+        pass
 
 
 def _format_chat_datetime(value: object) -> str:
@@ -1453,6 +1536,15 @@ def store_login_submit(
 
     user = authenticate_admin_user(normalized_shop_id, normalized_shop_id, password)
     if not user:
+        _record_audit_log(
+            request,
+            actor_type="store_admin",
+            actor_id=normalized_shop_id,
+            action="login",
+            shop_id=normalized_shop_id,
+            status="failure",
+            detail={"login_id": raw_shop_id},
+        )
         return templates.TemplateResponse(
             request=request,
             name="store_login.html",
@@ -1467,6 +1559,15 @@ def store_login_submit(
     request.session["store_logged_in_shop_id"] = normalized_shop_id
     request.session["store_logged_in_login_id"] = str(user.get("login_id") or normalized_shop_id)
     request.session["store_logged_in_admin_name"] = str(user.get("name") or "")
+    _record_audit_log(
+        request,
+        actor_type="store_admin",
+        actor_id=str(user.get("login_id") or normalized_shop_id),
+        actor_name=str(user.get("name") or ""),
+        action="login",
+        shop_id=normalized_shop_id,
+        detail={"login_id": str(user.get("login_id") or normalized_shop_id)},
+    )
     return RedirectResponse(f"/admin/{normalized_shop_id}", status_code=303)
 
 
@@ -1484,7 +1585,21 @@ def platform_login(request: Request, login_id: str = Form(...), password: str = 
     if login_id == PLATFORM_ADMIN.get("login_id") and password == PLATFORM_ADMIN.get("password"):
         request.session["platform_logged_in"] = True
         request.session["platform_admin_name"] = PLATFORM_ADMIN.get("name", "運営管理者")
+        _record_audit_log(
+            request,
+            actor_type="platform_admin",
+            actor_id=str(login_id or ""),
+            actor_name=str(PLATFORM_ADMIN.get("name") or "運営管理者"),
+            action="login",
+        )
         return RedirectResponse("/platform/shops", status_code=303)
+    _record_audit_log(
+        request,
+        actor_type="platform_admin",
+        actor_id=str(login_id or ""),
+        action="login",
+        status="failure",
+    )
     return templates.TemplateResponse(
         request=request,
         name="platform/login.html",
@@ -1495,6 +1610,14 @@ def platform_login(request: Request, login_id: str = Form(...), password: str = 
 
 @app.post("/platform/logout")
 def platform_logout(request: Request):
+    admin_name = str(request.session.get("platform_admin_name") or PLATFORM_ADMIN.get("name") or "運営管理者")
+    _record_audit_log(
+        request,
+        actor_type="platform_admin",
+        actor_id=str(PLATFORM_ADMIN.get("login_id") or ""),
+        actor_name=admin_name,
+        action="logout",
+    )
     request.session.clear()
     return RedirectResponse("/", status_code=303)
 
@@ -1600,8 +1723,31 @@ def platform_shop_edit_save(
     if redirect:
         return redirect
     update_shop_basic_info(shop_id, shop_name=shop_name, phone=phone, address=address, business_hours=business_hours, holiday=holiday, catch_copy=catch_copy, description=description, reply_to_email=reply_to_email)
+    _record_audit_log(
+        request,
+        actor_type="platform_admin",
+        actor_id=str(PLATFORM_ADMIN.get("login_id") or ""),
+        actor_name=str(request.session.get("platform_admin_name") or PLATFORM_ADMIN.get("name") or "運営管理者"),
+        action="shop_update",
+        shop_id=shop_id,
+        target_type="shop",
+        target_id=shop_id,
+        target_label=shop_name,
+    )
     if plan_id:
         update_shop_subscription(shop_id, plan_id=plan_id, status=subscription_status)
+        _record_audit_log(
+            request,
+            actor_type="platform_admin",
+            actor_id=str(PLATFORM_ADMIN.get("login_id") or ""),
+            actor_name=str(request.session.get("platform_admin_name") or PLATFORM_ADMIN.get("name") or "運営管理者"),
+            action="shop_subscription_update",
+            shop_id=shop_id,
+            target_type="shop",
+            target_id=shop_id,
+            target_label=shop_name,
+            detail={"plan_id": int(plan_id), "subscription_status": subscription_status},
+        )
     return RedirectResponse(f"/platform/shops/{shop_id}/edit?saved=店舗情報を保存しました。", status_code=303)
 
 
@@ -2530,7 +2676,18 @@ def admin_update_customer(
     name = (name or "").strip()
     if not name:
         return admin_customer_detail_page(request, shop_id, customer_id, error_message="顧客名を入力してください。")
-    update_customer(shop_id, customer_id, name, (phone or "").strip(), (email or "").strip().lower())
+    updated_customer = update_customer(shop_id, customer_id, name, (phone or "").strip(), (email or "").strip().lower())
+    _record_audit_log(
+        request,
+        actor_type="store_admin",
+        actor_id=str(request.session.get("store_logged_in_login_id") or shop_id),
+        actor_name=str(request.session.get("store_logged_in_admin_name") or ""),
+        action="customer_update",
+        shop_id=shop_id,
+        target_type="customer",
+        target_id=customer_id,
+        target_label=str((updated_customer or {}).get("name") or name),
+    )
     return RedirectResponse(f"/admin/{shop_id}/customers/{customer_id}?saved=顧客情報を更新しました", status_code=303)
 
 
@@ -2545,6 +2702,17 @@ def admin_delete_customer_route(request: Request, shop_id: str, customer_id: int
     for photo in get_customer_photos(shop_id, customer_id):
         _delete_customer_photo_file(str(photo.get("image_url") or ""))
     delete_customer(shop_id, customer_id)
+    _record_audit_log(
+        request,
+        actor_type="store_admin",
+        actor_id=str(request.session.get("store_logged_in_login_id") or shop_id),
+        actor_name=str(request.session.get("store_logged_in_admin_name") or ""),
+        action="customer_delete",
+        shop_id=shop_id,
+        target_type="customer",
+        target_id=customer_id,
+        target_label=str(customer.get("name") or ""),
+    )
     return RedirectResponse(f"/admin/{shop_id}/customers?saved=顧客を削除しました", status_code=303)
 
 
@@ -2565,7 +2733,19 @@ def admin_add_customer_note_route(
     content = (content or "").strip()
     if not title or not content:
         return admin_customer_detail_page(request, shop_id, customer_id, error_message="タイトルと内容を入力してください。")
-    add_customer_note(shop_id, customer_id, title, content)
+    note = add_customer_note(shop_id, customer_id, title, content)
+    _record_audit_log(
+        request,
+        actor_type="store_admin",
+        actor_id=str(request.session.get("store_logged_in_login_id") or shop_id),
+        actor_name=str(request.session.get("store_logged_in_admin_name") or ""),
+        action="customer_note_create",
+        shop_id=shop_id,
+        target_type="customer_note",
+        target_id=int(note.get("id") or 0),
+        target_label=title,
+        detail={"customer_id": customer_id},
+    )
     return RedirectResponse(f"/admin/{shop_id}/customers/{customer_id}?saved=追加情報を保存しました", status_code=303)
 
 
@@ -2574,7 +2754,20 @@ def admin_delete_customer_note_route(request: Request, shop_id: str, customer_id
     redirect = require_store_login(request, shop_id)
     if redirect:
         return redirect
-    delete_customer_note(shop_id, customer_id, note_id)
+    deleted_note = delete_customer_note(shop_id, customer_id, note_id)
+    if deleted_note is not None:
+        _record_audit_log(
+            request,
+            actor_type="store_admin",
+            actor_id=str(request.session.get("store_logged_in_login_id") or shop_id),
+            actor_name=str(request.session.get("store_logged_in_admin_name") or ""),
+            action="customer_note_delete",
+            shop_id=shop_id,
+            target_type="customer_note",
+            target_id=note_id,
+            target_label=str(deleted_note.get("title") or ""),
+            detail={"customer_id": customer_id},
+        )
     return RedirectResponse(f"/admin/{shop_id}/customers/{customer_id}?saved=追加情報を削除しました", status_code=303)
 
 
@@ -2600,7 +2793,19 @@ def admin_add_customer_photo_route(
     if not (photo.filename or "").strip():
         return admin_customer_detail_page(request, shop_id, customer_id, error_message="写真ファイルを選択してください。")
     image_url = _save_customer_photo_file(shop_id, customer_id, photo)
-    add_customer_photo(shop_id, customer_id, image_url)
+    saved_photo = add_customer_photo(shop_id, customer_id, image_url)
+    _record_audit_log(
+        request,
+        actor_type="store_admin",
+        actor_id=str(request.session.get("store_logged_in_login_id") or shop_id),
+        actor_name=str(request.session.get("store_logged_in_admin_name") or ""),
+        action="customer_photo_create",
+        shop_id=shop_id,
+        target_type="customer_photo",
+        target_id=int(saved_photo.get("id") or 0),
+        target_label=str(photo.filename or ""),
+        detail={"customer_id": customer_id},
+    )
     return RedirectResponse(f"/admin/{shop_id}/customers/{customer_id}?saved=写真を保存しました", status_code=303)
 
 
@@ -2612,6 +2817,17 @@ def admin_delete_customer_photo_route(request: Request, shop_id: str, customer_i
     deleted = delete_customer_photo(shop_id, customer_id, photo_id)
     if deleted is not None:
         _delete_customer_photo_file(str(deleted.get("image_url") or ""))
+        _record_audit_log(
+            request,
+            actor_type="store_admin",
+            actor_id=str(request.session.get("store_logged_in_login_id") or shop_id),
+            actor_name=str(request.session.get("store_logged_in_admin_name") or ""),
+            action="customer_photo_delete",
+            shop_id=shop_id,
+            target_type="customer_photo",
+            target_id=photo_id,
+            detail={"customer_id": customer_id},
+        )
     return RedirectResponse(f"/admin/{shop_id}/customers/{customer_id}?saved=写真を削除しました", status_code=303)
 
 
@@ -2651,7 +2867,18 @@ def admin_website_page(request: Request, shop_id: str):
 
 @app.post("/admin/logout/{shop_id}")
 def admin_logout(request: Request, shop_id: str):
+    actor_id = str(request.session.get("store_logged_in_login_id") or shop_id)
+    actor_name = str(request.session.get("store_logged_in_admin_name") or "")
+    _record_audit_log(
+        request,
+        actor_type="store_admin",
+        actor_id=actor_id,
+        actor_name=actor_name,
+        action="logout",
+        shop_id=shop_id,
+    )
     request.session.pop("store_logged_in_shop_id", None)
+    request.session.pop("store_logged_in_login_id", None)
     request.session.pop("store_logged_in_admin_name", None)
     return RedirectResponse("/store-login", status_code=303)
 
@@ -2801,7 +3028,18 @@ def admin_create_customer(
     email = (email or "").strip().lower()
     if not name:
         return admin_customers_page(request, shop_id, error_message="顧客名を入力してください。")
-    create_customer(shop_id, name, phone, email)
+    customer = create_customer(shop_id, name, phone, email)
+    _record_audit_log(
+        request,
+        actor_type="store_admin",
+        actor_id=str(request.session.get("store_logged_in_login_id") or shop_id),
+        actor_name=str(request.session.get("store_logged_in_admin_name") or ""),
+        action="customer_create",
+        shop_id=shop_id,
+        target_type="customer",
+        target_id=int(customer.get("id") or 0),
+        target_label=str(customer.get("name") or ""),
+    )
     return RedirectResponse(f"/admin/{shop_id}/customers?saved=顧客を追加しました", status_code=303)
 
 
@@ -2840,7 +3078,7 @@ def admin_create_reservation(
         return admin_page(request, shop_id, error_message="開始時間の形式が正しくありません。")
     duration = int(menu.get("duration", 60) or 60)
     end_time = (start_dt + timedelta(minutes=duration)).strftime("%H:%M")
-    create_reservation(
+    reservation = create_reservation(
         shop_id=shop_id,
         customer_id=int(customer["id"]),
         customer_name=str(customer.get("name") or ""),
@@ -2857,6 +3095,18 @@ def admin_create_reservation(
         end_time=end_time,
         source="admin",
     )
+    _record_audit_log(
+        request,
+        actor_type="store_admin",
+        actor_id=str(request.session.get("store_logged_in_login_id") or shop_id),
+        actor_name=str(request.session.get("store_logged_in_admin_name") or ""),
+        action="reservation_create",
+        shop_id=shop_id,
+        target_type="reservation",
+        target_id=int(reservation.get("id") or 0),
+        target_label=str(customer.get("name") or ""),
+        detail={"status": str(reservation.get("status") or "")},
+    )
     return RedirectResponse(f"/admin/{shop_id}", status_code=303)
 
 
@@ -2866,6 +3116,17 @@ def admin_mark_reservation_done(request: Request, shop_id: str, reservation_id: 
     if redirect:
         return redirect
     update_reservation_status(shop_id, reservation_id, "来店済み")
+    _record_audit_log(
+        request,
+        actor_type="store_admin",
+        actor_id=str(request.session.get("store_logged_in_login_id") or shop_id),
+        actor_name=str(request.session.get("store_logged_in_admin_name") or ""),
+        action="reservation_status_update",
+        shop_id=shop_id,
+        target_type="reservation",
+        target_id=reservation_id,
+        detail={"status": "来店済み"},
+    )
     return RedirectResponse(f"/admin/{shop_id}", status_code=303)
 
 
@@ -2875,6 +3136,17 @@ def admin_mark_reservation_cancel(request: Request, shop_id: str, reservation_id
     if redirect:
         return redirect
     update_reservation_status(shop_id, reservation_id, "キャンセル")
+    _record_audit_log(
+        request,
+        actor_type="store_admin",
+        actor_id=str(request.session.get("store_logged_in_login_id") or shop_id),
+        actor_name=str(request.session.get("store_logged_in_admin_name") or ""),
+        action="reservation_status_update",
+        shop_id=shop_id,
+        target_type="reservation",
+        target_id=reservation_id,
+        detail={"status": "キャンセル"},
+    )
     return RedirectResponse(f"/admin/{shop_id}", status_code=303)
 
 
@@ -2919,6 +3191,17 @@ async def admin_booking_page_editor_save(request: Request, shop_id: str):
         primary_dark=str(shop.get("primary_dark") or "#159a90").strip(),
         accent_bg=str(shop.get("accent_bg") or "#f7fffe").strip(),
         menus=shop.get("menus") or [],
+    )
+    _record_audit_log(
+        request,
+        actor_type="store_admin",
+        actor_id=str(request.session.get("store_logged_in_login_id") or shop_id),
+        actor_name=str(request.session.get("store_logged_in_admin_name") or ""),
+        action="shop_update",
+        shop_id=shop_id,
+        target_type="shop",
+        target_id=shop_id,
+        target_label=str(fields.get("shop_name") or shop.get("shop_name") or ""),
     )
     return JSONResponse({"ok": True})
 
@@ -3088,6 +3371,18 @@ def shop_reserve(
         start_time=start_time,
         end_time=end_time,
         source="web",
+    )
+    _record_audit_log(
+        request,
+        actor_type="guest",
+        actor_id=email or phone or customer_name,
+        actor_name=customer_name,
+        action="reservation_create",
+        shop_id=shop_id,
+        target_type="reservation",
+        target_id=int(reservation.get("id") or 0),
+        target_label=customer_name,
+        detail={"source": "web"},
     )
     if email and receive_email == '1':
         _send_reservation_mail(to_email=email, shop=shop, reservation_date=reservation_date, start_time=start_time, reply_to_email=str(shop.get('reply_to_email') or ''))
@@ -3557,9 +3852,29 @@ def member_login_submit(request: Request, shop_id: str, phone: str = Form(...), 
     member = authenticate_member(shop_id, phone, password)
     if member is None:
         from urllib.parse import quote
+        _record_audit_log(
+            request,
+            actor_type="member",
+            actor_id=normalize_member_phone(phone),
+            action="login",
+            shop_id=shop_id,
+            status="failure",
+            detail={"phone": normalize_member_phone(phone)},
+        )
         target = quote(_member_redirect_target(shop_id, next_url), safe='')
         return RedirectResponse(url=f"/member/{shop_id}/login?next={target}&error=電話番号またはパスワードが違います", status_code=303)
     _login_member_session(request, shop_id, member)
+    _record_audit_log(
+        request,
+        actor_type="member",
+        actor_id=int(member['id']),
+        actor_name=str(member.get('name') or ''),
+        action="login",
+        shop_id=shop_id,
+        target_type="member",
+        target_id=int(member['id']),
+        target_label=str(member.get('name') or ''),
+    )
     return RedirectResponse(url=_member_redirect_target(shop_id, next_url or f"/member/{shop_id}/mypage"), status_code=303)
 
 
@@ -3702,11 +4017,47 @@ def member_register_verify_submit(
         )
 
     _login_member_session(request, shop_id, member)
+    _record_audit_log(
+        request,
+        actor_type="member",
+        actor_id=int(member['id']),
+        actor_name=str(member.get('name') or ''),
+        action="member_register",
+        shop_id=shop_id,
+        target_type="member",
+        target_id=int(member['id']),
+        target_label=str(member.get('name') or ''),
+    )
+    _record_audit_log(
+        request,
+        actor_type="member",
+        actor_id=int(member['id']),
+        actor_name=str(member.get('name') or ''),
+        action="login",
+        shop_id=shop_id,
+        target_type="member",
+        target_id=int(member['id']),
+        target_label=str(member.get('name') or ''),
+    )
     return RedirectResponse(url=_member_redirect_target(shop_id, next_url or f"/member/{shop_id}/mypage"), status_code=303)
 
 
 @app.get("/member/{shop_id}/logout")
 def member_logout(request: Request, shop_id: str):
+    member_id = request.session.get('member_logged_in_id')
+    member_name = str(request.session.get('member_logged_in_name') or '')
+    if member_id:
+        _record_audit_log(
+            request,
+            actor_type="member",
+            actor_id=int(member_id),
+            actor_name=member_name,
+            action="logout",
+            shop_id=shop_id,
+            target_type="member",
+            target_id=int(member_id),
+            target_label=member_name,
+        )
     _logout_member_session(request)
     return RedirectResponse(url=f"/member/{shop_id}/login", status_code=303)
 
@@ -3790,6 +4141,28 @@ def member_unsubscribe_shop_submit(request: Request, shop_id: str):
     if member is None:
         return RedirectResponse(url=f"/member/{shop_id}/login?next=/member/{shop_id}/unsubscribe/shop", status_code=303)
     deactivate_member(shop_id, int(member['id']))
+    _record_audit_log(
+        request,
+        actor_type="member",
+        actor_id=int(member['id']),
+        actor_name=str(member.get('name') or ''),
+        action="member_unsubscribe_shop",
+        shop_id=shop_id,
+        target_type="member",
+        target_id=int(member['id']),
+        target_label=str(member.get('name') or ''),
+    )
+    _record_audit_log(
+        request,
+        actor_type="member",
+        actor_id=int(member['id']),
+        actor_name=str(member.get('name') or ''),
+        action="logout",
+        shop_id=shop_id,
+        target_type="member",
+        target_id=int(member['id']),
+        target_label=str(member.get('name') or ''),
+    )
     _logout_member_session(request)
     return templates.TemplateResponse(
         request=request,
@@ -3835,6 +4208,28 @@ def member_unsubscribe_all_submit(request: Request, shop_id: str):
     if member is None:
         return RedirectResponse(url=f"/member/{shop_id}/login?next=/member/{shop_id}/unsubscribe/all", status_code=303)
     deactivate_members_by_phone(str(member.get('phone_normalized') or member.get('phone') or ''))
+    _record_audit_log(
+        request,
+        actor_type="member",
+        actor_id=int(member['id']),
+        actor_name=str(member.get('name') or ''),
+        action="member_unsubscribe_all",
+        shop_id=shop_id,
+        target_type="member",
+        target_id=int(member['id']),
+        target_label=str(member.get('name') or ''),
+    )
+    _record_audit_log(
+        request,
+        actor_type="member",
+        actor_id=int(member['id']),
+        actor_name=str(member.get('name') or ''),
+        action="logout",
+        shop_id=shop_id,
+        target_type="member",
+        target_id=int(member['id']),
+        target_label=str(member.get('name') or ''),
+    )
     _logout_member_session(request)
     return templates.TemplateResponse(
         request=request,
@@ -3879,6 +4274,18 @@ def member_chat_send_api(request: Request, shop_id: str, message: str = Form(...
         create_chat_message(shop_id, customer_id, int(member['id']), 'member', message)
     except ValueError as exc:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+    _record_audit_log(
+        request,
+        actor_type="member",
+        actor_id=int(member['id']),
+        actor_name=str(member.get('name') or ''),
+        action="chat_send",
+        shop_id=shop_id,
+        target_type="customer",
+        target_id=customer_id,
+        target_label=str(member.get('name') or ''),
+        detail={"sender_type": "member"},
+    )
     messages = [_serialize_chat_message(item) for item in list_chat_messages(shop_id, customer_id, limit=200, member_id=int(member['id']))]
     return JSONResponse({"ok": True, "messages": messages})
 
@@ -3919,6 +4326,18 @@ def admin_chat_send_api(request: Request, shop_id: str, customer_id: int, messag
         create_chat_message(shop_id, customer_id, int(linked_member['id']) if linked_member else None, 'staff', message)
     except ValueError as exc:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+    _record_audit_log(
+        request,
+        actor_type="store_admin",
+        actor_id=str(request.session.get("store_logged_in_login_id") or shop_id),
+        actor_name=str(request.session.get("store_logged_in_admin_name") or ""),
+        action="chat_send",
+        shop_id=shop_id,
+        target_type="customer",
+        target_id=customer_id,
+        target_label=str((customer or {}).get("name") or ""),
+        detail={"sender_type": "staff"},
+    )
     mark_chat_messages_read_for_admin(shop_id, customer_id)
     messages = [_serialize_chat_message(item) for item in list_chat_messages(shop_id, customer_id, limit=200, member_id=active_member_id or (int(linked_member['id']) if linked_member else None))]
     new_sent_count = count_shop_chat_messages_in_month(shop_id)

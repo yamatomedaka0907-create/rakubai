@@ -379,6 +379,33 @@ def init_db() -> None:
 
         conn.execute(
             '''
+            CREATE TABLE IF NOT EXISTS audit_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                shop_id TEXT DEFAULT '',
+                actor_type TEXT NOT NULL,
+                actor_id TEXT NOT NULL DEFAULT '',
+                actor_name TEXT NOT NULL DEFAULT '',
+                action TEXT NOT NULL,
+                target_type TEXT NOT NULL DEFAULT '',
+                target_id TEXT NOT NULL DEFAULT '',
+                target_label TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'success',
+                method TEXT NOT NULL DEFAULT '',
+                path TEXT NOT NULL DEFAULT '',
+                ip_address TEXT NOT NULL DEFAULT '',
+                user_agent TEXT NOT NULL DEFAULT '',
+                detail_json TEXT NOT NULL DEFAULT '{}',
+                occurred_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+            '''
+        )
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_occurred_at ON audit_logs(occurred_at, id)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_actor ON audit_logs(actor_type, actor_id, occurred_at, id)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_shop ON audit_logs(shop_id, occurred_at, id)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action, occurred_at, id)')
+
+        conn.execute(
+            '''
             CREATE TABLE IF NOT EXISTS homepage_templates (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 code TEXT NOT NULL UNIQUE,
@@ -3086,6 +3113,68 @@ def create_chat_message(shop_id: str, customer_id: int, member_id: int | None, s
         raise RuntimeError('メッセージの保存に失敗しました。')
     return dict(row)
 
+
+
+def purge_old_audit_logs(retention_days: int = 90) -> int:
+    cutoff = (datetime.utcnow() - timedelta(days=max(int(retention_days or 90), 1))).strftime('%Y-%m-%d %H:%M:%S')
+    with get_connection() as conn:
+        cursor = conn.execute('DELETE FROM audit_logs WHERE occurred_at < ?', (cutoff,))
+        return int(cursor.rowcount or 0)
+
+
+def create_audit_log(
+    *,
+    actor_type: str,
+    action: str,
+    actor_id: str = '',
+    actor_name: str = '',
+    shop_id: str = '',
+    target_type: str = '',
+    target_id: str = '',
+    target_label: str = '',
+    status: str = 'success',
+    method: str = '',
+    path: str = '',
+    ip_address: str = '',
+    user_agent: str = '',
+    detail: dict[str, Any] | None = None,
+    retention_days: int = 90,
+) -> dict[str, Any]:
+    detail_json = json.dumps(detail or {}, ensure_ascii=False)
+    with get_connection() as conn:
+        cursor = conn.execute(
+            '''
+            INSERT INTO audit_logs (
+                shop_id, actor_type, actor_id, actor_name, action,
+                target_type, target_id, target_label, status,
+                method, path, ip_address, user_agent, detail_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''',
+            (
+                (shop_id or '').strip(),
+                (actor_type or '').strip(),
+                (actor_id or '').strip(),
+                (actor_name or '').strip(),
+                (action or '').strip(),
+                (target_type or '').strip(),
+                str(target_id or '').strip(),
+                (target_label or '').strip(),
+                (status or 'success').strip(),
+                (method or '').strip().upper(),
+                (path or '').strip(),
+                (ip_address or '').strip(),
+                (user_agent or '').strip(),
+                detail_json,
+            ),
+        )
+        log_id = int(cursor.lastrowid or 0)
+        row = conn.execute('SELECT * FROM audit_logs WHERE id = ?', (log_id,)).fetchone()
+    try:
+        purge_old_audit_logs(retention_days=retention_days)
+    except Exception:
+        pass
+    return dict(row) if row else {}
 
 def mark_chat_messages_read_for_admin(shop_id: str, customer_id: int) -> None:
     with get_connection() as conn:
