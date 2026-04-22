@@ -3441,6 +3441,39 @@ def force_cancel_shop_for_audit_api(shop_id: str) -> dict[str, Any]:
         conn.commit()
     return get_shop_detail_for_audit_api(normalized_shop_id) or {}
 
+
+def restore_member_for_audit_api(shop_id: str, member_id: int) -> dict[str, Any]:
+    normalized_shop_id = (shop_id or '').strip().lower()
+    with get_connection() as conn:
+        conn.execute(
+            """
+            UPDATE members
+            SET is_active = 1, updated_at = CURRENT_TIMESTAMP
+            WHERE shop_id = ? AND id = ?
+            """,
+            (normalized_shop_id, int(member_id)),
+        )
+        conn.commit()
+    return get_member_detail_for_audit_api(normalized_shop_id, int(member_id)) or {}
+
+
+def restore_shop_for_audit_api(shop_id: str) -> dict[str, Any]:
+    normalized_shop_id = (shop_id or '').strip().lower()
+    with get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO subscriptions (shop_id, plan_id, status)
+            VALUES (?, COALESCE((SELECT plan_id FROM subscriptions WHERE shop_id = ?), 1), 'active')
+            ON CONFLICT(shop_id) DO UPDATE SET
+                status = 'active'
+            """,
+            (normalized_shop_id, normalized_shop_id),
+        )
+        conn.execute('UPDATE admin_users SET is_active = 1 WHERE shop_id = ?', (normalized_shop_id,))
+        conn.execute('UPDATE members SET is_active = 1, updated_at = CURRENT_TIMESTAMP WHERE shop_id = ?', (normalized_shop_id,))
+        conn.commit()
+    return get_shop_detail_for_audit_api(normalized_shop_id) or {}
+
 def mark_chat_messages_read_for_admin(shop_id: str, customer_id: int) -> None:
     with get_connection() as conn:
         conn.execute(

@@ -103,6 +103,8 @@ from app.db import (
     update_member_for_audit_api,
     force_cancel_shop_for_audit_api,
     force_cancel_member_for_audit_api,
+    restore_shop_for_audit_api,
+    restore_member_for_audit_api,
 )
 from app.runtime_data import (
     get_platform_admin,
@@ -4738,6 +4740,62 @@ async def audit_api_member_update(request: Request):
         detail={"before": before, "after": after},
     )
     return JSONResponse({"item": after})
+
+
+
+
+@app.post("/admin/api/restore")
+async def audit_api_restore(request: Request):
+    _require_audit_api_token(request)
+    payload = await request.json()
+    target_type = _pick(payload, "target_type").lower()
+    shop_id = _pick(payload, "shop_id").lower()
+    admin_password = _pick(payload, "admin_password")
+    reason = _pick(payload, "reason")
+    _require_audit_admin_password(admin_password)
+    if target_type == "shop":
+        before = get_shop_detail_for_audit_api(shop_id)
+        if before is None:
+            raise HTTPException(status_code=404, detail="店舗が見つかりません")
+        after = restore_shop_for_audit_api(shop_id)
+        _record_audit_log(
+            request,
+            actor_type="audit_tool",
+            actor_id="desktop",
+            actor_name="desktop_app",
+            action="shop_restore",
+            shop_id=shop_id,
+            target_type="shop",
+            target_id=shop_id,
+            target_label=str(after.get("shop_name") or shop_id),
+            status="success",
+            detail={"reason": reason, "before": before, "after": after, "password_reauth": True},
+        )
+        return JSONResponse({"item": after})
+    if target_type == "member":
+        member_id_raw = _pick(payload, "member_id")
+        if not member_id_raw:
+            raise HTTPException(status_code=400, detail="member_id は必須です")
+        member_id = int(member_id_raw)
+        before = get_member_detail_for_audit_api(shop_id, member_id)
+        if before is None:
+            raise HTTPException(status_code=404, detail="会員が見つかりません")
+        after = restore_member_for_audit_api(shop_id, member_id)
+        _record_audit_log(
+            request,
+            actor_type="audit_tool",
+            actor_id="desktop",
+            actor_name="desktop_app",
+            action="member_restore",
+            shop_id=shop_id,
+            target_type="member",
+            target_id=str(member_id),
+            target_label=str(after.get("name") or member_id),
+            status="success",
+            detail={"reason": reason, "before": before, "after": after, "password_reauth": True},
+        )
+        return JSONResponse({"item": after})
+    raise HTTPException(status_code=400, detail="target_type は shop または member を指定してください")
 
 
 @app.post("/admin/api/force-cancel")
