@@ -3,6 +3,7 @@ from __future__ import annotations
 from dotenv import load_dotenv
 
 import calendar
+import json
 from datetime import date, datetime, timedelta, timezone
 import os
 import smtplib
@@ -94,6 +95,8 @@ from app.db import (
     get_member_unread_chat_summary,
     normalize_member_phone,
     create_audit_log,
+    list_members_for_audit_api,
+    list_audit_logs_for_api,
 )
 from app.runtime_data import (
     get_platform_admin,
@@ -199,6 +202,74 @@ def _record_audit_log(
     except Exception:
         pass
 
+
+
+
+def _get_audit_api_token() -> str:
+    return str(os.getenv("AUDIT_API_TOKEN") or "").strip()
+
+
+def _require_audit_api_token(request: Request) -> None:
+    expected = _get_audit_api_token()
+    if not expected:
+        raise HTTPException(status_code=503, detail="AUDIT_API_TOKEN が未設定です")
+    auth_header = str(request.headers.get("authorization") or "").strip()
+    provided = ""
+    if auth_header.lower().startswith("bearer "):
+        provided = auth_header[7:].strip()
+    if not provided:
+        provided = str(request.headers.get("x-api-token") or "").strip()
+    if secrets.compare_digest(provided, expected):
+        return
+    raise HTTPException(status_code=401, detail="Unauthorized")
+
+
+def _normalize_api_datetime(value: str | None, *, end_of_day: bool = False) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    raw = raw.replace("Z", "+00:00")
+    candidates = [raw]
+    if len(raw) == 10:
+        candidates.append(raw + (" 23:59:59" if end_of_day else " 00:00:00"))
+        candidates.append(raw + ("T23:59:59" if end_of_day else "T00:00:00"))
+    for candidate in candidates:
+        try:
+            dt = datetime.fromisoformat(candidate)
+            if dt.tzinfo is not None:
+                dt = dt.astimezone(JST).replace(tzinfo=None)
+            return dt.strftime("%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            continue
+    raise HTTPException(status_code=400, detail="日時形式が不正です")
+
+
+def _serialize_audit_log_row(row: dict[str, object]) -> dict[str, object]:
+    detail_raw = str(row.get("detail_json") or "{}")
+    try:
+        detail = json.loads(detail_raw)
+    except Exception:
+        detail = detail_raw
+    return {
+        "id": row.get("id"),
+        "occurred_at": row.get("occurred_at") or "",
+        "shop_id": row.get("shop_id") or "",
+        "shop_name": row.get("shop_name") or "",
+        "actor_type": row.get("actor_type") or "",
+        "actor_id": row.get("actor_id") or "",
+        "actor_name": row.get("actor_name") or "",
+        "member_name": row.get("member_name") or "",
+        "action": row.get("action") or "",
+        "target_type": row.get("target_type") or "",
+        "target_id": row.get("target_id") or "",
+        "target_label": row.get("target_label") or "",
+        "status": row.get("status") or "",
+        "method": row.get("method") or "",
+        "path": row.get("path") or "",
+        "ip_address": row.get("ip_address") or "",
+        "user_agent": row.get("user_agent") or "",
+        "detail": detail,
+    }
 
 def _format_chat_datetime(value: object) -> str:
     raw = str(value or "").strip()
@@ -4484,3 +4555,71 @@ def _staff_allows_menu(staff: dict | None, menu_id: int | str | None) -> bool:
     return normalized_menu_id in normalized_allowed_ids
 
 
+@app.get("/admin/api/shops")
+def audit_api_shops(request: Request):
+    _require_audit_api_token(request)
+    shops = []
+    for shop in get_all_shops_for_platform():
+        shops.append({
+            "shop_id": str(shop.get("shop_id") or ""),
+            "shop_name": str(shop.get("shop_name") or ""),
+        })
+    return JSONResponse({"items": shops})
+
+
+@app.get("/admin/api/members")
+def audit_api_members(request: Request, shop_id: str):
+    _require_audit_api_token(request)
+    normalized_shop_id = (shop_id or "").strip().lower()
+    if not normalized_shop_id:
+        raise HTTPException(status_code=400, detail="shop_id は必須です")
+    members = []
+    for member in list_members_for_audit_api(normalized_shop_id):
+        members.append({
+            "member_id": int(member.get("id") or 0),
+            "shop_id": str(member.get("shop_id") or normalized_shop_id),
+            "name": str(member.get("name") or ""),
+            "phone": str(member.get("phone") or ""),
+            "email": str(member.get("email") or ""),
+            "is_active": int(member.get("is_active") or 0),
+            "created_at": str(member.get("created_at") or ""),
+            "updated_at": str(member.get("updated_at") or ""),
+        })
+    return JSONResponse({"items": members})
+
+
+@app.get("/admin/api/audit-logs")
+def audit_api_logs(
+    request: Request,
+    shop_id: str = "",
+    member_id: int | None = None,
+    from_: str = "",
+    to: str = "",
+    limit: int = 500,
+    offset: int = 0,
+):
+    _require_audit_api_token(request)
+    normalized_shop_id = (shop_id or "").strip().lower()
+    date_from = _normalize_api_datetime(from_, end_of_day=False)
+    date_to = _normalize_api_datetime(to, end_of_day=True)
+    rows = list_audit_logs_for_api(
+        shop_id=normalized_shop_id,
+        member_id=member_id,
+        date_from=date_from,
+        date_to=date_to,
+        limit=limit,
+        offset=offset,
+    )
+    return JSONResponse(
+        {
+            "items": [_serialize_audit_log_row(row) for row in rows],
+            "filters": {
+                "shop_id": normalized_shop_id,
+                "member_id": member_id,
+                "from": date_from,
+                "to": date_to,
+                "limit": max(1, min(int(limit or 500), 1000)),
+                "offset": max(0, int(offset or 0)),
+            },
+        }
+    )

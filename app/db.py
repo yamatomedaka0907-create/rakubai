@@ -3176,6 +3176,89 @@ def create_audit_log(
         pass
     return dict(row) if row else {}
 
+
+
+def list_members_for_audit_api(shop_id: str) -> list[dict[str, Any]]:
+    normalized_shop_id = (shop_id or '').strip().lower()
+    if not normalized_shop_id:
+        return []
+    with get_connection() as conn:
+        rows = conn.execute(
+            '''
+            SELECT id, shop_id, customer_id, name, phone, email, is_active, created_at, updated_at
+            FROM members
+            WHERE shop_id = ?
+            ORDER BY is_active DESC, name COLLATE NOCASE ASC, id ASC
+            ''',
+            (normalized_shop_id,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+
+def list_audit_logs_for_api(
+    *,
+    shop_id: str = '',
+    member_id: int | None = None,
+    date_from: str = '',
+    date_to: str = '',
+    limit: int = 500,
+    offset: int = 0,
+) -> list[dict[str, Any]]:
+    clauses: list[str] = []
+    params: list[Any] = []
+    normalized_shop_id = (shop_id or '').strip().lower()
+    if normalized_shop_id:
+        clauses.append('al.shop_id = ?')
+        params.append(normalized_shop_id)
+    if member_id is not None:
+        clauses.append("al.actor_type = 'member'")
+        clauses.append('CAST(al.actor_id AS INTEGER) = ?')
+        params.append(int(member_id))
+    normalized_from = (date_from or '').strip()
+    if normalized_from:
+        clauses.append('al.occurred_at >= ?')
+        params.append(normalized_from)
+    normalized_to = (date_to or '').strip()
+    if normalized_to:
+        clauses.append('al.occurred_at <= ?')
+        params.append(normalized_to)
+    where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ''
+    safe_limit = max(1, min(int(limit or 500), 1000))
+    safe_offset = max(0, int(offset or 0))
+    with get_connection() as conn:
+        rows = conn.execute(
+            f'''
+            SELECT
+                al.id,
+                al.occurred_at,
+                al.shop_id,
+                s.shop_name,
+                al.actor_type,
+                al.actor_id,
+                al.actor_name,
+                m.name AS member_name,
+                al.action,
+                al.target_type,
+                al.target_id,
+                al.target_label,
+                al.status,
+                al.method,
+                al.path,
+                al.ip_address,
+                al.user_agent,
+                al.detail_json
+            FROM audit_logs al
+            LEFT JOIN shops s ON s.shop_id = al.shop_id
+            LEFT JOIN members m ON al.actor_type = 'member' AND CAST(m.id AS TEXT) = al.actor_id AND m.shop_id = al.shop_id
+            {where_sql}
+            ORDER BY al.occurred_at DESC, al.id DESC
+            LIMIT ? OFFSET ?
+            ''',
+            (*params, safe_limit, safe_offset),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
 def mark_chat_messages_read_for_admin(shop_id: str, customer_id: int) -> None:
     with get_connection() as conn:
         conn.execute(
