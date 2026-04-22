@@ -276,9 +276,20 @@ def _serialize_audit_log_row(row: dict[str, object]) -> dict[str, object]:
         detail = json.loads(detail_raw)
     except Exception:
         detail = detail_raw
+
+    occurred_at = row.get("occurred_at")
+    if occurred_at:
+        try:
+            dt = datetime.fromisoformat(str(occurred_at))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            occurred_at = dt.astimezone(JST).strftime("%Y-%m-%d %H:%M:%S")
+        except Exception:
+            occurred_at = str(occurred_at)
+
     return {
         "id": row.get("id"),
-        "occurred_at": row.get("occurred_at") or "",
+        "occurred_at": occurred_at or "",
         "shop_id": row.get("shop_id") or "",
         "shop_name": row.get("shop_name") or "",
         "actor_type": row.get("actor_type") or "",
@@ -296,6 +307,7 @@ def _serialize_audit_log_row(row: dict[str, object]) -> dict[str, object]:
         "user_agent": row.get("user_agent") or "",
         "detail": detail,
     }
+
 
 def _format_chat_datetime(value: object) -> str:
     raw = str(value or "").strip()
