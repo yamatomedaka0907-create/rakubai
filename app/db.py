@@ -3259,6 +3259,188 @@ def list_audit_logs_for_api(
         ).fetchall()
     return [dict(row) for row in rows]
 
+
+
+def get_shop_detail_for_audit_api(shop_id: str) -> dict[str, Any] | None:
+    normalized_shop_id = (shop_id or '').strip().lower()
+    if not normalized_shop_id:
+        return None
+    shop = get_shop_management_data(normalized_shop_id)
+    if shop is None:
+        return None
+    subscription = get_shop_subscription(normalized_shop_id) or {}
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                (SELECT COUNT(*) FROM members WHERE shop_id = ? AND is_active = 1) AS active_member_count,
+                (SELECT COUNT(*) FROM members WHERE shop_id = ?) AS total_member_count,
+                (SELECT COUNT(*) FROM admin_users WHERE shop_id = ? AND is_active = 1) AS active_admin_count,
+                (SELECT COUNT(*) FROM customers WHERE shop_id = ?) AS customer_count,
+                (SELECT COUNT(*) FROM reservations WHERE shop_id = ?) AS reservation_count
+            """,
+            (normalized_shop_id, normalized_shop_id, normalized_shop_id, normalized_shop_id, normalized_shop_id),
+        ).fetchone()
+    detail = dict(shop)
+    detail['subscription_status'] = str(subscription.get('status') or detail.get('subscription_status') or '')
+    detail['plan_name'] = str(subscription.get('plan_name') or detail.get('plan_name') or '')
+    if row:
+        detail.update(dict(row))
+    return detail
+
+
+def get_member_detail_for_audit_api(shop_id: str, member_id: int) -> dict[str, Any] | None:
+    normalized_shop_id = (shop_id or '').strip().lower()
+    member = get_member_by_id(normalized_shop_id, int(member_id))
+    if member is None:
+        return None
+    customer = None
+    if member.get('customer_id'):
+        customer = get_customer_by_id(normalized_shop_id, int(member['customer_id']))
+    detail = dict(member)
+    detail['customer'] = customer
+    with get_connection() as conn:
+        counts = conn.execute(
+            """
+            SELECT
+                (SELECT COUNT(*) FROM reservations WHERE shop_id = ? AND member_id = ?) AS reservation_count,
+                (SELECT COUNT(*) FROM chat_messages WHERE shop_id = ? AND member_id = ?) AS chat_count
+            """,
+            (normalized_shop_id, int(member_id), normalized_shop_id, int(member_id)),
+        ).fetchone()
+    if counts:
+        detail.update(dict(counts))
+    return detail
+
+
+def update_shop_for_audit_api(
+    shop_id: str,
+    *,
+    shop_name: str,
+    phone: str = '',
+    address: str = '',
+) -> dict[str, Any]:
+    normalized_shop_id = (shop_id or '').strip().lower()
+    current = get_shop_management_data(normalized_shop_id)
+    if current is None:
+        raise ValueError('店舗が見つかりません。')
+    update_shop_basic_info(
+        normalized_shop_id,
+        shop_name=(shop_name or current.get('shop_name') or '').strip(),
+        phone=(phone or '').strip(),
+        address=(address or '').strip(),
+        business_hours=str(current.get('business_hours') or '10:00〜19:00'),
+        holiday=str(current.get('holiday') or '火曜日'),
+        catch_copy=str(current.get('catch_copy') or ''),
+        description=str(current.get('description') or ''),
+        reply_to_email=str(current.get('reply_to_email') or ''),
+        admin_ui_mode=str(current.get('admin_ui_mode') or 'web'),
+        primary_color=str(current.get('primary_color') or '#2ec4b6'),
+        primary_dark=str(current.get('primary_dark') or '#159a90'),
+        accent_bg=str(current.get('accent_bg') or '#f7fffe'),
+        heading_bg_color=str(current.get('heading_bg_color') or '#ff6f91'),
+        menus=current.get('menus') or current.get('menus_json') or [],
+    )
+    return get_shop_detail_for_audit_api(normalized_shop_id) or {}
+
+
+def update_member_for_audit_api(
+    shop_id: str,
+    member_id: int,
+    *,
+    name: str,
+    phone: str,
+    email: str = '',
+) -> dict[str, Any]:
+    normalized_shop_id = (shop_id or '').strip().lower()
+    current = get_member_by_id(normalized_shop_id, int(member_id))
+    if current is None:
+        raise ValueError('会員が見つかりません。')
+    cleaned_name = str(name or '').strip()
+    normalized_phone = normalize_member_phone(phone)
+    normalized_email = str(email or '').strip().lower()
+    if not cleaned_name:
+        raise ValueError('名前を入力してください。')
+    if not normalized_phone:
+        raise ValueError('電話番号を入力してください。')
+    with get_connection() as conn:
+        existing = conn.execute(
+            """
+            SELECT id FROM members
+            WHERE shop_id = ? AND phone_normalized = ? AND id <> ?
+            LIMIT 1
+            """,
+            (normalized_shop_id, normalized_phone, int(member_id)),
+        ).fetchone()
+        if existing:
+            raise ValueError('この電話番号は別会員で使用されています。')
+        conn.execute(
+            """
+            UPDATE members
+            SET name = ?,
+                phone = ?,
+                phone_normalized = ?,
+                email = ?,
+                email_reminder_enabled = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE shop_id = ? AND id = ?
+            """,
+            (
+                cleaned_name,
+                normalized_phone,
+                normalized_phone,
+                normalized_email,
+                1 if normalized_email else 0,
+                normalized_shop_id,
+                int(member_id),
+            ),
+        )
+        customer_id = current.get('customer_id')
+        if customer_id:
+            conn.execute(
+                """
+                UPDATE customers
+                SET name = ?, phone = ?, email = ?
+                WHERE shop_id = ? AND id = ?
+                """,
+                (cleaned_name, normalized_phone, normalized_email, normalized_shop_id, int(customer_id)),
+            )
+        conn.commit()
+    return get_member_detail_for_audit_api(normalized_shop_id, int(member_id)) or {}
+
+
+def force_cancel_member_for_audit_api(shop_id: str, member_id: int) -> dict[str, Any]:
+    normalized_shop_id = (shop_id or '').strip().lower()
+    with get_connection() as conn:
+        conn.execute(
+            """
+            UPDATE members
+            SET is_active = 0, updated_at = CURRENT_TIMESTAMP
+            WHERE shop_id = ? AND id = ?
+            """,
+            (normalized_shop_id, int(member_id)),
+        )
+        conn.commit()
+    return get_member_detail_for_audit_api(normalized_shop_id, int(member_id)) or {}
+
+
+def force_cancel_shop_for_audit_api(shop_id: str) -> dict[str, Any]:
+    normalized_shop_id = (shop_id or '').strip().lower()
+    with get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO subscriptions (shop_id, plan_id, status)
+            VALUES (?, COALESCE((SELECT plan_id FROM subscriptions WHERE shop_id = ?), 1), 'cancelled')
+            ON CONFLICT(shop_id) DO UPDATE SET
+                status = 'cancelled'
+            """,
+            (normalized_shop_id, normalized_shop_id),
+        )
+        conn.execute('UPDATE admin_users SET is_active = 0 WHERE shop_id = ?', (normalized_shop_id,))
+        conn.execute('UPDATE members SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE shop_id = ?', (normalized_shop_id,))
+        conn.commit()
+    return get_shop_detail_for_audit_api(normalized_shop_id) or {}
+
 def mark_chat_messages_read_for_admin(shop_id: str, customer_id: int) -> None:
     with get_connection() as conn:
         conn.execute(

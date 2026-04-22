@@ -97,6 +97,12 @@ from app.db import (
     create_audit_log,
     list_members_for_audit_api,
     list_audit_logs_for_api,
+    get_shop_detail_for_audit_api,
+    get_member_detail_for_audit_api,
+    update_shop_for_audit_api,
+    update_member_for_audit_api,
+    force_cancel_shop_for_audit_api,
+    force_cancel_member_for_audit_api,
 )
 from app.runtime_data import (
     get_platform_admin,
@@ -223,6 +229,24 @@ def _require_audit_api_token(request: Request) -> None:
         return
     raise HTTPException(status_code=401, detail="Unauthorized")
 
+
+
+
+def _get_audit_admin_password() -> str:
+    return str(os.getenv("AUDIT_ADMIN_PASSWORD") or "").strip()
+
+
+def _require_audit_admin_password(password: str) -> None:
+    expected = _get_audit_admin_password()
+    if not expected:
+        raise HTTPException(status_code=503, detail="AUDIT_ADMIN_PASSWORD が未設定です")
+    provided = str(password or "").strip()
+    if not provided or not secrets.compare_digest(provided, expected):
+        raise HTTPException(status_code=401, detail="管理パスワードが違います")
+
+
+def _pick(data: dict[str, object], key: str, default: str = "") -> str:
+    return str(data.get(key) or default).strip()
 
 def _normalize_api_datetime(value: str | None, *, end_of_day: bool = False) -> str:
     raw = str(value or "").strip()
@@ -4623,3 +4647,148 @@ def audit_api_logs(
             },
         }
     )
+
+
+@app.get("/admin/api/shop-detail")
+def audit_api_shop_detail(request: Request, shop_id: str):
+    _require_audit_api_token(request)
+    detail = get_shop_detail_for_audit_api(shop_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+    return JSONResponse({"item": detail})
+
+
+@app.get("/admin/api/member-detail")
+def audit_api_member_detail(request: Request, shop_id: str, member_id: int):
+    _require_audit_api_token(request)
+    detail = get_member_detail_for_audit_api(shop_id, member_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="会員が見つかりません")
+    return JSONResponse({"item": detail})
+
+
+@app.post("/admin/api/shop-update")
+async def audit_api_shop_update(request: Request):
+    _require_audit_api_token(request)
+    payload = await request.json()
+    shop_id = _pick(payload, "shop_id").lower()
+    if not shop_id:
+        raise HTTPException(status_code=400, detail="shop_id は必須です")
+    before = get_shop_detail_for_audit_api(shop_id)
+    if before is None:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+    try:
+        after = update_shop_for_audit_api(
+            shop_id,
+            shop_name=_pick(payload, "shop_name", str(before.get("shop_name") or "")),
+            phone=_pick(payload, "phone", str(before.get("phone") or "")),
+            address=_pick(payload, "address", str(before.get("address") or "")),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    _record_audit_log(
+        request,
+        actor_type="audit_tool",
+        actor_id="desktop",
+        actor_name="desktop_app",
+        action="shop_update",
+        shop_id=shop_id,
+        target_type="shop",
+        target_id=shop_id,
+        target_label=str(after.get("shop_name") or shop_id),
+        status="success",
+        detail={"before": before, "after": after},
+    )
+    return JSONResponse({"item": after})
+
+
+@app.post("/admin/api/member-update")
+async def audit_api_member_update(request: Request):
+    _require_audit_api_token(request)
+    payload = await request.json()
+    shop_id = _pick(payload, "shop_id").lower()
+    member_id_raw = _pick(payload, "member_id")
+    if not shop_id or not member_id_raw:
+        raise HTTPException(status_code=400, detail="shop_id と member_id は必須です")
+    member_id = int(member_id_raw)
+    before = get_member_detail_for_audit_api(shop_id, member_id)
+    if before is None:
+        raise HTTPException(status_code=404, detail="会員が見つかりません")
+    try:
+        after = update_member_for_audit_api(
+            shop_id,
+            member_id,
+            name=_pick(payload, "name", str(before.get("name") or "")),
+            phone=_pick(payload, "phone", str(before.get("phone") or "")),
+            email=_pick(payload, "email", str(before.get("email") or "")),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    _record_audit_log(
+        request,
+        actor_type="audit_tool",
+        actor_id="desktop",
+        actor_name="desktop_app",
+        action="member_update",
+        shop_id=shop_id,
+        target_type="member",
+        target_id=str(member_id),
+        target_label=str(after.get("name") or member_id),
+        status="success",
+        detail={"before": before, "after": after},
+    )
+    return JSONResponse({"item": after})
+
+
+@app.post("/admin/api/force-cancel")
+async def audit_api_force_cancel(request: Request):
+    _require_audit_api_token(request)
+    payload = await request.json()
+    target_type = _pick(payload, "target_type").lower()
+    shop_id = _pick(payload, "shop_id").lower()
+    admin_password = _pick(payload, "admin_password")
+    reason = _pick(payload, "reason")
+    _require_audit_admin_password(admin_password)
+    if target_type == "shop":
+        before = get_shop_detail_for_audit_api(shop_id)
+        if before is None:
+            raise HTTPException(status_code=404, detail="店舗が見つかりません")
+        after = force_cancel_shop_for_audit_api(shop_id)
+        _record_audit_log(
+            request,
+            actor_type="audit_tool",
+            actor_id="desktop",
+            actor_name="desktop_app",
+            action="shop_force_cancel",
+            shop_id=shop_id,
+            target_type="shop",
+            target_id=shop_id,
+            target_label=str(after.get("shop_name") or shop_id),
+            status="success",
+            detail={"reason": reason, "before": before, "after": after, "password_reauth": True},
+        )
+        return JSONResponse({"item": after})
+    if target_type == "member":
+        member_id_raw = _pick(payload, "member_id")
+        if not member_id_raw:
+            raise HTTPException(status_code=400, detail="member_id は必須です")
+        member_id = int(member_id_raw)
+        before = get_member_detail_for_audit_api(shop_id, member_id)
+        if before is None:
+            raise HTTPException(status_code=404, detail="会員が見つかりません")
+        after = force_cancel_member_for_audit_api(shop_id, member_id)
+        _record_audit_log(
+            request,
+            actor_type="audit_tool",
+            actor_id="desktop",
+            actor_name="desktop_app",
+            action="member_force_cancel",
+            shop_id=shop_id,
+            target_type="member",
+            target_id=str(member_id),
+            target_label=str(after.get("name") or member_id),
+            status="success",
+            detail={"reason": reason, "before": before, "after": after, "password_reauth": True},
+        )
+        return JSONResponse({"item": after})
+    raise HTTPException(status_code=400, detail="target_type は shop または member を指定してください")
