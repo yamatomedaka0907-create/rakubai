@@ -3291,22 +3291,30 @@ def get_shop_detail_for_audit_api(shop_id: str) -> dict[str, Any] | None:
 
 def get_member_detail_for_audit_api(shop_id: str, member_id: int) -> dict[str, Any] | None:
     normalized_shop_id = (shop_id or '').strip().lower()
-    member = get_member_by_id(normalized_shop_id, int(member_id))
+    normalized_member_id = int(member_id)
+    member = get_member_by_id(normalized_shop_id, normalized_member_id)
     if member is None:
         return None
     customer = None
-    if member.get('customer_id'):
-        customer = get_customer_by_id(normalized_shop_id, int(member['customer_id']))
+    customer_id = member.get('customer_id')
+    if customer_id:
+        customer = get_customer_by_id(normalized_shop_id, int(customer_id))
     detail = dict(member)
+    detail['member_id'] = normalized_member_id
     detail['customer'] = customer
     with get_connection() as conn:
         counts = conn.execute(
             """
             SELECT
-                (SELECT COUNT(*) FROM reservations WHERE shop_id = ? AND member_id = ?) AS reservation_count,
+                (SELECT COUNT(*) FROM reservations WHERE shop_id = ? AND customer_id = ?) AS reservation_count,
                 (SELECT COUNT(*) FROM chat_messages WHERE shop_id = ? AND member_id = ?) AS chat_count
             """,
-            (normalized_shop_id, int(member_id), normalized_shop_id, int(member_id)),
+            (
+                normalized_shop_id,
+                int(customer_id) if customer_id else -1,
+                normalized_shop_id,
+                normalized_member_id,
+            ),
         ).fetchone()
     if counts:
         detail.update(dict(counts))
