@@ -16,7 +16,47 @@
 .customer-type-badge.is-guest { background:#eff6ff; color:#1d4ed8; }
 .customer-table td .row-links { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
 .customer-chat-dot { display:inline-flex; align-items:center; justify-content:center; min-width:24px; height:24px; padding:0 8px; border-radius:999px; background:#166534; color:#fff; font-size:12px; font-weight:800; }
-@media (max-width: 900px) { .customer-search-grid { grid-template-columns:1fr; } .customer-section-head { align-items:flex-start; flex-direction:column; } }
+@media (max-width: 1200px), @media (max-width: 900px) { .customer-search-grid { grid-template-columns:1fr; } .customer-section-head { align-items:flex-start; flex-direction:column; } }
+@media (max-width: 1200px), @media (max-width: 720px) {
+  .table-scroll { overflow-x: visible; }
+  .customer-table { min-width: 0; table-layout: fixed; }
+  .customer-table th,
+  .customer-table td {
+    padding: 10px 6px;
+    font-size: 13px;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  .customer-table th:nth-child(3),
+  .customer-table td:nth-child(3),
+  .customer-table th:nth-child(4),
+  .customer-table td:nth-child(4),
+  .customer-table th:nth-child(5),
+  .customer-table td:nth-child(5),
+  .customer-table th:nth-child(7),
+  .customer-table td:nth-child(7) {
+    display: none;
+  }
+  .customer-table th:nth-child(1),
+  .customer-table td:nth-child(1) { width: 16%; }
+  .customer-table th:nth-child(2),
+  .customer-table td:nth-child(2) { width: 42%; }
+  .customer-table th:nth-child(6),
+  .customer-table td:nth-child(6) { width: 18%; }
+  .customer-table th:nth-child(8),
+  .customer-table td:nth-child(8) { width: 24%; }
+  .customer-table td .row-links {
+    display: grid;
+    gap: 6px;
+  }
+  .customer-table td .secondary-link,
+  .customer-table td .customer-chat-dot {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+  }
+}
 </style>
 <div class="hero"><div class="hero-top"><div><h1>顧客管理</h1><p>顧客情報を一覧で確認しながら、会員と非会員を分けて管理できます。</p><div class="customer-summary"><span class="badge">合計 {{ customer_items|length }} 人</span><span class="badge">会員 {{ member_customer_items|length }} 人</span><span class="badge">非会員 {{ non_member_customer_items|length }} 人</span></div></div></div></div>
 {% if unread_chat_items %}

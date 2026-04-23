@@ -2,14 +2,48 @@
 {% block page_title %}スタッフ情報{% endblock %}
 {% block page_subtitle %}登録済みスタッフと対応メニューを確認できます。{% endblock %}
 {% block content %}
+<style>
+@media (max-width: 640px) {
+  .tool-staff-table-wrap { overflow:visible; }
+  .tool-staff-table,
+  .tool-staff-table thead,
+  .tool-staff-table tbody,
+  .tool-staff-table tr,
+  .tool-staff-table th,
+  .tool-staff-table td { display:block; width:100%; }
+  .tool-staff-table thead { display:none; }
+  .tool-staff-table tbody { display:grid; gap:12px; }
+  .tool-staff-table tr {
+    border:1px solid var(--tool-border);
+    border-radius:16px;
+    padding:12px;
+    background:#fff;
+  }
+  .tool-staff-table td {
+    border:none;
+    padding:8px 0;
+    white-space:normal;
+    overflow-wrap:anywhere;
+  }
+  .tool-staff-table td::before {
+    content: attr(data-label);
+    display:block;
+    margin-bottom:4px;
+    color:var(--tool-text-soft);
+    font-size:12px;
+    font-weight:700;
+  }
+  .tool-staff-table td:last-child { padding-bottom:0; }
+}
+</style>
 <section class="tool-panel">
   <div class="tool-panel-head is-wide"><h2>スタッフ情報</h2><a class="tool-btn is-primary" href="/admin/register/{{ shop_id }}">新規スタッフ登録</a></div>
   <div class="tool-panel-body">
 {% if hidden_staff_count %}<div class="tool-alert" style="background:#fff7ed;color:#9a3412;border:1px solid #fdba74;">現在のプラン上限を超えた新しいスタッフ {{ hidden_staff_count }}名は非表示です。</div>{% endif %}
     {% if success_message %}<div class="tool-alert is-success">{{ success_message }}</div>{% endif %}
     {% if staff_list %}
-    <div class="tool-table-wrap">
-      <table class="tool-table is-dense">
+    <div class="tool-table-wrap tool-staff-table-wrap">
+      <table class="tool-table is-dense tool-staff-table">
         <thead><tr><th>名前</th><th>対応メニュー</th><th>休日設定</th><th>設定</th></tr></thead>
         <tbody>
           {% for staff in staff_list %}

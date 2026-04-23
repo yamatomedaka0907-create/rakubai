@@ -2,6 +2,47 @@
 {% block page_title %}顧客管理{% endblock %}
 {% block page_subtitle %}顧客一覧の中で、会員と非会員を分けて確認できます。{% endblock %}
 {% block content %}
+<style>
+@media (max-width: 1200px), @media (max-width: 720px) {
+  .tool-table-wrap { overflow-x: visible; }
+  .tool-table.is-dense { min-width: 0; width: 100%; table-layout: fixed; }
+  .tool-table.is-dense th,
+  .tool-table.is-dense td {
+    padding: 10px 6px;
+    font-size: 13px;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  .tool-table.is-dense th:nth-child(3),
+  .tool-table.is-dense td:nth-child(3),
+  .tool-table.is-dense th:nth-child(4),
+  .tool-table.is-dense td:nth-child(4),
+  .tool-table.is-dense th:nth-child(5),
+  .tool-table.is-dense td:nth-child(5),
+  .tool-table.is-dense th:nth-child(7),
+  .tool-table.is-dense td:nth-child(7) {
+    display: none;
+  }
+  .tool-table.is-dense th:nth-child(1),
+  .tool-table.is-dense td:nth-child(1) { width: 16%; }
+  .tool-table.is-dense th:nth-child(2),
+  .tool-table.is-dense td:nth-child(2) { width: 42%; }
+  .tool-table.is-dense th:nth-child(6),
+  .tool-table.is-dense td:nth-child(6) { width: 18%; }
+  .tool-table.is-dense th:nth-child(8),
+  .tool-table.is-dense td:nth-child(8) { width: 24%; }
+  .tool-table.is-dense .tool-actions {
+    display: grid;
+    gap: 6px;
+  }
+  .tool-table.is-dense .tool-btn {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+  }
+}
+</style>
 <div class="tool-grid">
   {% if unread_chat_items %}<section class="tool-panel"><div class="tool-panel-head"><h2>新着チャット</h2><div class="tool-note">{{ unread_chat_items|length }}件</div></div><div class="tool-panel-body"><div class="tool-card-stack">{% for item in unread_chat_items %}<div class="tool-card-lite"><a class="tool-text-link" href="/admin/{{ shop_id }}/customers/{{ item.customer_id }}#chat-panel"><div class="tool-card-lite-head"><div><div class="tool-card-lite-title">{{ item.customer_name }}</div><div class="tool-note">{{ item.latest_body or '新しいメッセージがあります。' }}</div></div><span class="tool-badge is-primary">{{ item.unread_count }}</span></div></a></div>{% endfor %}</div></div></section>{% endif %}
   {% if visible_data_notice and visible_data_notice.total_hidden_count %}<div class="tool-alert" style="background:#fff7ed;color:#9a3412;border:1px solid #fdba74;">現在のプラン上限を超えた新しいデータを非表示にしています。顧客 {{ visible_data_notice.customers }}件 / 予約 {{ visible_data_notice.reservations }}件 / スタッフ {{ visible_data_notice.staff }}件</div>{% endif %}

@@ -155,12 +155,6 @@
       </div>
       <div class="nav-group-title">Main Menu</div>
       <nav class="top-nav">
-        <a href="/admin/{{ shop_id }}/booking-page/editor">
-          <span class="nav-link-main">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5V7a2 2 0 0 1 2-2h8"/><path d="M14 3h6v6"/><path d="M10 14 20 4"/><path d="M8 11H6.5A2.5 2.5 0 0 0 4 13.5v4A2.5 2.5 0 0 0 6.5 20h4A2.5 2.5 0 0 0 13 17.5V16"/></svg>
-            <span class="nav-label">予約サイト設定（直接編集モード）</span>
-          </span>
-        </a>
         <a href="/admin/{{ shop_id }}" class="{% if active_page == 'dashboard' %}active{% endif %}">
           <span class="nav-link-main">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h5.5v-5.5h2V20h5.5V9.5"/></svg>
@@ -179,6 +173,12 @@
             <span class="nav-label">顧客管理</span>
           </span>
         </a>
+        <a href="/admin/{{ shop_id }}/staff-info" class="{% if active_page == 'staff_info' %}active{% endif %}">
+          <span class="nav-link-main">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-1.5A3.5 3.5 0 0 0 12.5 16h-5A3.5 3.5 0 0 0 4 19.5V21"/><circle cx="10" cy="8" r="4"/><path d="M18 8h3M19.5 6.5v3"/></svg>
+            <span class="nav-label">スタッフ情報</span>
+          </span>
+        </a>
         <a href="/admin/{{ shop_id }}/timeline-karte" class="{% if active_page == 'timeline_karte' %}active{% endif %}{% if not is_premium_subscription(subscription) %} is-locked{% endif %}">
           <span class="nav-link-main">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4h10a2 2 0 0 1 2 2v12l-4-2-3 2-3-2-4 2V6a2 2 0 0 1 2-2Z"/><path d="M9 8h6M9 11h6"/></svg>
@@ -192,10 +192,10 @@
             <span class="nav-label">店舗情報</span>
           </span>
         </a>
-        <a href="/admin/{{ shop_id }}/staff-info" class="{% if active_page == 'staff_info' %}active{% endif %}">
+        <a href="/admin/{{ shop_id }}/booking-page/editor">
           <span class="nav-link-main">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-1.5A3.5 3.5 0 0 0 12.5 16h-5A3.5 3.5 0 0 0 4 19.5V21"/><circle cx="10" cy="8" r="4"/><path d="M18 8h3M19.5 6.5v3"/></svg>
-            <span class="nav-label">スタッフ情報</span>
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5V7a2 2 0 0 1 2-2h8"/><path d="M14 3h6v6"/><path d="M10 14 20 4"/><path d="M8 11H6.5A2.5 2.5 0 0 0 4 13.5v4A2.5 2.5 0 0 0 6.5 20h4A2.5 2.5 0 0 0 13 17.5V16"/></svg>
+            <span class="nav-label">予約サイト設定</span>
           </span>
         </a>
         <a href="/admin/{{ shop_id }}/website" class="{% if active_page == 'website' %}active{% endif %}">
