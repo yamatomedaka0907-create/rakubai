@@ -35,11 +35,20 @@
     .nav-group-title { margin:18px 10px 10px; font-size:11px; font-weight:800; letter-spacing:.08em; color:rgba(255,255,255,.5); text-transform:uppercase; }
     .top-nav,.staff-nav { display:grid; gap:8px; }
     .top-nav a,.top-nav button,.staff-nav a { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; min-height:46px; padding:0 14px; border-radius:14px; border:1px solid rgba(255,255,255,0.08); background:transparent; color:#dbe7f4; text-decoration:none; font-weight:700; }
+    .nav-link-main { display:inline-flex; align-items:center; gap:10px; min-width:0; }
+    .nav-icon { width:18px; height:18px; flex:0 0 18px; color:currentColor; opacity:.95; }
+    .nav-label { min-width:0; }
     .top-nav a.is-locked { opacity:.72; }
     .menu-badge { display:inline-flex; align-items:center; justify-content:center; min-height:22px; padding:0 8px; border-radius:999px; background:rgba(255,255,255,.14); font-size:11px; font-weight:800; }
     .top-nav a.active,.staff-nav a.active { background:linear-gradient(135deg,var(--primary),var(--primary-dark)); color:#fff; border-color:transparent; }
     .top-nav button { cursor:pointer; }
     .main { min-width:0; padding:24px; }
+
+@media (max-width:720px){
+  .main{
+    padding-top:0 !important;
+  }
+}
     .topbar { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:18px 22px; margin-bottom:18px; border:1px solid rgba(15,23,42,0.06); border-radius:24px; background:rgba(255,255,255,.86); box-shadow:var(--shadow-md); }
     .topbar-kicker { font-size:12px; font-weight:800; color:var(--subtext); text-transform:uppercase; }
     .topbar-title { margin-top:6px; font-size:28px; font-weight:900; }
@@ -132,7 +141,7 @@
 
     @media (max-width:900px){ .dashboard-mobile-calendar .card-header{align-items:flex-start;} .dashboard-mobile-calendar .card-header > div{width:100%;} .dashboard-mobile-calendar .calendar-nav{width:100%; justify-content:space-between; gap:8px;} .dashboard-mobile-calendar .calendar-nav a{flex:1 1 0; min-width:0; padding:0 8px; font-size:12px;} .dashboard-mobile-calendar .calendar-nav .month-label{flex:1 1 100%; min-width:0; order:-1; font-size:16px;} .dashboard-mobile-calendar .calendar-weekdays,.dashboard-mobile-calendar .calendar-grid{gap:4px;} .dashboard-mobile-calendar .calendar-day{min-height:88px; padding:8px; border-radius:14px;} .dashboard-mobile-calendar .calendar-day-top{margin-bottom:6px; gap:4px; flex-direction:column; align-items:flex-start;} .dashboard-mobile-calendar .calendar-day-number{font-size:14px; line-height:1;} .dashboard-mobile-calendar .calendar-count{min-width:22px; height:22px; font-size:10px; padding:0 6px;} .dashboard-mobile-calendar .calendar-meta,.dashboard-mobile-calendar .holiday-label{font-size:10px; line-height:1.15; margin-top:2px;} }
 
-    @media (max-width:720px){ body{overflow-x:hidden;} .main,.sidebar{padding-left:14px;padding-right:14px;} .main{padding-top:68px;} .summary-grid,.grid,.page-grid{grid-template-columns:1fr;} .hero,.card,.summary-card,.nav-card{padding:16px;border-radius:18px;} .mobile-menu-toggle{top:14px;right:14px;} .calendar-weekdays,.calendar-grid{gap:4px;} .calendar-weekday{font-size:10px;} .calendar-day{min-height:auto;padding:6px; aspect-ratio:1 / 1; border-radius:14px;} .calendar-day-top{margin-bottom:4px; gap:4px; align-items:flex-start; flex-direction:column;} .calendar-day-number{font-size:13px; line-height:1;} .calendar-count{min-width:20px;height:20px;font-size:10px;padding:0 6px;} .calendar-meta,.holiday-label{font-size:9px; line-height:1.2; margin-top:2px;} .dashboard-mobile-calendar .calendar-day{min-height:72px; padding:4px; border-radius:12px;} .dashboard-mobile-calendar .calendar-weekdays,.dashboard-mobile-calendar .calendar-grid{gap:2px;} .dashboard-mobile-calendar .calendar-day-top{margin-bottom:3px;} .dashboard-mobile-calendar .calendar-day-number{font-size:12px;} .dashboard-mobile-calendar .calendar-count{min-width:18px;height:18px;font-size:9px;padding:0 4px;} .dashboard-mobile-calendar .calendar-meta,.dashboard-mobile-calendar .holiday-label{font-size:8px; line-height:1.1;} .week-board{margin-inline:-2px;} .week-table{min-width:640px;} .week-table th,.week-table td{padding:8px 10px; min-width:72px; font-size:12px;} .week-table .time-col{min-width:64px;} .week-board-head{justify-content:stretch;} .week-board-head .week-next-link{flex:1 1 0; min-width:0; padding:0 8px; font-size:12px;} .availability-wrap{overflow-x:hidden; max-height:min(68vh, 560px);} .availability-table{min-width:0; width:100%; table-layout:fixed;} .availability-table th,.availability-table td{padding:6px 2px; min-width:0; font-size:11px;} .availability-table .time-col{width:44px; min-width:44px; font-size:10px; padding:6px 2px;} .day-head{gap:2px;} .day-head strong{font-size:11px;} .day-head span{font-size:9px;} }
+    @media (max-width:720px){ body{overflow-x:hidden;} .main,.sidebar{padding-left:14px;padding-right:14px;} .main{padding-top:68px;} .summary-grid,.grid,.page-grid{grid-template-columns:1fr;} .hero,.card,.summary-card,.nav-card{padding:16px;border-radius:18px;} .hero{padding:12px 14px;border-radius:16px;} .hero-top{gap:8px;align-items:flex-start;} .hero h1{font-size:20px;line-height:1.25;} .hero p{margin-top:6px;font-size:12px;line-height:1.6;} .hero-top form{gap:8px !important;width:100%;} .hero-top form label{min-width:0 !important;flex:1 1 100%;font-size:12px;} .hero-top form input,.hero-top form select,.hero-top form textarea{min-height:40px;font-size:14px;} .hero-top form button,.hero-actions a,.hero-actions button{min-height:40px;font-size:13px;padding:0 14px;} .mobile-menu-toggle{top:14px;right:14px;} .calendar-weekdays,.calendar-grid{gap:4px;} .calendar-weekday{font-size:10px;} .calendar-day{min-height:auto;padding:6px; aspect-ratio:1 / 1; border-radius:14px;} .calendar-day-top{margin-bottom:4px; gap:4px; align-items:flex-start; flex-direction:column;} .calendar-day-number{font-size:13px; line-height:1;} .calendar-count{min-width:20px;height:20px;font-size:10px;padding:0 6px;} .calendar-meta,.holiday-label{font-size:9px; line-height:1.2; margin-top:2px;} .dashboard-mobile-calendar .calendar-day{min-height:72px; padding:4px; border-radius:12px;} .dashboard-mobile-calendar .calendar-weekdays,.dashboard-mobile-calendar .calendar-grid{gap:2px;} .dashboard-mobile-calendar .calendar-day-top{margin-bottom:3px;} .dashboard-mobile-calendar .calendar-day-number{font-size:12px;} .dashboard-mobile-calendar .calendar-count{min-width:18px;height:18px;font-size:9px;padding:0 4px;} .dashboard-mobile-calendar .calendar-meta,.dashboard-mobile-calendar .holiday-label{font-size:8px; line-height:1.1;} .week-board{margin-inline:-2px;} .week-table{min-width:640px;} .week-table th,.week-table td{padding:8px 10px; min-width:72px; font-size:12px;} .week-table .time-col{min-width:64px;} .week-board-head{justify-content:stretch;} .week-board-head .week-next-link{flex:1 1 0; min-width:0; padding:0 8px; font-size:12px;} .availability-wrap{overflow-x:hidden; max-height:min(68vh, 560px);} .availability-table{min-width:0; width:100%; table-layout:fixed;} .availability-table th,.availability-table td{padding:6px 2px; min-width:0; font-size:11px;} .availability-table .time-col{width:44px; min-width:44px; font-size:10px; padding:6px 2px;} .day-head{gap:2px;} .day-head strong{font-size:11px;} .day-head span{font-size:9px;} }
   </style>
 </head>
 <body>
@@ -146,15 +155,56 @@
       </div>
       <div class="nav-group-title">Main Menu</div>
       <nav class="top-nav">
-        <a href="/admin/{{ shop_id }}/booking-page/editor">予約サイト設定（直接編集モード）</a>
-        <a href="/admin/{{ shop_id }}" class="{% if active_page == 'dashboard' %}active{% endif %}">管理トップ</a>
-        <a href="/admin/{{ shop_id }}/reservations" class="{% if active_page == 'reservations' %}active{% endif %}">予約管理</a>
-        <a href="/admin/{{ shop_id }}/customers" class="{% if active_page == 'customers' %}active{% endif %}">顧客管理</a>
-        <a href="/admin/{{ shop_id }}/timeline-karte" class="{% if active_page == 'timeline_karte' %}active{% endif %}{% if not is_premium_subscription(subscription) %} is-locked{% endif %}">タイムラインカルテ {% if not is_premium_subscription(subscription) %}<span class="menu-badge">Premium</span>{% endif %}</a>
-        <a href="/admin/{{ shop_id }}/settings" class="{% if active_page == 'settings' %}active{% endif %}">店舗情報</a>
-        <a href="/admin/{{ shop_id }}/staff-info" class="{% if active_page == 'staff_info' %}active{% endif %}">スタッフ情報</a>
-        <a href="/admin/{{ shop_id }}/website" class="{% if active_page == 'website' %}active{% endif %}">ホームページ設定</a>
-        <form method="post" action="/admin/logout/{{ shop_id }}"><button type="submit">ログアウト</button></form>
+        <a href="/admin/{{ shop_id }}" class="{% if active_page == 'dashboard' %}active{% endif %}">
+          <span class="nav-link-main">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h5.5v-5.5h2V20h5.5V9.5"/></svg>
+            <span class="nav-label">管理トップ</span>
+          </span>
+        </a>
+        <a href="/admin/{{ shop_id }}/reservations" class="{% if active_page == 'reservations' %}active{% endif %}">
+          <span class="nav-link-main">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M8 14h3"/></svg>
+            <span class="nav-label">予約管理</span>
+          </span>
+        </a>
+        <a href="/admin/{{ shop_id }}/customers" class="{% if active_page == 'customers' %}active{% endif %}">
+          <span class="nav-link-main">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 19v-1a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v1"/><circle cx="9.5" cy="8" r="3"/><path d="M20 19v-1a3 3 0 0 0-2.2-2.9"/><path d="M15.5 5.2a3 3 0 0 1 0 5.6"/></svg>
+            <span class="nav-label">顧客管理</span>
+          </span>
+        </a>
+        <a href="/admin/{{ shop_id }}/staff-info" class="{% if active_page == 'staff_info' %}active{% endif %}">
+          <span class="nav-link-main">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-1.5A3.5 3.5 0 0 0 12.5 16h-5A3.5 3.5 0 0 0 4 19.5V21"/><circle cx="10" cy="8" r="4"/><path d="M18 8h3M19.5 6.5v3"/></svg>
+            <span class="nav-label">スタッフ情報</span>
+          </span>
+        </a>
+        <a href="/admin/{{ shop_id }}/timeline-karte" class="{% if active_page == 'timeline_karte' %}active{% endif %}{% if not is_premium_subscription(subscription) %} is-locked{% endif %}">
+          <span class="nav-link-main">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4h10a2 2 0 0 1 2 2v12l-4-2-3 2-3-2-4 2V6a2 2 0 0 1 2-2Z"/><path d="M9 8h6M9 11h6"/></svg>
+            <span class="nav-label">タイムラインカルテ</span>
+          </span>
+          {% if not is_premium_subscription(subscription) %}<span class="menu-badge">Premium</span>{% endif %}
+        </a>
+        <a href="/admin/{{ shop_id }}/settings" class="{% if active_page == 'settings' %}active{% endif %}">
+          <span class="nav-link-main">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V20a2 2 0 1 1-4 0v-.2a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H4a2 2 0 1 1 0-4h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2 1 1 0 0 0 .6-.9V4a2 2 0 1 1 4 0v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1 1 1 0 0 0 .9.6h.2a2 2 0 1 1 0 4h-.2a1 1 0 0 0-.9.6Z"/></svg>
+            <span class="nav-label">店舗情報</span>
+          </span>
+        </a>
+        <a href="/admin/{{ shop_id }}/booking-page/editor">
+          <span class="nav-link-main">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5V7a2 2 0 0 1 2-2h8"/><path d="M14 3h6v6"/><path d="M10 14 20 4"/><path d="M8 11H6.5A2.5 2.5 0 0 0 4 13.5v4A2.5 2.5 0 0 0 6.5 20h4A2.5 2.5 0 0 0 13 17.5V16"/></svg>
+            <span class="nav-label">予約サイト設定</span>
+          </span>
+        </a>
+        <a href="/admin/{{ shop_id }}/website" class="{% if active_page == 'website' %}active{% endif %}">
+          <span class="nav-link-main">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15.3 15.3 0 0 1 4 9 15.3 15.3 0 0 1-4 9 15.3 15.3 0 0 1-4-9 15.3 15.3 0 0 1 4-9Z"/></svg>
+            <span class="nav-label">ホームページ設定</span>
+          </span>
+        </a>
+        <form method="post" action="/admin/logout/{{ shop_id }}"><button type="submit"><span class="nav-link-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg><span class="nav-label">ログアウト</span></span></button></form>
       </nav>
       {% if staff_list %}
       <div class="nav-group-title">Staff</div>

@@ -1,21 +1,58 @@
 {% extends "admin/base.html" %}
 {% block content %}
+<style>
+@media (max-width: 640px) {
+  .staff-info-table-wrap { overflow:visible; }
+  .staff-info-table,
+  .staff-info-table thead,
+  .staff-info-table tbody,
+  .staff-info-table tr,
+  .staff-info-table th,
+  .staff-info-table td { display:block; width:100%; }
+  .staff-info-table thead { display:none; }
+  .staff-info-table tbody { display:grid; gap:12px; }
+  .staff-info-table tr {
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:12px;
+    background:#fff;
+  }
+  .staff-info-table td {
+    border:none;
+    padding:8px 0;
+    white-space:normal;
+    overflow-wrap:anywhere;
+  }
+  .staff-info-table td::before {
+    content: attr(data-label);
+    display:block;
+    margin-bottom:4px;
+    color:var(--muted);
+    font-size:12px;
+    font-weight:700;
+  }
+  .staff-info-table td:last-child { padding-bottom:0; }
+}
+</style>
+<style>
+@media (max-width: 720px) { .staff-info-table-wrap { overflow:visible; } .staff-info-table, .staff-info-table thead, .staff-info-table tbody, .staff-info-table tr, .staff-info-table th, .staff-info-table td { display:block; width:100%; } .staff-info-table { min-width:0; } .staff-info-table thead { display:none; } .staff-info-table tbody { display:grid; gap:12px; } .staff-info-table tr { border:1px solid var(--line); border-radius:18px; padding:12px; background:#fff; } .staff-info-table td { display:grid; grid-template-columns:88px minmax(0,1fr); gap:10px; padding:6px 0; border-bottom:1px solid var(--line); word-break:break-word; } .staff-info-table td:last-child { border-bottom:none; } .staff-info-table td::before { content:attr(data-label); font-size:12px; font-weight:800; color:var(--subtext); } }
+</style>
 <div class="hero"><div class="hero-top"><div><h1>スタッフ情報</h1><p>登録済みスタッフと対応メニューの一覧です。</p></div><div class="hero-actions"><a href="/admin/register/{{ shop_id }}" class="primary">新規スタッフ登録</a></div></div></div>
 {% if hidden_staff_count %}<div class="card" style="margin-bottom:16px;border-color:#fed7aa;background:#fff7ed;"><div class="card-header"><h2>表示制限中</h2><span class="badge">{{ hidden_staff_count }}名非表示</span></div><p class="section-note">現在のプラン上限を超えた新しいスタッフは削除せず、表示のみ停止しています。</p></div>{% endif %}
 {% if success_message %}<div class="card" style="margin-bottom:16px; color:var(--primary-dark); font-weight:800;">{{ success_message }}</div>{% endif %}
 <div class="card">
   <div class="card-header"><h2>登録スタッフ一覧</h2><span class="badge">{{ staff_list|length }}名</span></div>
   {% if staff_list %}
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>名前</th><th>対応メニュー</th><th>休日設定</th><th>設定</th></tr></thead>
+  <div class="table-wrap staff-info-table-wrap">
+    <table class="staff-info-table">
+      <thead><tr><th>スタッフ</th><th>対応メニュー</th><th>休日設定</th><th>設定</th></tr></thead>
       <tbody>
         {% for staff in staff_list %}
         <tr>
-          <td><a href="/admin/{{ shop_id }}/staff/{{ staff.id }}">{{ staff.name }}</a></td>
-          <td>{% if staff.menu_names %}{{ staff.menu_names|join(' / ') }}{% else %}未設定{% endif %}</td>
-          <td>{% if staff.holiday_dates %}{{ staff.holiday_dates|length }}日登録済み{% else %}未設定{% endif %}</td>
-          <td><a class="secondary-link" href="/admin/{{ shop_id }}/staff-info/{{ staff.id }}/edit">編集 / 休日設定</a></td>
+          <td data-label="スタッフ"><div style="display:flex; align-items:center; gap:10px;"><img src="{{ staff.avatar_url }}" alt="{{ staff.name }}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:#fff;"><a href="/admin/{{ shop_id }}/staff/{{ staff.id }}">{{ staff.name }}</a></div></td>
+          <td data-label="対応メニュー">{% if staff.menu_names %}{{ staff.menu_names|join(' / ') }}{% else %}未設定{% endif %}</td>
+          <td data-label="休日設定">{% if staff.holiday_dates %}{{ staff.holiday_dates|length }}日登録済み{% else %}未設定{% endif %}</td>
+          <td data-label="設定"><a class="secondary-link" href="/admin/{{ shop_id }}/staff-info/{{ staff.id }}/edit">編集 / 休日設定</a></td>
         </tr>
         {% endfor %}
       </tbody>

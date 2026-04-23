@@ -21,7 +21,7 @@
       <tbody>
         {% for staff in staff_now_list %}
         <tr>
-          <td><a href="{{ staff.jump_url or ('/admin/' ~ shop_id ~ '/staff/' ~ staff.id ~ '?date=' ~ selected_date ~ '&week_start=' ~ week_start) }}">{{ staff.name }}</a></td>
+          <td><div style="display:flex; align-items:center; gap:10px;"><img src="{{ staff.avatar_url }}" alt="{{ staff.name }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:#fff;"><a href="{{ staff.jump_url or ('/admin/' ~ shop_id ~ '/staff/' ~ staff.id ~ '?date=' ~ selected_date ~ '&week_start=' ~ week_start) }}">{{ staff.name }}</a></div></td>
           <td><strong>{{ staff.now_status }}</strong><div style="margin-top:6px; color:var(--text-muted);">{{ staff.now_detail }}</div></td>
         </tr>
         {% endfor %}
@@ -52,7 +52,7 @@
       </div>
       <div class="timeline-main">
         <div><strong>顧客:</strong> {{ reservation.customer_name }}</div>
-        <div><strong>スタッフ:</strong> <a href="/admin/{{ shop_id }}/staff/{{ reservation.staff_id }}?date={{ reservation.reservation_date }}&week_start={{ week_start }}">{{ reservation.staff_name }}</a></div>
+        <div style="display:flex; align-items:center; gap:8px;"><img src="{{ reservation.staff_avatar_url }}" alt="{{ reservation.staff_name }}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:#fff;"><div><strong>スタッフ:</strong> <a href="/admin/{{ shop_id }}/staff/{{ reservation.staff_id }}?date={{ reservation.reservation_date }}&week_start={{ week_start }}">{{ reservation.staff_name }}</a></div></div>
         <div><strong>メニュー:</strong> {{ reservation.menu_name }} / {{ reservation.duration }}分 / ¥{{ reservation.price }}</div>
       </div>
     </div>
@@ -73,7 +73,7 @@
         {% for reservation in reservations %}
         <tr class="reservation-row">
           <td>{{ reservation.id }}</td><td>{{ reservation.reservation_date }}</td><td>{{ reservation.start_time }}</td><td>{{ reservation.end_time }}</td><td>{{ reservation.duration }}分</td><td class="price">¥{{ reservation.price }}</td><td>{{ reservation.customer_name }}</td>
-          <td><a href="/admin/{{ shop_id }}/staff/{{ reservation.staff_id }}?date={{ reservation.reservation_date }}&week_start={{ week_start }}">{{ reservation.staff_name }}</a></td>
+          <td><div style="display:flex; align-items:center; gap:8px;"><img src="{{ reservation.staff_avatar_url }}" alt="{{ reservation.staff_name }}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:#fff;"><a href="/admin/{{ shop_id }}/staff/{{ reservation.staff_id }}?date={{ reservation.reservation_date }}&week_start={{ week_start }}">{{ reservation.staff_name }}</a></div></td>
           <td>{{ reservation.menu_name }}</td>
           <td>{% if reservation.status == "キャンセル" %}<span class="status status-cancelled">キャンセル</span>{% elif reservation.status == "来店済み" %}<span class="status status-done">来店済み</span>{% else %}<span class="status status-reserved">予約済み</span>{% endif %}</td>
           <td><div class="action-buttons">{% if reservation.status == "予約済み" %}<form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/done"><button type="submit" class="done-button">来店済み</button></form><form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/cancel"><button type="submit" class="danger-button">キャンセル</button></form>{% else %}<span>-</span>{% endif %}</div></td>

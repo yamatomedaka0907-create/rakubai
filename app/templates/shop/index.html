@@ -27,7 +27,7 @@
       background: linear-gradient(180deg, #ffffff 0%, var(--bg-soft) 100%);
       color: var(--text);
     }
-    .wrap { max-width: 1180px; margin: 0 auto; padding: 20px; }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 0; position:relative; }
     .page-branding, .footer-branding { display:flex; justify-content:center; }
     .page-branding { margin-bottom:18px; }
     .footer-branding { margin-top:18px; }
@@ -35,7 +35,7 @@
     .rakubai-credit::before { content:'✦'; display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:999px; background:linear-gradient(135deg, var(--primary), #60a5fa); color:#fff; font-size:13px; box-shadow:0 10px 20px rgba(37,99,235,.22); }
     .rakubai-credit:hover { transform:translateY(-1px); box-shadow:0 20px 40px rgba(15,23,42,.12); }
     .rakubai-credit span { color:var(--text); }
-    .page-header { display:flex; justify-content:flex-end; margin-bottom:18px; position:relative; }
+    .page-header { display:flex; justify-content:flex-end; margin-bottom:0; position:absolute; top:20px; right:0; z-index:21; }
     .menu-toggle { display:inline-flex; align-items:center; justify-content:center; width:48px; height:48px; border:none; border-radius:14px; background:#111827; color:#fff; cursor:pointer; box-shadow:var(--shadow); }
     .menu-toggle span, .menu-toggle::before, .menu-toggle::after { content:''; display:block; width:20px; height:2px; background:#fff; border-radius:999px; }
     .menu-toggle { position:relative; }
@@ -115,7 +115,7 @@
     }
     @media (max-width: 640px) {
       body { overflow-x:hidden; }
-      .wrap { padding:14px; }
+      .wrap { padding:14px 0; }
       .hero-actions { gap:8px; }
       .header-menu { width:min(280px, calc(100vw - 28px)); }
       .header-menu a, .hero-actions a, .btn-link { width:100%; }
@@ -184,8 +184,7 @@
     <section class="hero {% if edit_mode %}booking-edit-region{% endif %}" {% if edit_mode %}data-edit-label="予約ページ上部を編集"{% endif %}>
       <div class="hero-card">
         <div class="badge">24時間 Web予約受付中</div>
-        <div style="margin-top:10px; color:var(--subtext); font-size:14px;">現在プラン: {{ subscription.plan_name }}{% if subscription.show_ads %} / このプランは広告表示対応{% endif %}</div>
-        <h1 class="{% if edit_mode %}booking-editable{% endif %}" {% if edit_mode %}contenteditable="true" data-booking-field="shop_name"{% endif %}>{{ shop.shop_name }}</h1>
+                <h1 class="{% if edit_mode %}booking-editable{% endif %}" {% if edit_mode %}contenteditable="true" data-booking-field="shop_name"{% endif %}>{{ shop.shop_name }}</h1>
         <p class="lead {% if edit_mode %}booking-editable{% endif %}" {% if edit_mode %}contenteditable="true" data-booking-field="catch_copy"{% endif %}>{{ shop.catch_copy }}</p>
         <p class="lead {% if edit_mode %}booking-editable{% endif %}" {% if edit_mode %}contenteditable="true" data-booking-field="description"{% endif %}>{{ shop.description }}</p>
         <div class="hero-actions">
@@ -258,7 +257,7 @@
             </div>
             <div class="summary-box">
               {% if selected_staff and selected_menu %}
-                <strong>{{ selected_staff.name }}</strong> / <strong>{{ selected_menu.name }}</strong> / {{ selected_menu.duration }}分 / ¥{{ selected_menu.price }}
+                <span style="display:inline-flex; align-items:center; gap:10px; flex-wrap:wrap;"><img src="{{ selected_staff.avatar_url }}" alt="{{ selected_staff.name }}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid rgba(148,163,184,.28);background:#fff;"><strong>{{ selected_staff.name }}</strong></span> / <strong>{{ selected_menu.name }}</strong> / {{ selected_menu.duration }}分 / ¥{{ selected_menu.price }}
               {% else %}
                 スタッフとメニューを選ぶと、週間表に空き状況が表示されます。
               {% endif %}

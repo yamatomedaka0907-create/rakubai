@@ -11,6 +11,7 @@
     <div style="display:flex; gap:10px; flex-wrap:wrap;"><a class="tool-btn is-primary" href="/admin/{{ shop_id }}/staff-info/{{ staff.id }}/edit">休日設定を開く</a><a class="tool-btn" href="/admin/{{ shop_id }}/staff-info">スタッフ一覧へ戻る</a></div>
   </div>
   <div class="tool-panel-body">
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px;"><img src="{{ staff.avatar_url }}" alt="{{ staff.name }}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:1px solid rgba(148,163,184,.28);background:#fff;"><div><div style="font-weight:800; font-size:20px;">{{ staff.name }}</div><div class="tool-note">スタッフの週間予定を表示しています。</div></div></div>
     <div class="week-board-head">
       <a class="week-next-link" href="/admin/{{ shop_id }}/staff/{{ staff.id }}?month={{ calendar_month_value }}&date={{ selected_date }}&week_start={{ prev_week_start }}">前週へ戻る</a>
       <a class="week-next-link" href="/admin/{{ shop_id }}/staff/{{ staff.id }}?month={{ calendar_month_value }}&date={{ selected_date }}&week_start={{ next_week_start }}">翌週を見る</a>

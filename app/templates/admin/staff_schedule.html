@@ -3,7 +3,7 @@
 <div class="hero">
   <div class="hero-top">
     <div>
-      <h1>{{ staff.name }} の週間予定</h1>
+      <h1 style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;"><img src="{{ staff.avatar_url }}" alt="{{ staff.name }}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:#fff;"><span>{{ staff.name }} の週間予定</span></h1>
       <p>スタッフを選ぶと週間予定カレンダーを確認できます。休日設定は「休日設定を開く」から日付を選んで登録してください。</p>
     </div>
     <div class="hero-actions"><a href="/admin/{{ shop_id }}/staff-info/{{ staff.id }}/edit" class="primary-link">休日設定を開く</a><a href="/admin/{{ shop_id }}/staff-info" class="secondary-link">スタッフ一覧へ戻る</a></div>

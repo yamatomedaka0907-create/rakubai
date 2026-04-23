@@ -20,7 +20,7 @@
   <div class="detail-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
     <div><strong>予約日</strong><div>{{ reservation.reservation_date }}</div></div>
     <div><strong>時間</strong><div>{{ reservation.start_time }} - {{ reservation.end_time }}</div></div>
-    <div><strong>担当スタッフ</strong><div>{% if reservation.staff_id %}<a href="/admin/{{ shop_id }}/staff/{{ reservation.staff_id }}?date={{ reservation.reservation_date }}">{{ reservation.staff_name }}</a>{% else %}{{ reservation.staff_name or '未設定' }}{% endif %}</div></div>
+    <div><strong>担当スタッフ</strong><div style="display:flex; align-items:center; gap:10px; margin-top:6px;"><img src="{{ reservation.staff_avatar_url }}" alt="{{ reservation.staff_name }}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:#fff;">{% if reservation.staff_id %}<a href="/admin/{{ shop_id }}/staff/{{ reservation.staff_id }}?date={{ reservation.reservation_date }}">{{ reservation.staff_name }}</a>{% else %}{{ reservation.staff_name or '未設定' }}{% endif %}</div></div>
     <div><strong>メニュー</strong><div>{{ reservation.menu_name or '未設定' }}</div></div>
     <div><strong>料金</strong><div>{% if reservation.price %}¥{{ reservation.price }}{% else %}-{% endif %}</div></div>
     <div><strong>所要時間</strong><div>{% if reservation.duration %}{{ reservation.duration }}分{% else %}-{% endif %}</div></div>
