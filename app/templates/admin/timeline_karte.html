@@ -15,7 +15,7 @@
   </div>
 
   <style>
-  .timeline-karte-page { display:flex; flex-direction:column; gap:20px; min-height:calc(100vh - 140px); }
+  .timeline-karte-page { display:flex; flex-direction:column; gap:14px; min-height:calc(100vh - 140px); }
   .timeline-karte-shell { background:#fff; border:1px solid rgba(15,23,42,.07); border-radius:24px; box-shadow:var(--shadow-md); overflow:hidden; display:flex; flex-direction:column; flex:1 1 auto; min-height:0; height:calc(100vh - 280px); }
   .timeline-karte-header { display:grid; grid-template-columns:64px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(120px, 1fr)); border-bottom:1px solid var(--line); background:#f8fbfd; min-width:max-content; position:sticky; top:0; z-index:12; }
   .timeline-karte-header .time-head, .timeline-karte-header .staff-head { padding:12px 8px; font-weight:900; }
@@ -50,6 +50,16 @@
     .timeline-karte-shell { height:calc(100vh - 240px); min-height:60vh; }
   }
   @media (max-width:720px){
+    .timeline-karte-page { gap:12px; }
+    .timeline-karte-page .hero { padding:12px 14px; border-radius:18px; }
+    .timeline-karte-page .hero-top { align-items:flex-start; gap:10px; }
+    .timeline-karte-page .hero h1 { font-size:14px; line-height:1.2; }
+    .timeline-karte-page .hero p { margin-top:4px; font-size:10px; line-height:1.45; }
+    .timeline-karte-page .hero form { width:100%; gap:8px !important; align-items:flex-end; flex-wrap:nowrap; }
+    .timeline-karte-page .hero label { margin:0; min-width:0 !important; flex:1 1 auto; font-size:10px; }
+    .timeline-karte-page .hero input { min-height:40px; margin-top:4px; padding:8px 10px; font-size:12px; }
+    .timeline-karte-page .hero button { min-height:40px; padding:0 14px; font-size:12px; white-space:nowrap; flex:0 0 auto; }
+    .timeline-karte-shell { height:calc(100vh - 220px); min-height:0; }
     .timeline-karte-header, .timeline-karte-grid{ grid-template-columns:48px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(60px, 1fr)); }
     .timeline-karte-header .time-head, .timeline-karte-header .staff-head { padding:10px 4px; }
     .timeline-karte-header .staff-head { font-size:11px; line-height:1.2; }
@@ -59,7 +69,7 @@
     .timeline-reservation-name{ font-size:11px; line-height:1.3; }
     .timeline-reservation-meta{ font-size:10px; line-height:1.3; }
     .timeline-reservation-status{ margin-top:4px; min-height:18px; font-size:9px; }
-    .timeline-center-now-badge { min-height:24px; padding:0 10px; font-size:11px; }
+    .timeline-center-now-badge { min-height:24px; padding:0 10px; font-size:11px; transform:translate(-50%, calc(-100% - 6px)); }
   }
   </style>
 
@@ -69,6 +79,10 @@
       {% for staff in timeline_staff_columns %}<div class="staff-head">{% if staff.id is not none and staff.id != '' %}<a href="/admin/{{ shop_id }}/staff/{{ staff.id }}?date={{ timeline_selected_date }}">{{ staff.name }}</a>{% else %}{{ staff.name }}{% endif %}</div>{% endfor %}
     </div>
     <div class="timeline-karte-scroll">
+      <div class="timeline-center-now" aria-hidden="true">
+        <div class="timeline-center-now-line"></div>
+        <span class="timeline-center-now-badge" id="timelineCenterNowLabel">現在 --:--</span>
+      </div>
       <div class="timeline-karte-grid" style="height:{{ timeline_total_height }}px;">
         <div class="timeline-time-column">
           {% for slot in timeline_slots %}<div class="timeline-time-label" style="top:{{ loop.index0 * timeline_slot_height }}px;"><span>{{ slot.label }}</span></div>{% endfor %}
@@ -87,10 +101,6 @@
         {% endfor %}
         {% if timeline_now_line_top is not none %}<div class="timeline-now-line" style="top:{{ timeline_now_line_top }}px;"></div>{% endif %}
       </div>
-      <div class="timeline-center-now" aria-hidden="true">
-        <div class="timeline-center-now-line"></div>
-        <span class="timeline-center-now-badge" id="timelineCenterNowLabel">現在 --:--</span>
-      </div>
     </div>
   </div>
 </div>
@@ -108,8 +118,9 @@
   }
   function centerTimelineNow(){
     if (!scrollEl || !nowLine) return;
+    const maxScroll = Math.max(0, scrollEl.scrollHeight - scrollEl.clientHeight);
     const target = nowLine.offsetTop - (scrollEl.clientHeight / 2) + (nowLine.offsetHeight / 2);
-    scrollEl.scrollTop = Math.max(0, target);
+    scrollEl.scrollTop = Math.min(maxScroll, Math.max(0, target));
   }
   let resizeTimer = null;
   function handleResize(){
@@ -118,12 +129,17 @@
   }
   updateCenterNowLabel();
   window.setInterval(updateCenterNowLabel, 1000);
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', centerTimelineNow, { once: true });
-  } else {
+  function runCentering(){
     centerTimelineNow();
+    window.requestAnimationFrame(centerTimelineNow);
+    window.setTimeout(centerTimelineNow, 120);
   }
-  window.addEventListener('load', centerTimelineNow, { once: true });
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', runCentering, { once: true });
+  } else {
+    runCentering();
+  }
+  window.addEventListener('load', runCentering, { once: true });
   window.addEventListener('resize', handleResize);
   window.setTimeout(function(){
     window.location.reload();

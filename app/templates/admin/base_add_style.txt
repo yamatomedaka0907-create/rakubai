@@ -1,4 +1,5 @@
-/* スマホのみ ヘッダーサイズ維持＋余白削除 */
+<!-- ↓このコードを base.html の </head> の直前に貼り付け -->
+<style>
 @media screen and (max-width:768px){
 
     .hero,
@@ -9,13 +10,6 @@
         margin: 0 !important;
     }
 
-    .hero > *,
-    header > *,
-    .header > *{
-        margin-top: 0 !important;
-        margin-bottom: 0 !important;
-    }
-
     .container,
     .wrapper,
     .content,
@@ -24,17 +18,24 @@
         margin-top: 0 !important;
     }
 
+    .hero > *,
+    header > *,
+    .header > *{
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+    }
+
     .hero h1,
     header h1{
         font-size: 15px !important;
         margin: 0 !important;
-        line-height: 1.2 !important;
     }
 
     .hero p,
     header p{
         font-size: 11px !important;
         margin: 2px 0 0 0 !important;
-        line-height: 1.3 !important;
     }
+
 }
+</style>
