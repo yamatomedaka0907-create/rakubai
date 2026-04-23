@@ -55,21 +55,8 @@
     .timeline-karte-shell { height:calc(100vh - 240px); min-height:60vh; }
   }
   @media (max-width:720px){
-    .timeline-karte-page { gap:12px; min-height:auto; }
-    .timeline-karte-page .hero { padding:12px 14px; border-radius:18px; }
-    .timeline-karte-page .hero-top { align-items:flex-start; gap:10px; }
-    .timeline-karte-page .hero h1 { font-size:14px; line-height:1.2; }
-    .timeline-karte-page .hero p { margin-top:4px; font-size:10px; line-height:1.45; }
-    .timeline-karte-page .hero form { width:100%; gap:8px !important; align-items:flex-end; flex-wrap:nowrap; }
-    .timeline-karte-page .hero label { margin:0; min-width:0 !important; flex:1 1 auto; font-size:10px; }
-    .timeline-karte-page .hero input { min-height:40px; margin-top:4px; padding:8px 10px; font-size:12px; }
-    .timeline-karte-page .hero button { min-height:40px; padding:0 14px; font-size:12px; white-space:nowrap; flex:0 0 auto; }
-    .timeline-karte-shell { height:auto; min-height:0; overflow:visible; }
-    .timeline-karte-scroll { overflow:visible; }
-    .timeline-karte-header,
-    .timeline-karte-grid { grid-template-columns:48px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(64px, 1fr)); min-width:100%; width:100%; }
-    .timeline-karte-header .time-head,
-    .timeline-karte-header .staff-head { padding:10px 4px; height:74px; }
+    .timeline-karte-header, .timeline-karte-grid{ grid-template-columns:48px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(60px, 1fr)); }
+    .timeline-karte-header .time-head, .timeline-karte-header .staff-head { padding:10px 4px; }
     .timeline-karte-header .staff-head { font-size:11px; line-height:1.2; }
     .timeline-staff-head-inner { gap:4px; }
     .timeline-staff-head-inner img { width:30px; height:30px; }
@@ -79,16 +66,16 @@
     .timeline-reservation-name{ font-size:11px; line-height:1.3; }
     .timeline-reservation-meta{ font-size:10px; line-height:1.3; }
     .timeline-reservation-status{ margin-top:4px; min-height:18px; font-size:9px; }
-    .timeline-now-line-label { min-height:22px; padding:0 9px; font-size:10px; }
+    .timeline-center-now-badge { min-height:24px; padding:0 10px; font-size:11px; }
   }
   </style>
 
   <div class="timeline-karte-shell">
-    <div class="timeline-karte-scroll" id="timelineKarteScroll">
-      <div class="timeline-karte-header">
-        <div class="time-head">時間</div>
-        {% for staff in timeline_staff_columns %}<div class="staff-head"><div class="timeline-staff-head-inner"><img src="{{ staff.avatar_url }}" alt="{{ staff.name }}"><div class="timeline-staff-head-name">{% if staff.id is not none and staff.id != '' %}<a href="/admin/{{ shop_id }}/staff/{{ staff.id }}?date={{ timeline_selected_date }}">{{ staff.name }}</a>{% else %}{{ staff.name }}{% endif %}</div></div></div>{% endfor %}
-      </div>
+    <div class="timeline-karte-header">
+      <div class="time-head">時間</div>
+      {% for staff in timeline_staff_columns %}<div class="staff-head">{% if staff.id is not none and staff.id != '' %}<a href="/admin/{{ shop_id }}/staff/{{ staff.id }}?date={{ timeline_selected_date }}">{{ staff.name }}</a>{% else %}{{ staff.name }}{% endif %}</div>{% endfor %}
+    </div>
+    <div class="timeline-karte-scroll">
       <div class="timeline-karte-grid" style="height:{{ timeline_total_height }}px;">
         <div class="timeline-time-column">
           {% for slot in timeline_slots %}<div class="timeline-time-label" style="top:{{ loop.index0 * timeline_slot_height }}px;"><span>{{ slot.label }}</span></div>{% endfor %}
@@ -105,7 +92,11 @@
           {% endfor %}
         </div>
         {% endfor %}
-        {% if timeline_now_line_top is not none %}<div class="timeline-now-line" id="timelineNowLine" style="top:{{ timeline_now_line_top }}px;"><span class="timeline-now-line-label" id="timelineNowLabel">現在 --:--</span></div>{% endif %}
+        {% if timeline_now_line_top is not none %}<div class="timeline-now-line" style="top:{{ timeline_now_line_top }}px;"></div>{% endif %}
+      </div>
+      <div class="timeline-center-now" aria-hidden="true">
+        <div class="timeline-center-now-line"></div>
+        <span class="timeline-center-now-badge" id="timelineCenterNowLabel">現在 --:--</span>
       </div>
     </div>
   </div>
@@ -126,30 +117,17 @@
     nowLabel.textContent = '現在 ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
   }
   function centerTimelineNow(){
-    if (!nowLine) return;
-    if (mobileMedia.matches) {
-      const lineRect = nowLine.getBoundingClientRect();
-      const target = window.scrollY + lineRect.top - (window.innerHeight / 2) + (lineRect.height / 2);
-      window.scrollTo({ top: Math.max(0, target), behavior: hasCenteredOnce ? 'auto' : 'smooth' });
-    } else if (scrollEl) {
-      const maxScroll = Math.max(0, scrollEl.scrollHeight - scrollEl.clientHeight);
-      const target = nowLine.offsetTop - (scrollEl.clientHeight / 2) + (nowLine.offsetHeight / 2);
-      scrollEl.scrollTop = Math.min(maxScroll, Math.max(0, target));
-    }
-    hasCenteredOnce = true;
+    if (!scrollEl || !nowLine) return;
+    const target = nowLine.offsetTop - (scrollEl.clientHeight / 2) + (nowLine.offsetHeight / 2);
+    scrollEl.scrollTop = Math.max(0, target);
   }
   let resizeTimer = null;
   function handleResize(){
     window.clearTimeout(resizeTimer);
     resizeTimer = window.setTimeout(centerTimelineNow, 120);
   }
-  updateNowLabel();
-  window.setInterval(updateNowLabel, 1000);
-  function runCentering(){
-    centerTimelineNow();
-    window.requestAnimationFrame(centerTimelineNow);
-    window.setTimeout(centerTimelineNow, 120);
-  }
+  updateCenterNowLabel();
+  window.setInterval(updateCenterNowLabel, 1000);
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', runCentering, { once: true });
   } else {

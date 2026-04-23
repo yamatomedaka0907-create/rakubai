@@ -43,16 +43,16 @@
 <div class="card">
   <div class="card-header"><h2>登録スタッフ一覧</h2><span class="badge">{{ staff_list|length }}名</span></div>
   {% if staff_list %}
-  <div class="table-wrap staff-info-table-wrap">
-    <table class="staff-info-table">
-      <thead><tr><th>スタッフ</th><th>対応メニュー</th><th>休日設定</th><th>設定</th></tr></thead>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>名前</th><th>対応メニュー</th><th>休日設定</th><th>設定</th></tr></thead>
       <tbody>
         {% for staff in staff_list %}
         <tr>
-          <td data-label="スタッフ"><div style="display:flex; align-items:center; gap:10px;"><img src="{{ staff.avatar_url }}" alt="{{ staff.name }}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:#fff;"><a href="/admin/{{ shop_id }}/staff/{{ staff.id }}">{{ staff.name }}</a></div></td>
-          <td data-label="対応メニュー">{% if staff.menu_names %}{{ staff.menu_names|join(' / ') }}{% else %}未設定{% endif %}</td>
-          <td data-label="休日設定">{% if staff.holiday_dates %}{{ staff.holiday_dates|length }}日登録済み{% else %}未設定{% endif %}</td>
-          <td data-label="設定"><a class="secondary-link" href="/admin/{{ shop_id }}/staff-info/{{ staff.id }}/edit">編集 / 休日設定</a></td>
+          <td><a href="/admin/{{ shop_id }}/staff/{{ staff.id }}">{{ staff.name }}</a></td>
+          <td>{% if staff.menu_names %}{{ staff.menu_names|join(' / ') }}{% else %}未設定{% endif %}</td>
+          <td>{% if staff.holiday_dates %}{{ staff.holiday_dates|length }}日登録済み{% else %}未設定{% endif %}</td>
+          <td><a class="secondary-link" href="/admin/{{ shop_id }}/staff-info/{{ staff.id }}/edit">編集 / 休日設定</a></td>
         </tr>
         {% endfor %}
       </tbody>
