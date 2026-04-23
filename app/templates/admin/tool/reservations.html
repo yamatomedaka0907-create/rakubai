@@ -29,6 +29,67 @@
 </section>
 
 <section class="tool-panel">
+  <div class="tool-panel-head is-wide">
+    <div>
+      <h2>本日のタイムライン</h2>
+      <div class="tool-note">{{ selected_date or today }} / 予約 {{ selected_day_count or 0 }}件</div>
+    </div>
+    <a class="tool-btn" href="/admin/{{ shop_id }}/reservations?date={{ today }}&week_start={{ week_start }}">今日を見る</a>
+  </div>
+  <div class="tool-panel-body">
+    {% if selected_day_schedule %}
+    <div class="tool-card-stack">
+      {% for reservation in selected_day_schedule %}
+      <div class="tool-card-lite">
+        <div class="tool-card-lite-head" style="align-items:flex-start;">
+          <div>
+            <div class="tool-card-lite-title">{{ reservation.start_time }}〜{{ reservation.end_time }}</div>
+            <div class="tool-note">顧客: {{ reservation.customer_name }}</div>
+            <div class="tool-note">スタッフ: <a class="tool-text-link" href="/admin/{{ shop_id }}/staff/{{ reservation.staff_id }}?date={{ reservation.reservation_date }}&week_start={{ week_start }}">{{ reservation.staff_name }}</a></div>
+            <div class="tool-note">メニュー: {{ reservation.menu_name }} / {{ reservation.duration }}分 / ¥{{ reservation.price }}</div>
+          </div>
+          <span class="tool-status {% if reservation.status == '来店済み' %}is-done{% elif reservation.status == 'キャンセル' %}is-cancelled{% else %}is-reserved{% endif %}">{{ reservation.status }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}<div class="tool-empty">この日の予約はまだありません。</div>{% endif %}
+  </div>
+</section>
+
+<section class="tool-panel">
+  <div class="tool-panel-head">
+    <h2>予約一覧</h2>
+    <div class="tool-note">10件表示</div>
+  </div>
+  <div class="tool-panel-body">
+    {% if reservations %}
+    <div class="tool-table-wrap">
+      <table class="tool-table">
+        <thead><tr><th>ID</th><th>日付</th><th>開始</th><th>終了</th><th>所要時間</th><th>料金</th><th>顧客</th><th>スタッフ</th><th>メニュー</th><th>状態</th><th>操作</th></tr></thead>
+        <tbody>
+          {% for reservation in reservations %}
+          <tr class="tool-reservation-row">
+            <td>{{ reservation.id }}</td><td>{{ reservation.reservation_date }}</td><td>{{ reservation.start_time }}</td><td>{{ reservation.end_time }}</td><td>{{ reservation.duration }}分</td><td>¥{{ reservation.price }}</td><td>{{ reservation.customer_name }}</td>
+            <td><a class="tool-text-link" href="/admin/{{ shop_id }}/staff/{{ reservation.staff_id }}?date={{ reservation.reservation_date }}&week_start={{ week_start }}">{{ reservation.staff_name }}</a></td>
+            <td>{{ reservation.menu_name }}</td>
+            <td><span class="tool-status {% if reservation.status == '来店済み' %}is-done{% elif reservation.status == 'キャンセル' %}is-cancelled{% else %}is-reserved{% endif %}">{{ reservation.status }}</span></td>
+            <td><div class="tool-actions">{% if reservation.status == "予約済み" %}<form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/done"><button class="tool-btn" type="submit">来店済み</button></form><form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/cancel"><button class="tool-btn is-danger" type="submit">キャンセル</button></form>{% else %}<span>-</span>{% endif %}</div></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
+      <button type="button" id="tool-reservation-prev" class="tool-btn">戻る</button>
+      <button type="button" id="tool-reservation-next" class="tool-btn">次へ</button>
+    </div>
+    {% else %}<div class="tool-empty">まだ予約が登録されていません。</div>{% endif %}
+  </div>
+</section>
+
+
+<section class="tool-panel">
   <div class="tool-panel-head">
     <h2>予約登録</h2>
     <div class="tool-note">ページ下部に移動しました</div>
@@ -121,6 +182,40 @@
     staffSelect.addEventListener('change', renderOptions);
     renderOptions();
   });
+
+  const rows = Array.from(document.querySelectorAll('.tool-reservation-row'));
+  const prevButton = document.getElementById('tool-reservation-prev');
+  const nextButton = document.getElementById('tool-reservation-next');
+  const pageSize = 10;
+  let currentPage = 1;
+
+  function renderReservationPage(){
+    if (!rows.length || !prevButton || !nextButton) return;
+    const totalPages = Math.ceil(rows.length / pageSize);
+    rows.forEach(function(row, index){
+      const start = (currentPage - 1) * pageSize;
+      const end = start + pageSize;
+      row.style.display = (index >= start && index < end) ? '' : 'none';
+    });
+    prevButton.disabled = currentPage === 1;
+    nextButton.disabled = currentPage >= totalPages;
+  }
+
+  if (prevButton && nextButton) {
+    prevButton.addEventListener('click', function(){
+      if (currentPage > 1) {
+        currentPage -= 1;
+        renderReservationPage();
+      }
+    });
+    nextButton.addEventListener('click', function(){
+      if (currentPage < Math.ceil(rows.length / pageSize)) {
+        currentPage += 1;
+        renderReservationPage();
+      }
+    });
+    renderReservationPage();
+  }
 })();
 </script>
 {% endblock %}

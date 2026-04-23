@@ -80,33 +80,6 @@
 
         <div class="tool-grid cols-2">
           <section class="tool-panel is-subpanel">
-            <div class="tool-panel-head">
-              <h2>今日の予約</h2>
-              <a class="tool-btn" href="/admin/{{ shop_id }}/reservations?date={{ today }}">予約管理へ</a>
-            </div>
-            <div class="tool-panel-body">
-              {% if today_reservations %}
-              <div class="tool-table-wrap">
-                <table class="tool-table">
-                  <thead><tr><th>時間</th><th>顧客</th><th>スタッフ</th><th>メニュー</th><th>状態</th></tr></thead>
-                  <tbody>
-                    {% for item in today_reservations|sort(attribute='start_time') %}
-                    <tr>
-                      <td>{{ item.start_time }}〜{{ item.end_time }}</td>
-                      <td>{{ item.customer_name }}</td>
-                      <td>{{ item.staff_name }}</td>
-                      <td>{{ item.menu_name }}</td>
-                      <td><span class="tool-status {% if item.status == '来店済み' %}is-done{% elif item.status == 'キャンセル' %}is-cancelled{% else %}is-reserved{% endif %}">{{ item.status }}</span></td>
-                    </tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
-              </div>
-              {% else %}<div class="tool-empty">本日の予約はまだありません。</div>{% endif %}
-            </div>
-          </section>
-
-          <section class="tool-panel is-subpanel">
             <div class="tool-panel-head"><h2>店舗情報</h2></div>
             <div class="tool-system-list">
               <div class="tool-system-row"><span>営業時間</span><strong>{{ shop.business_hours or '未設定' }}</strong></div>
@@ -170,32 +143,6 @@
     </div>
   </section>
 
-  <section class="tool-panel">
-    <div class="tool-panel-head">
-      <h2>直近の予約一覧</h2>
-      <div class="tool-note">新しい順に8件</div>
-    </div>
-    <div class="tool-panel-body">
-      {% if recent_reservations %}
-      <div class="tool-table-wrap">
-        <table class="tool-table">
-          <thead><tr><th>日付</th><th>時間</th><th>顧客</th><th>スタッフ</th><th>メニュー</th><th>状態</th></tr></thead>
-          <tbody>
-            {% for item in recent_reservations %}
-            <tr>
-              <td>{{ item.reservation_date }}</td>
-              <td>{{ item.start_time }}</td>
-              <td>{{ item.customer_name }}</td>
-              <td>{{ item.staff_name }}</td>
-              <td>{{ item.menu_name }}</td>
-              <td><span class="tool-status {% if item.status == '来店済み' %}is-done{% elif item.status == 'キャンセル' %}is-cancelled{% else %}is-reserved{% endif %}">{{ item.status }}</span></td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% else %}<div class="tool-empty">予約データはまだありません。</div>{% endif %}
-    </div>
-  </section>
+
 </div>
 {% endblock %}

@@ -12,6 +12,7 @@ import time
 from urllib.parse import urlparse
 
 import boto3
+from botocore.exceptions import BotoCoreError, ClientError
 from email.mime.text import MIMEText
 from email.utils import formataddr
 from pathlib import Path
@@ -663,7 +664,7 @@ def _first_env(*names: str) -> str:
 
 
 def _get_customer_photo_s3_settings() -> dict[str, str]:
-    bucket = _first_env("S3_BUCKET", "AWS_S3_BUCKET", "AWS_BUCKET", "BUCKET_NAME", "S3_BUCKET_NAME") or "reserve-site-images-001"
+    bucket = _first_env("S3_BUCKET", "AWS_S3_BUCKET", "AWS_BUCKET", "BUCKET_NAME", "S3_BUCKET_NAME")
     region = _first_env("AWS_REGION", "AWS_DEFAULT_REGION") or "ap-northeast-1"
     prefix = (_first_env("S3_PREFIX", "AWS_S3_PREFIX") or "shops").strip("/")
     endpoint_url = _first_env("S3_ENDPOINT_URL", "AWS_S3_ENDPOINT_URL")
@@ -707,7 +708,11 @@ def _save_customer_photo_file(shop_id: str, customer_id: int, upload: UploadFile
         extra_args = {"ContentType": content_type}
         if acl:
             extra_args["ACL"] = acl
-        s3.put_object(Bucket=bucket, Key=key, Body=file_bytes, **extra_args)
+
+        try:
+            s3.put_object(Bucket=bucket, Key=key, Body=file_bytes, **extra_args)
+        except (ClientError, BotoCoreError) as e:
+            raise HTTPException(status_code=500, detail=f"S3 upload failed: {str(e)}")
 
         if public_base_url:
             return f"{public_base_url}/{key}"

@@ -156,56 +156,7 @@
       {% endif %}
     </div>
 
-    <div class="card">
-      <div class="day-header">
-        <div>
-          <h2 class="day-title">{{ selected_date }} のタイムスケジュール</h2>
-          <p class="day-sub">予約 {{ selected_day_count }}件</p>
-        </div>
-        <a href="/admin/{{ shop_id }}?month={{ calendar_month_value }}&date={{ today }}&week_start={{ week_start }}" class="badge" style="text-decoration:none;">今日を見る</a>
-      </div>
-      {% if selected_day_schedule %}
-      <div class="timeline">
-        {% for reservation in selected_day_schedule %}
-        <div class="timeline-item">
-          <div class="timeline-top">
-            <div class="timeline-time">{{ reservation.start_time }} - {{ reservation.end_time }}</div>
-            {% if reservation.status == "キャンセル" %}<span class="status status-cancelled">キャンセル</span>{% elif reservation.status == "来店済み" %}<span class="status status-done">来店済み</span>{% else %}<span class="status status-reserved">予約済み</span>{% endif %}
-          </div>
-          <div class="timeline-main">
-            <div><strong>顧客:</strong> {{ reservation.customer_name }}</div>
-            <div><strong>スタッフ:</strong> <a href="/admin/{{ shop_id }}/staff/{{ reservation.staff_id }}?month={{ calendar_month_value }}&date={{ reservation.reservation_date }}">{{ reservation.staff_name }}</a></div>
-            <div><strong>メニュー:</strong> {{ reservation.menu_name }} / {{ reservation.duration }}分 / ¥{{ reservation.price }}</div>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-      {% else %}
-      <p class="empty">この日の予約はまだありません。</p>
-      {% endif %}
-    </div>
 
-    <div class="card">
-      <div class="card-header"><h2>予約一覧</h2><span class="badge">{{ reservations|length }}件</span></div>
-      {% if reservations %}
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>ID</th><th>日付</th><th>開始</th><th>終了</th><th>所要時間</th><th>料金</th><th>顧客</th><th>スタッフ</th><th>メニュー</th><th>状態</th><th>操作</th></tr></thead>
-          <tbody>
-            {% for reservation in reservations %}
-            <tr>
-              <td>{{ reservation.id }}</td><td>{{ reservation.reservation_date }}</td><td>{{ reservation.start_time }}</td><td>{{ reservation.end_time }}</td><td>{{ reservation.duration }}分</td><td class="price">¥{{ reservation.price }}</td><td>{{ reservation.customer_name }}</td>
-              <td><a href="/admin/{{ shop_id }}/staff/{{ reservation.staff_id }}?month={{ reservation.reservation_date[:7] }}&date={{ reservation.reservation_date }}">{{ reservation.staff_name }}</a></td>
-              <td>{{ reservation.menu_name }}</td>
-              <td>{% if reservation.status == "キャンセル" %}<span class="status status-cancelled">キャンセル</span>{% elif reservation.status == "来店済み" %}<span class="status status-done">来店済み</span>{% else %}<span class="status status-reserved">予約済み</span>{% endif %}</td>
-              <td><div class="action-buttons">{% if reservation.status == "予約済み" %}<form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/done"><button type="submit" class="done-button">来店済み</button></form><form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/cancel"><button type="submit" class="danger-button">キャンセル</button></form>{% else %}<span>-</span>{% endif %}</div></td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% else %}<p class="empty">まだ予約が登録されていません。</p>{% endif %}
-    </div>
 
 <script>
 (function(){
