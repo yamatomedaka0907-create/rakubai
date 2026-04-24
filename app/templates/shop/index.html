@@ -257,7 +257,7 @@
             </div>
             <div class="summary-box">
               {% if selected_staff and selected_menu %}
-                <strong>{{ selected_staff.name }}</strong> / <strong>{{ selected_menu.name }}</strong> / {{ selected_menu.duration }}分 / ¥{{ selected_menu.price }}
+                <span style="display:inline-flex; align-items:center; gap:10px; flex-wrap:wrap;"><img src="{{ selected_staff.avatar_url }}" alt="{{ selected_staff.name }}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid rgba(148,163,184,.28);background:#fff;"><strong>{{ selected_staff.name }}</strong></span> / <strong>{{ selected_menu.name }}</strong> / {{ selected_menu.duration }}分 / ¥{{ selected_menu.price }}
               {% else %}
                 スタッフとメニューを選ぶと、週間表に空き状況が表示されます。
               {% endif %}

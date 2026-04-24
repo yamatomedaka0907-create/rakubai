@@ -90,7 +90,7 @@
     <div class="hero">
       <div class="hero-top">
         <div>
-          <h1>{{ staff.name }} の予約状況</h1>
+          <h1 style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;"><img src="{{ staff.avatar_url }}" alt="{{ staff.name }}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:#fff;"><span>{{ staff.name }} の予約状況</span></h1>
           <p>{{ shop.shop_name }} のスタッフ個別ページです。月間カレンダーから日付を押すと、その日の担当予約だけを確認できます。</p>
         </div>
       </div>

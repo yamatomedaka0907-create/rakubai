@@ -8,25 +8,27 @@
 .tool-timeline-form { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
 .tool-timeline-form label { display:grid; gap:8px; font-size:13px; font-weight:800; color:#475569; }
 .tool-timeline-shell { border:1px solid var(--tool-line,#d7e3ee); border-radius:24px; background:#fff; overflow:hidden; display:flex; flex-direction:column; flex:1 1 auto; min-height:0; height:calc(100vh - 220px); }
-.tool-timeline-header { display:grid; grid-template-columns:56px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(70px,1fr)); background:#f8fbfd; border-bottom:1px solid var(--tool-line,#d7e3ee); min-width:max-content; position:sticky; top:0; z-index:12; }
-.tool-timeline-header > div { padding:8px 4px; font-weight:900; }
-.tool-timeline-header .time-head { color:#64748b; font-size:12px; text-transform:uppercase; }
-.tool-timeline-header .staff-head { border-left:1px solid var(--tool-line,#d7e3ee); font-size:11px; line-height:1.2; white-space:normal; word-break:break-word; overflow-wrap:anywhere; }
-.tool-timeline-header .staff-head a { color:inherit; text-decoration:none; display:block; }
-.tool-timeline-header .staff-head a:hover { text-decoration:underline; }
 .tool-timeline-scroll { position:relative; overflow:auto; flex:1 1 auto; min-height:0; }
-.tool-timeline-grid { position:relative; display:grid; grid-template-columns:56px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(70px,1fr)); min-width:max-content; }
+.tool-timeline-header,
+.tool-timeline-grid { display:grid; grid-template-columns:56px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(180px,1fr)); min-width:calc(56px + ({{ timeline_staff_columns|length if timeline_staff_columns else 1 }} * 180px)); width:100%; box-sizing:border-box; }
+.tool-timeline-header { background:#f8fbfd; border-bottom:1px solid var(--tool-line,#d7e3ee); position:sticky; top:0; z-index:12; align-items:stretch; }
+.tool-timeline-header > div { padding:8px 4px; font-weight:900; height:72px; box-sizing:border-box; }
+.tool-timeline-header .time-head { color:#64748b; font-size:12px; text-transform:uppercase; display:grid; place-items:center; }
+.tool-timeline-header .staff-head { border-left:1px solid var(--tool-line,#d7e3ee); font-size:11px; line-height:1.2; white-space:normal; word-break:break-word; overflow-wrap:anywhere; display:grid; place-items:center; }
+.tool-timeline-staff-head-inner { display:grid; justify-items:center; align-content:center; gap:6px; text-align:center; width:100%; height:100%; }
+.tool-timeline-staff-head-inner img { width:34px; height:34px; border-radius:50%; object-fit:cover; border:1px solid rgba(148,163,184,.28); background:#fff; display:block; }
+.tool-timeline-staff-head-name { display:block; min-height:15px; }
+.tool-timeline-staff-head-name, .tool-timeline-staff-head-name a { line-height:1.2; margin:0; text-align:center; }
+.tool-timeline-header .staff-head a { color:inherit; text-decoration:none; }
+.tool-timeline-header .staff-head a:hover { text-decoration:underline; }
 .tool-timeline-time-col { position:relative; background:#fff; }
 .tool-timeline-label { position:absolute; left:0; right:0; }
 .tool-timeline-label span { position:absolute; top:-10px; left:10px; font-size:11px; font-weight:900; color:#64748b; background:#fff; padding-right:6px; }
 .tool-timeline-staff { position:relative; border-left:1px solid var(--tool-line,#d7e3ee); background:linear-gradient(180deg,#fff 0%,#f8fbfd 100%); }
 .tool-timeline-staff::before { content:""; position:absolute; inset:0; background-image:repeating-linear-gradient(to bottom, transparent 0, transparent calc({{ timeline_slot_height }}px - 1px), #d7e3ee calc({{ timeline_slot_height }}px - 1px), #d7e3ee {{ timeline_slot_height }}px); pointer-events:none; }
-.tool-timeline-staff.is-empty::after { content:"予約なし"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-weight:800; }
+.tool-timeline-staff.is-empty::after { content:"予約なし"; position:absolute; inset:0; display:flex; align-items:flex-start; justify-content:center; padding-top:12px; color:#94a3b8; font-weight:800; }
 .tool-now-line { position:absolute; left:0; right:0; height:2px; background:#dc2626; z-index:6; }
-.tool-now-line::before { content:"現在"; position:absolute; left:10px; top:-12px; min-height:22px; padding:0 8px; border-radius:999px; background:#dc2626; color:#fff; font-size:11px; font-weight:900; }
-.tool-center-now { position:sticky; top:50%; height:0; z-index:11; pointer-events:none; }
-.tool-center-now-line { position:absolute; left:0; right:0; top:0; height:2px; background:rgba(220,38,38,.88); box-shadow:0 0 0 1px rgba(220,38,38,.08); }
-.tool-center-now-badge { position:absolute; left:50%; top:0; transform:translate(-50%, calc(-100% - 8px)); display:inline-flex; align-items:center; justify-content:center; min-height:28px; padding:0 12px; border-radius:999px; background:#dc2626; color:#fff; font-size:12px; font-weight:900; white-space:nowrap; box-shadow:0 12px 28px rgba(220,38,38,.22); }
+.tool-now-line-label { position:absolute; left:50%; top:0; transform:translate(-50%, -50%); display:inline-flex; align-items:center; justify-content:center; min-height:24px; padding:0 10px; border-radius:999px; background:#dc2626; color:#fff; font-size:11px; font-weight:900; white-space:nowrap; box-shadow:0 10px 24px rgba(220,38,38,.22); }
 .tool-reservation { position:absolute; left:2px; right:2px; border-radius:10px; padding:6px 4px; box-shadow:0 12px 28px rgba(15,23,42,.08); z-index:4; text-decoration:none; color:inherit; display:block; }
 .tool-reservation.reserved { background:rgba(46,196,182,.14); border:1px solid rgba(46,196,182,.26); }
 .tool-reservation.done { background:#dcfce7; border:1px solid #86efac; }
@@ -40,9 +42,15 @@
   .tool-timeline-shell { height:calc(100vh - 200px); min-height:60vh; }
 }
 @media (max-width:768px){
-  .tool-timeline-header { grid-template-columns:48px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(60px,1fr)); }
-  .tool-timeline-grid { grid-template-columns:48px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(60px,1fr)); }
-  .tool-center-now-badge { min-height:24px; padding:0 10px; font-size:11px; }
+  .tool-timeline-page { min-height:auto; }
+  .tool-timeline-shell { height:auto; min-height:0; overflow:visible; }
+  .tool-timeline-scroll { overflow:visible; }
+  .tool-timeline-header,
+  .tool-timeline-grid { grid-template-columns:48px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(96px,1fr)); min-width:calc(48px + ({{ timeline_staff_columns|length if timeline_staff_columns else 1 }} * 96px)); width:100%; }
+  .tool-timeline-header > div { height:72px; }
+  .tool-timeline-staff-head-inner { gap:4px; }
+  .tool-timeline-staff-head-inner img { width:28px; height:28px; }
+  .tool-now-line-label { min-height:22px; padding:0 9px; font-size:10px; }
 }
 </style>
 
@@ -60,11 +68,11 @@
     </div>
     <div class="tool-panel-body" style="display:flex;flex-direction:column;flex:1 1 auto;min-height:0;">
       <div class="tool-timeline-shell">
-        <div class="tool-timeline-header">
-          <div class="time-head">時間</div>
-          {% for staff in timeline_staff_columns %}<div class="staff-head">{% if staff.id is not none and staff.id != '' %}<a href="/admin/{{ shop_id }}/staff/{{ staff.id }}?date={{ timeline_selected_date }}">{{ staff.name }}</a>{% else %}{{ staff.name }}{% endif %}</div>{% endfor %}
-        </div>
-        <div class="tool-timeline-scroll">
+        <div class="tool-timeline-scroll" id="toolTimelineScroll">
+          <div class="tool-timeline-header">
+            <div class="time-head">時間</div>
+            {% for staff in timeline_staff_columns %}<div class="staff-head"><div class="tool-timeline-staff-head-inner"><img src="{{ staff.avatar_url }}" alt="{{ staff.name }}"><div class="tool-timeline-staff-head-name">{% if staff.id is not none and staff.id != '' %}<a href="/admin/{{ shop_id }}/staff/{{ staff.id }}?date={{ timeline_selected_date }}">{{ staff.name }}</a>{% else %}{{ staff.name }}{% endif %}</div></div></div>{% endfor %}
+          </div>
           <div class="tool-timeline-grid" style="height:{{ timeline_total_height }}px;">
             <div class="tool-timeline-time-col">
               {% for slot in timeline_slots %}<div class="tool-timeline-label" style="top:{{ loop.index0 * timeline_slot_height }}px;"><span>{{ slot.label }}</span></div>{% endfor %}
@@ -81,11 +89,7 @@
               {% endfor %}
             </div>
             {% endfor %}
-            {% if timeline_now_line_top is not none %}<div class="tool-now-line" style="top:{{ timeline_now_line_top }}px;"></div>{% endif %}
-          </div>
-          <div class="tool-center-now" aria-hidden="true">
-            <div class="tool-center-now-line"></div>
-            <span class="tool-center-now-badge" id="toolTimelineCenterNowLabel">現在 --:--</span>
+            {% if timeline_now_line_top is not none %}<div class="tool-now-line" id="toolTimelineNowLine" style="top:{{ timeline_now_line_top }}px;"><span class="tool-now-line-label" id="toolTimelineNowLabel">現在 --:--</span></div>{% endif %}
           </div>
         </div>
       </div>
@@ -95,33 +99,49 @@
 
 <script>
 (function(){
-  const scrollEl = document.querySelector('.tool-timeline-scroll');
-  const nowLine = document.querySelector('.tool-now-line');
-  const centerNowLabel = document.getElementById('toolTimelineCenterNowLabel');
+  const mobileMedia = window.matchMedia('(max-width: 768px)');
+  const scrollEl = document.getElementById('toolTimelineScroll');
+  const nowLine = document.getElementById('toolTimelineNowLine');
+  const nowLabel = document.getElementById('toolTimelineNowLabel');
+  let hasCenteredOnce = false;
+
   function pad(value){ return String(value).padStart(2, '0'); }
-  function updateCenterNowLabel(){
-    if (!centerNowLabel) return;
+  function updateNowLabel(){
+    if (!nowLabel) return;
     const now = new Date();
-    centerNowLabel.textContent = '現在 ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+    nowLabel.textContent = '現在 ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
   }
   function centerTimelineNow(){
-    if (!scrollEl || !nowLine) return;
-    const target = nowLine.offsetTop - (scrollEl.clientHeight / 2) + (nowLine.offsetHeight / 2);
-    scrollEl.scrollTop = Math.max(0, target);
+    if (!nowLine) return;
+    if (mobileMedia.matches) {
+      const lineRect = nowLine.getBoundingClientRect();
+      const target = window.scrollY + lineRect.top - (window.innerHeight / 2) + (lineRect.height / 2);
+      window.scrollTo({ top: Math.max(0, target), behavior: hasCenteredOnce ? 'auto' : 'smooth' });
+    } else if (scrollEl) {
+      const maxScroll = Math.max(0, scrollEl.scrollHeight - scrollEl.clientHeight);
+      const target = nowLine.offsetTop - (scrollEl.clientHeight / 2) + (nowLine.offsetHeight / 2);
+      scrollEl.scrollTop = Math.min(maxScroll, Math.max(0, target));
+    }
+    hasCenteredOnce = true;
   }
   let resizeTimer = null;
   function handleResize(){
     window.clearTimeout(resizeTimer);
     resizeTimer = window.setTimeout(centerTimelineNow, 120);
   }
-  updateCenterNowLabel();
-  window.setInterval(updateCenterNowLabel, 1000);
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', centerTimelineNow, { once: true });
-  } else {
+  updateNowLabel();
+  window.setInterval(updateNowLabel, 1000);
+  function runCentering(){
     centerTimelineNow();
+    window.requestAnimationFrame(centerTimelineNow);
+    window.setTimeout(centerTimelineNow, 120);
   }
-  window.addEventListener('load', centerTimelineNow, { once: true });
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', runCentering, { once: true });
+  } else {
+    runCentering();
+  }
+  window.addEventListener('load', runCentering, { once: true });
   window.addEventListener('resize', handleResize);
   window.setTimeout(function(){
     window.location.reload();

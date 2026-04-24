@@ -47,7 +47,7 @@
         <thead><tr><th>名前</th><th>対応メニュー</th><th>休日設定</th><th>設定</th></tr></thead>
         <tbody>
           {% for staff in staff_list %}
-          <tr><td><a class="tool-text-link" href="/admin/{{ shop_id }}/staff/{{ staff.id }}">{{ staff.name }}</a></td><td>{% if staff.menu_names %}{{ staff.menu_names|join(' / ') }}{% else %}未設定{% endif %}</td><td><a class="tool-btn" href="/admin/{{ shop_id }}/staff-info/{{ staff.id }}/edit">編集</a></td></tr>
+          <tr><td><div style="display:flex; align-items:center; gap:10px;"><img src="{{ staff.avatar_url }}" alt="{{ staff.name }}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid rgba(148,163,184,.28);background:#fff;"><a class="tool-text-link" href="/admin/{{ shop_id }}/staff/{{ staff.id }}">{{ staff.name }}</a></div></td><td>{% if staff.menu_names %}{{ staff.menu_names|join(' / ') }}{% else %}未設定{% endif %}</td><td><a class="tool-btn" href="/admin/{{ shop_id }}/staff-info/{{ staff.id }}/edit">編集</a></td></tr>
           {% endfor %}
         </tbody>
       </table>

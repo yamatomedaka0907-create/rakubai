@@ -17,25 +17,30 @@
   <style>
   .timeline-karte-page { display:flex; flex-direction:column; gap:14px; min-height:calc(100vh - 140px); }
   .timeline-karte-shell { background:#fff; border:1px solid rgba(15,23,42,.07); border-radius:24px; box-shadow:var(--shadow-md); overflow:hidden; display:flex; flex-direction:column; flex:1 1 auto; min-height:0; height:calc(100vh - 280px); }
-  .timeline-karte-header { display:grid; grid-template-columns:64px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(120px, 1fr)); border-bottom:1px solid var(--line); background:#f8fbfd; min-width:max-content; position:sticky; top:0; z-index:12; }
-  .timeline-karte-header .time-head, .timeline-karte-header .staff-head { padding:12px 8px; font-weight:900; }
-  .timeline-karte-header .time-head { color:var(--subtext); font-size:11px; text-transform:uppercase; }
-  .timeline-karte-header .staff-head { border-left:1px solid var(--line); font-size:12px; line-height:1.35; white-space:normal; overflow-wrap:anywhere; word-break:break-word; }
-  .timeline-karte-header .staff-head a { color:inherit; text-decoration:none; display:block; }
-  .timeline-karte-header .staff-head a:hover { text-decoration:underline; }
   .timeline-karte-scroll { position:relative; overflow:auto; flex:1 1 auto; min-height:0; }
-  .timeline-karte-grid { position:relative; display:grid; grid-template-columns:64px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(120px, 1fr)); min-width:max-content; }
+  .timeline-karte-header,
+  .timeline-karte-grid { display:grid; grid-template-columns:64px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(120px, 1fr)); min-width:100%; width:max-content; }
+  .timeline-karte-header { border-bottom:1px solid var(--line); background:#f8fbfd; position:sticky; top:0; z-index:12; align-items:stretch; }
+  .timeline-karte-header .time-head,
+  .timeline-karte-header .staff-head { padding:10px 8px; font-weight:900; height:78px; box-sizing:border-box; }
+  .timeline-karte-header .time-head { color:var(--subtext); font-size:11px; text-transform:uppercase; display:grid; place-items:center; }
+  .timeline-karte-header .staff-head { border-left:1px solid var(--line); font-size:12px; line-height:1.35; white-space:normal; overflow-wrap:anywhere; word-break:break-word; display:grid; place-items:center; }
+  .timeline-staff-head-inner { display:grid; justify-items:center; align-content:center; gap:6px; text-align:center; width:100%; height:100%; }
+  .timeline-staff-head-inner img { width:34px; height:34px; border-radius:50%; object-fit:cover; border:1px solid rgba(148,163,184,.28); background:#fff; display:block; }
+  .timeline-staff-head-name { display:block; min-height:16px; }
+  .timeline-staff-head-name,
+  .timeline-staff-head-name a { line-height:1.2; margin:0; text-align:center; }
+  .timeline-karte-header .staff-head a { color:inherit; text-decoration:none; }
+  .timeline-karte-header .staff-head a:hover { text-decoration:underline; }
+  .timeline-karte-grid { position:relative; }
   .timeline-time-column { position:relative; background:#fff; z-index:2; }
   .timeline-time-label { position:absolute; left:0; right:0; height:1px; }
   .timeline-time-label span { position:absolute; top:-10px; left:8px; font-size:10px; font-weight:800; color:var(--subtext); background:#fff; padding-right:4px; }
   .timeline-staff-column { position:relative; border-left:1px solid var(--line); background:linear-gradient(180deg,#fff 0%,#fbfdff 100%); }
   .timeline-staff-column::before { content:""; position:absolute; inset:0; background-image:repeating-linear-gradient(to bottom, transparent 0, transparent calc({{ timeline_slot_height }}px - 1px), var(--line) calc({{ timeline_slot_height }}px - 1px), var(--line) {{ timeline_slot_height }}px); pointer-events:none; }
-  .timeline-staff-column.is-empty::after { content:"予約なし"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--subtext); font-weight:800; }
+  .timeline-staff-column.is-empty::after { content:"予約なし"; position:absolute; inset:0; display:flex; align-items:flex-start; justify-content:center; padding-top:12px; color:var(--subtext); font-weight:800; }
   .timeline-now-line { position:absolute; left:0; right:0; height:2px; background:#dc2626; z-index:6; box-shadow:0 0 0 1px rgba(220,38,38,.08); }
-  .timeline-now-line::before { content:"現在"; position:absolute; left:8px; top:-12px; display:inline-flex; align-items:center; justify-content:center; min-height:22px; padding:0 8px; border-radius:999px; background:#dc2626; color:#fff; font-size:11px; font-weight:900; }
-  .timeline-center-now { position:sticky; top:50%; height:0; z-index:11; pointer-events:none; }
-  .timeline-center-now-line { position:absolute; left:0; right:0; top:0; height:2px; background:rgba(220,38,38,.88); box-shadow:0 0 0 1px rgba(220,38,38,.08); }
-  .timeline-center-now-badge { position:absolute; left:50%; top:0; transform:translate(-50%, calc(-100% - 8px)); display:inline-flex; align-items:center; justify-content:center; min-height:28px; padding:0 12px; border-radius:999px; background:#dc2626; color:#fff; font-size:12px; font-weight:900; white-space:nowrap; box-shadow:0 12px 28px rgba(220,38,38,.22); }
+  .timeline-now-line-label { position:absolute; left:50%; top:0; transform:translate(-50%, -50%); display:inline-flex; align-items:center; justify-content:center; min-height:24px; padding:0 10px; border-radius:999px; background:#dc2626; color:#fff; font-size:11px; font-weight:900; white-space:nowrap; box-shadow:0 10px 24px rgba(220,38,38,.22); }
   .timeline-reservation { position:absolute; left:4px; right:4px; border-radius:14px; padding:8px; color:#0f172a; border:1px solid transparent; box-shadow:0 10px 24px rgba(15,23,42,.08); z-index:4; overflow:hidden; text-decoration:none; display:block; }
   .timeline-reservation:hover { transform:translateY(-1px); box-shadow:0 14px 28px rgba(15,23,42,.12); }
   .timeline-reservation.reserved { background:rgba(46,196,182,.16); border-color:rgba(46,196,182,.28); }
@@ -50,38 +55,26 @@
     .timeline-karte-shell { height:calc(100vh - 240px); min-height:60vh; }
   }
   @media (max-width:720px){
-    .timeline-karte-page { gap:12px; }
-    .timeline-karte-page .hero { padding:12px 14px; border-radius:18px; }
-    .timeline-karte-page .hero-top { align-items:flex-start; gap:10px; }
-    .timeline-karte-page .hero h1 { font-size:14px; line-height:1.2; }
-    .timeline-karte-page .hero p { margin-top:4px; font-size:10px; line-height:1.45; }
-    .timeline-karte-page .hero form { width:100%; gap:8px !important; align-items:flex-end; flex-wrap:nowrap; }
-    .timeline-karte-page .hero label { margin:0; min-width:0 !important; flex:1 1 auto; font-size:10px; }
-    .timeline-karte-page .hero input { min-height:40px; margin-top:4px; padding:8px 10px; font-size:12px; }
-    .timeline-karte-page .hero button { min-height:40px; padding:0 14px; font-size:12px; white-space:nowrap; flex:0 0 auto; }
-    .timeline-karte-shell { height:calc(100vh - 220px); min-height:0; }
     .timeline-karte-header, .timeline-karte-grid{ grid-template-columns:48px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(60px, 1fr)); }
     .timeline-karte-header .time-head, .timeline-karte-header .staff-head { padding:10px 4px; }
     .timeline-karte-header .staff-head { font-size:11px; line-height:1.2; }
+    .timeline-staff-head-inner { gap:4px; }
+    .timeline-staff-head-inner img { width:30px; height:30px; }
     .timeline-time-label span{ left:6px; font-size:9px; }
     .timeline-reservation{ left:2px; right:2px; border-radius:10px; padding:6px 4px; }
     .timeline-reservation-time{ font-size:10px; }
     .timeline-reservation-name{ font-size:11px; line-height:1.3; }
     .timeline-reservation-meta{ font-size:10px; line-height:1.3; }
     .timeline-reservation-status{ margin-top:4px; min-height:18px; font-size:9px; }
-    .timeline-center-now-badge { min-height:24px; padding:0 10px; font-size:11px; transform:translate(-50%, calc(-100% - 6px)); }
+    .timeline-center-now-badge { min-height:24px; padding:0 10px; font-size:11px; }
   }
   </style>
 
   <div class="timeline-karte-shell">
-    <div class="timeline-karte-header">
-      <div class="time-head">時間</div>
-      {% for staff in timeline_staff_columns %}<div class="staff-head">{% if staff.id is not none and staff.id != '' %}<a href="/admin/{{ shop_id }}/staff/{{ staff.id }}?date={{ timeline_selected_date }}">{{ staff.name }}</a>{% else %}{{ staff.name }}{% endif %}</div>{% endfor %}
-    </div>
     <div class="timeline-karte-scroll">
-      <div class="timeline-center-now" aria-hidden="true">
-        <div class="timeline-center-now-line"></div>
-        <span class="timeline-center-now-badge" id="timelineCenterNowLabel">現在 --:--</span>
+      <div class="timeline-karte-header">
+        <div class="time-head">時間</div>
+        {% for staff in timeline_staff_columns %}<div class="staff-head">{% if staff.id is not none and staff.id != '' %}<a href="/admin/{{ shop_id }}/staff/{{ staff.id }}?date={{ timeline_selected_date }}">{{ staff.name }}</a>{% else %}{{ staff.name }}{% endif %}</div>{% endfor %}
       </div>
       <div class="timeline-karte-grid" style="height:{{ timeline_total_height }}px;">
         <div class="timeline-time-column">
@@ -101,26 +94,32 @@
         {% endfor %}
         {% if timeline_now_line_top is not none %}<div class="timeline-now-line" style="top:{{ timeline_now_line_top }}px;"></div>{% endif %}
       </div>
+      <div class="timeline-center-now" aria-hidden="true">
+        <div class="timeline-center-now-line"></div>
+        <span class="timeline-center-now-badge" id="timelineCenterNowLabel">現在 --:--</span>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
 (function(){
-  const scrollEl = document.querySelector('.timeline-karte-scroll');
-  const nowLine = document.querySelector('.timeline-now-line');
-  const centerNowLabel = document.getElementById('timelineCenterNowLabel');
+  const mobileMedia = window.matchMedia('(max-width: 720px)');
+  const scrollEl = document.getElementById('timelineKarteScroll');
+  const nowLine = document.getElementById('timelineNowLine');
+  const nowLabel = document.getElementById('timelineNowLabel');
+  let hasCenteredOnce = false;
+
   function pad(value){ return String(value).padStart(2, '0'); }
-  function updateCenterNowLabel(){
-    if (!centerNowLabel) return;
+  function updateNowLabel(){
+    if (!nowLabel) return;
     const now = new Date();
-    centerNowLabel.textContent = '現在 ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+    nowLabel.textContent = '現在 ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
   }
   function centerTimelineNow(){
     if (!scrollEl || !nowLine) return;
-    const maxScroll = Math.max(0, scrollEl.scrollHeight - scrollEl.clientHeight);
     const target = nowLine.offsetTop - (scrollEl.clientHeight / 2) + (nowLine.offsetHeight / 2);
-    scrollEl.scrollTop = Math.min(maxScroll, Math.max(0, target));
+    scrollEl.scrollTop = Math.max(0, target);
   }
   let resizeTimer = null;
   function handleResize(){
@@ -129,11 +128,6 @@
   }
   updateCenterNowLabel();
   window.setInterval(updateCenterNowLabel, 1000);
-  function runCentering(){
-    centerTimelineNow();
-    window.requestAnimationFrame(centerTimelineNow);
-    window.setTimeout(centerTimelineNow, 120);
-  }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', runCentering, { once: true });
   } else {

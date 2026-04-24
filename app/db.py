@@ -2123,11 +2123,18 @@ def _normalize_shop_staff_list(staff_list: list[dict[str, Any]] | None) -> list[
             except ValueError:
                 continue
 
+        photo_url = str(staff.get('photo_url') or '').strip()
+        default_avatar = str(staff.get('default_avatar') or '').strip().lower()
+        if default_avatar not in {'male', 'female'}:
+            default_avatar = 'male'
+
         normalized.append({
             'id': staff_id,
             'name': name,
             'menu_ids': menu_ids,
             'holiday_dates': sorted(set(holiday_dates)),
+            'photo_url': photo_url,
+            'default_avatar': default_avatar,
         })
 
     for idx, item in enumerate(normalized, start=1):

@@ -520,8 +520,120 @@ def _get_visible_staff_list(shop: dict | None, subscription: dict | None) -> lis
 
 def _build_shop_with_visible_staff(shop: dict | None, subscription: dict | None) -> dict:
     shop_data = dict(shop or {})
-    shop_data["staff_list"] = _get_visible_staff_list(shop_data, subscription)
+    shop_data["staff_list"] = _decorate_staff_list_for_display(_get_visible_staff_list(shop_data, subscription))
     return shop_data
+
+
+def _normalize_staff_default_avatar(value: str | None) -> str:
+    normalized = str(value or '').strip().lower()
+    return normalized if normalized in {'male', 'female'} else 'male'
+
+
+def _get_default_staff_avatar_url(default_avatar: str | None) -> str:
+    return '/static/default_staff_female.svg' if _normalize_staff_default_avatar(default_avatar) == 'female' else '/static/default_staff_male.svg'
+
+
+def _resolve_staff_avatar_url(staff: dict | None) -> str:
+    photo_url = str((staff or {}).get('photo_url') or '').strip()
+    if photo_url:
+        return photo_url
+    return _get_default_staff_avatar_url((staff or {}).get('default_avatar'))
+
+
+def _decorate_staff_for_display(staff: dict | None) -> dict:
+    item = dict(staff or {})
+    item['default_avatar'] = _normalize_staff_default_avatar(item.get('default_avatar'))
+    item['avatar_url'] = _resolve_staff_avatar_url(item)
+    return item
+
+
+def _decorate_staff_list_for_display(staff_list: list[dict] | None) -> list[dict]:
+    return [_decorate_staff_for_display(staff) for staff in (staff_list or [])]
+
+
+def _decorate_shop_staff(shop: dict | None) -> dict:
+    shop_data = dict(shop or {})
+    shop_data['staff_list'] = _decorate_staff_list_for_display(shop_data.get('staff_list') or [])
+    return shop_data
+
+
+def _build_staff_lookup(staff_list: list[dict] | None) -> dict[str, dict]:
+    lookup: dict[str, dict] = {}
+    for staff in _decorate_staff_list_for_display(staff_list):
+        staff_key = str(staff.get('id') or '').strip()
+        if staff_key:
+            lookup[staff_key] = staff
+    return lookup
+
+
+def _attach_staff_avatar_to_reservation(reservation: dict | None, staff_lookup: dict[str, dict]) -> dict:
+    item = dict(reservation or {})
+    staff_key = str(item.get('staff_id') or '').strip()
+    matched_staff = staff_lookup.get(staff_key) if staff_key else None
+    if matched_staff:
+        if not str(item.get('staff_name') or '').strip():
+            item['staff_name'] = matched_staff.get('name') or ''
+        item['staff_avatar_url'] = matched_staff.get('avatar_url') or _resolve_staff_avatar_url(matched_staff)
+        item['staff_default_avatar'] = matched_staff.get('default_avatar') or 'male'
+    else:
+        item['staff_avatar_url'] = _get_default_staff_avatar_url('male')
+        item['staff_default_avatar'] = 'male'
+    return item
+
+
+def _attach_staff_avatar_to_reservations(reservations: list[dict] | None, staff_list: list[dict] | None) -> list[dict]:
+    staff_lookup = _build_staff_lookup(staff_list)
+    return [_attach_staff_avatar_to_reservation(item, staff_lookup) for item in (reservations or [])]
+
+
+def _save_staff_photo_file(shop_id: str, staff_id: int, upload: UploadFile) -> str:
+    suffix = Path(upload.filename or 'photo.jpg').suffix or '.jpg'
+    filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(4)}{suffix.lower()}"
+    file_bytes = upload.file.read()
+
+    s3_settings = _get_customer_photo_s3_settings()
+    bucket = s3_settings['bucket']
+    if bucket:
+        region = s3_settings['region']
+        prefix = s3_settings['prefix']
+        endpoint_url = s3_settings['endpoint_url'] or None
+        public_base_url = s3_settings['public_base_url']
+        acl = s3_settings['acl']
+        key_parts = [part for part in [prefix, shop_id, 'staff', str(staff_id), filename] if part]
+        key = '/'.join(key_parts)
+        content_type = (upload.content_type or '').strip() or 'application/octet-stream'
+
+        client_kwargs = {'region_name': region}
+        if endpoint_url:
+            client_kwargs['endpoint_url'] = endpoint_url
+        s3 = boto3.client('s3', **client_kwargs)
+
+        extra_args = {'ContentType': content_type}
+        if acl:
+            extra_args['ACL'] = acl
+
+        try:
+            s3.put_object(Bucket=bucket, Key=key, Body=file_bytes, **extra_args)
+        except (ClientError, BotoCoreError) as e:
+            raise HTTPException(status_code=500, detail=f'S3 upload failed: {str(e)}')
+
+        if public_base_url:
+            return f"{public_base_url}/{key}"
+        if endpoint_url:
+            return f"{endpoint_url.rstrip('/')}/{bucket}/{key}"
+        return f"https://{bucket}.s3.{region}.amazonaws.com/{key}"
+
+    staff_dir = Path('data/uploads/shops') / shop_id / 'staff' / str(staff_id)
+    staff_dir.mkdir(parents=True, exist_ok=True)
+    save_path = staff_dir / filename
+    with save_path.open('wb') as fh:
+        fh.write(file_bytes)
+    relative = save_path.relative_to(Path('data/uploads'))
+    return '/uploads/' + str(relative).replace('\\', '/')
+
+
+def _delete_staff_photo_file(image_url: str) -> None:
+    _delete_customer_photo_file(image_url)
 
 
 def _get_visible_staff_or_404(shop: dict | None, subscription: dict | None, staff_id: int) -> tuple[list[dict], dict]:
@@ -883,6 +995,8 @@ def _build_timeline_karte_context(shop: dict, reservations: list[dict], selected
         merged_staff_list.append({
             "id": staff.get("id"),
             "name": staff.get("name") or reservation_staff_meta.get(staff_key, {}).get("name") or f"スタッフ{staff_key}",
+            "avatar_url": staff.get("avatar_url") or _resolve_staff_avatar_url(staff),
+            "default_avatar": staff.get("default_avatar") or 'male',
         })
         seen_staff_keys.add(staff_key)
 
@@ -892,6 +1006,8 @@ def _build_timeline_karte_context(shop: dict, reservations: list[dict], selected
         merged_staff_list.append({
             "id": meta.get("id"),
             "name": meta.get("name"),
+            "avatar_url": _get_default_staff_avatar_url('male'),
+            "default_avatar": 'male',
         })
         seen_staff_keys.add(staff_key)
 
@@ -930,6 +1046,8 @@ def _build_timeline_karte_context(shop: dict, reservations: list[dict], selected
         staff_columns.append({
             "id": staff.get("id"),
             "name": staff.get("name"),
+            "avatar_url": staff.get("avatar_url") or _resolve_staff_avatar_url(staff),
+            "default_avatar": staff.get("default_avatar") or 'male',
             "reservations": items,
         })
 
@@ -2456,6 +2574,7 @@ def _build_admin_common_context(request: Request, shop_id: str) -> tuple[str, di
     admin_users = get_admin_users(normalized_shop_id)
     subscription = get_shop_subscription(normalized_shop_id) or {}
     shop = _build_shop_with_visible_staff(shop, subscription)
+    reservations = _attach_staff_avatar_to_reservations(reservations, shop.get('staff_list', []))
     available_plans = get_plans(active_only=True)
     current_admin_name = request.session.get("store_logged_in_admin_name") or (admin_users[0].get("name") if admin_users else "")
     return normalized_shop_id, shop, reservations, customers, admin_users, subscription, available_plans, current_admin_name
@@ -2690,6 +2809,7 @@ def admin_reservations_page(request: Request, shop_id: str, error_message: str =
         staff_now_list.append({
             "id": staff_id_value,
             "name": staff.get("name") or f"スタッフ{staff_id_text}",
+            "avatar_url": staff.get('avatar_url') or _resolve_staff_avatar_url(staff),
             "now_status": now_status,
             "now_detail": now_detail,
             "jump_url": jump_url,
@@ -3834,6 +3954,8 @@ def admin_staff_register_submit(
     staff_list.append({
         "name": staff_name,
         "menu_ids": normalized_menu_ids,
+        "photo_url": '',
+        "default_avatar": 'male',
     })
     update_shop_staff_list(normalized_shop_id, staff_list)
     return RedirectResponse(f"/admin/{normalized_shop_id}/staff-info?saved=スタッフを登録しました。", status_code=303)
@@ -3852,6 +3974,7 @@ def admin_staff_edit_page(request: Request, shop_id: str, staff_id: int, error_m
         raise HTTPException(status_code=404, detail="見つかりません")
 
     subscription = get_shop_subscription(normalized_shop_id) or {}
+    shop = _build_shop_with_visible_staff(shop, subscription)
     raw_staff_list = list(shop.get("staff_list", []))
     visible_staff_list, visible_target_staff = _get_visible_staff_or_404(shop, subscription, staff_id)
     target_index = next((index for index, staff in enumerate(raw_staff_list) if int(staff.get("id") or 0) == int(staff_id)), None)
@@ -3886,6 +4009,8 @@ def admin_staff_edit_submit(
     name: str = Form(...),
     menu_ids: list[str] = Form([]),
     holiday_dates: str = Form(""),
+    default_avatar: str = Form('male'),
+    photo: UploadFile | None = File(None),
 ):
     redirect = require_store_login(request, shop_id)
     if redirect:
@@ -3916,16 +4041,25 @@ def admin_staff_edit_submit(
         if parsed is not None
     })
 
+    normalized_default_avatar = _normalize_staff_default_avatar(default_avatar)
+
     staff_list = list(shop.get("staff_list", []))
     updated = False
     for index, staff in enumerate(staff_list):
         if int(staff.get("id") or 0) != int(staff_id):
             continue
+        next_photo_url = str(staff.get('photo_url') or '').strip()
+        if photo is not None and str(photo.filename or '').strip():
+            if next_photo_url:
+                _delete_staff_photo_file(next_photo_url)
+            next_photo_url = _save_staff_photo_file(normalized_shop_id, staff_id, photo)
         staff_list[index] = {
             **staff,
             "name": staff_name,
             "menu_ids": normalized_menu_ids,
             "holiday_dates": normalized_holiday_dates,
+            "photo_url": next_photo_url,
+            "default_avatar": normalized_default_avatar,
         }
         updated = True
         break
@@ -3950,10 +4084,10 @@ def admin_staff_schedule_page(request: Request, shop_id: str, staff_id: int):
         raise HTTPException(status_code=404, detail="店舗が見つかりません")
 
     subscription = get_shop_subscription(normalized_shop_id) or {}
-    staff_list, target_staff = _get_visible_staff_or_404(shop, subscription, staff_id)
     shop = _build_shop_with_visible_staff(shop, subscription)
+    staff_list, target_staff = _get_visible_staff_or_404(shop, subscription, staff_id)
 
-    reservations = get_reservations(normalized_shop_id)
+    reservations = _attach_staff_avatar_to_reservations(get_reservations(normalized_shop_id), shop.get('staff_list', []))
     customers = get_customers(normalized_shop_id)
     admin_users = get_admin_users(normalized_shop_id)
     current_admin_name = request.session.get("store_logged_in_admin_name") or (admin_users[0].get("name") if admin_users else "")
@@ -4034,6 +4168,7 @@ def admin_staff_info_page(request: Request, shop_id: str):
     admin_users = get_admin_users(normalized_shop_id)
     subscription = get_shop_subscription(normalized_shop_id) or {}
     shop = _build_shop_with_visible_staff(shop, subscription)
+    reservations = _attach_staff_avatar_to_reservations(reservations, shop.get('staff_list', []))
     current_admin_name = request.session.get("store_logged_in_admin_name") or (admin_users[0].get("name") if admin_users else "")
     menu_lookup = {str(item.get("id")): item.get("name") for item in shop.get("menus", [])}
     staff_list = []

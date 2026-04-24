@@ -6,8 +6,25 @@
   <div class="tool-panel-head is-wide"><h2>スタッフ情報の変更</h2><a class="tool-btn" href="/admin/{{ shop_id }}/staff-info">スタッフ一覧へ戻る</a></div>
   <div class="tool-panel-body">
     {% if error_message %}<div class="tool-alert is-danger">{{ error_message }}</div>{% endif %}
-    <form method="post" action="/admin/{{ shop_id }}/staff-info/{{ staff.id }}/edit" style="display:grid; gap:18px;">
-      <div class="tool-field"><label class="tool-label">スタッフ名</label><input class="tool-input" type="text" name="name" value="{{ staff.name }}" required></div>
+    <form method="post" action="/admin/{{ shop_id }}/staff-info/{{ staff.id }}/edit" enctype="multipart/form-data" style="display:grid; gap:18px;">
+      <div style="display:grid; gap:14px;"><div style="display:flex; align-items:center; gap:12px;"><img src="{{ staff.avatar_url }}" alt="{{ staff.name }}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:#fff;"><div><div style="font-weight:800;">現在の表示画像</div><div class="tool-note">写真未設定時は下のデフォルト画像が表示されます。</div></div></div><div class="tool-field"><label class="tool-label">スタッフ名</label><input class="tool-input" type="text" name="name" value="{{ staff.name }}" required></div></div>
+
+      <div class="tool-field"><label class="tool-label">顔写真をアップロードまたは撮影</label><input class="tool-input" type="file" name="photo" accept="image/*" capture="user"></div>
+      <div class="tool-field">
+        <label class="tool-label">写真未設定時のデフォルト画像</label>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px;">
+          <label class="tool-card-lite" style="display:flex; gap:12px; align-items:center;">
+            <input type="radio" name="default_avatar" value="male" {% if staff.default_avatar != 'female' %}checked{% endif %}>
+            <img src="/static/default_staff_male.svg" alt="男性デフォルト" style="width:52px; height:52px; border-radius:50%; object-fit:cover;">
+            <span><strong style="display:block;">男性イメージ</strong><span class="tool-note">写真未設定時に表示</span></span>
+          </label>
+          <label class="tool-card-lite" style="display:flex; gap:12px; align-items:center;">
+            <input type="radio" name="default_avatar" value="female" {% if staff.default_avatar == 'female' %}checked{% endif %}>
+            <img src="/static/default_staff_female.svg" alt="女性デフォルト" style="width:52px; height:52px; border-radius:50%; object-fit:cover;">
+            <span><strong style="display:block;">女性イメージ</strong><span class="tool-note">写真未設定時に表示</span></span>
+          </label>
+        </div>
+      </div>
       <div class="tool-field">
         <label class="tool-label">対応メニュー</label>
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">

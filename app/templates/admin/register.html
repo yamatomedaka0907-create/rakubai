@@ -99,6 +99,15 @@
             <label>スタッフ名
               <input type="text" name="name" placeholder="例: 山田 花子" required>
             </label>
+            <label>顔写真URL
+              <input type="url" name="photo_url" placeholder="https://example.com/staff.jpg">
+            </label>
+            <label>デフォルト画像
+              <select name="gender">
+                <option value="male">男性イメージ</option>
+                <option value="female">女性イメージ</option>
+              </select>
+            </label>
             <label>対応メニュー</label>
             <div class="menu-grid">
               {% for menu in menus %}
