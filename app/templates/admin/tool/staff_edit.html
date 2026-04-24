@@ -2,6 +2,97 @@
 {% block page_title %}スタッフ情報の変更{% endblock %}
 {% block page_subtitle %}{{ staff.name }} の登録情報と対応メニューを変更できます。{% endblock %}
 {% block content %}
+
+<style>
+/* staff edit mobile overflow fix */
+@media (max-width: 768px) {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .card,
+  form,
+  label,
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  input[type="file"] {
+    width: 100%;
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  img,
+  svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .staff-image-options,
+  .default-staff-images,
+  .staff-default-images,
+  .avatar-options,
+  .image-options,
+  .image-preview-grid,
+  .default-image-grid,
+  .staff-edit-images,
+  .staff-edit-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .staff-image-options > *,
+  .default-staff-images > *,
+  .staff-default-images > *,
+  .avatar-options > *,
+  .image-options > *,
+  .image-preview-grid > *,
+  .default-image-grid > *,
+  .staff-edit-images > *,
+  .staff-edit-grid > * {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .card [style*="display:flex"],
+  form [style*="display:flex"],
+  .card [style*="grid-template-columns"],
+  form [style*="grid-template-columns"] {
+    flex-wrap: wrap !important;
+    max-width: 100% !important;
+  }
+
+  .card [style*="min-width"],
+  form [style*="min-width"] {
+    min-width: 0 !important;
+  }
+
+  .card [style*="width:"],
+  form [style*="width:"] {
+    max-width: 100% !important;
+  }
+
+  .card [style*="overflow-x"],
+  form [style*="overflow-x"] {
+    overflow-x: hidden !important;
+  }
+
+  .staff-edit-mobile-wrap {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+}
+</style>
+
 <section class="tool-panel">
   <div class="tool-panel-head is-wide"><h2>スタッフ情報の変更</h2><a class="tool-btn" href="/admin/{{ shop_id }}/staff-info">スタッフ一覧へ戻る</a></div>
   <div class="tool-panel-body">

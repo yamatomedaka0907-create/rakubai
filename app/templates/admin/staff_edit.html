@@ -1,5 +1,96 @@
 {% extends "admin/base.html" %}
 {% block content %}
+
+<style>
+/* staff edit mobile overflow fix */
+@media (max-width: 768px) {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .card,
+  form,
+  label,
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  input[type="file"] {
+    width: 100%;
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  img,
+  svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .staff-image-options,
+  .default-staff-images,
+  .staff-default-images,
+  .avatar-options,
+  .image-options,
+  .image-preview-grid,
+  .default-image-grid,
+  .staff-edit-images,
+  .staff-edit-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .staff-image-options > *,
+  .default-staff-images > *,
+  .staff-default-images > *,
+  .avatar-options > *,
+  .image-options > *,
+  .image-preview-grid > *,
+  .default-image-grid > *,
+  .staff-edit-images > *,
+  .staff-edit-grid > * {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .card [style*="display:flex"],
+  form [style*="display:flex"],
+  .card [style*="grid-template-columns"],
+  form [style*="grid-template-columns"] {
+    flex-wrap: wrap !important;
+    max-width: 100% !important;
+  }
+
+  .card [style*="min-width"],
+  form [style*="min-width"] {
+    min-width: 0 !important;
+  }
+
+  .card [style*="width:"],
+  form [style*="width:"] {
+    max-width: 100% !important;
+  }
+
+  .card [style*="overflow-x"],
+  form [style*="overflow-x"] {
+    overflow-x: hidden !important;
+  }
+
+  .staff-edit-mobile-wrap {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+}
+</style>
+
 <div class="hero"><div class="hero-top"><div><h1>スタッフ情報の変更</h1><p>{{ staff.name }} の登録情報を変更できます。</p></div><div class="hero-actions"><a href="/admin/{{ shop_id }}/staff-info">スタッフ一覧へ戻る</a></div></div></div>
 {% if error_message %}<div class="card" style="margin-bottom:16px; color:#b91c1c; font-weight:800;">{{ error_message }}</div>{% endif %}
 <div class="card">

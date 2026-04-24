@@ -38,3 +38,26 @@
         line-height: 1.3 !important;
     }
 }
+
+
+/* staff edit mobile overflow safety */
+@media (max-width: 768px) {
+  .staff-edit-mobile-wrap,
+  .staff-edit-mobile-wrap * {
+    box-sizing: border-box;
+  }
+  .staff-edit-mobile-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  .staff-edit-mobile-wrap input,
+  .staff-edit-mobile-wrap select,
+  .staff-edit-mobile-wrap textarea,
+  .staff-edit-mobile-wrap button {
+    max-width: 100%;
+  }
+  .staff-edit-mobile-wrap [style*="display:flex"] {
+    flex-wrap: wrap !important;
+  }
+}
