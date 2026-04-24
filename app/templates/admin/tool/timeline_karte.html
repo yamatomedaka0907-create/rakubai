@@ -10,11 +10,7 @@
 .tool-timeline-shell { border:1px solid var(--tool-line,#d7e3ee); border-radius:24px; background:#fff; overflow:hidden; display:flex; flex-direction:column; flex:1 1 auto; min-height:0; height:calc(100vh - 220px); }
 .tool-timeline-scroll { position:relative; overflow:auto; flex:1 1 auto; min-height:0; }
 .tool-timeline-header,
-<<<<<<< HEAD
 .tool-timeline-grid { display:grid; grid-template-columns:56px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(180px,1fr)); min-width:calc(56px + ({{ timeline_staff_columns|length if timeline_staff_columns else 1 }} * 180px)); width:100%; box-sizing:border-box; }
-=======
-.tool-timeline-grid { display:grid; grid-template-columns:56px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(70px,1fr)); min-width:100%; width:max-content; }
->>>>>>> 2eebcd99567f9e07fad621cefba80b9a8f29995c
 .tool-timeline-header { background:#f8fbfd; border-bottom:1px solid var(--tool-line,#d7e3ee); position:sticky; top:0; z-index:12; align-items:stretch; }
 .tool-timeline-header > div { padding:8px 4px; font-weight:900; height:72px; box-sizing:border-box; }
 .tool-timeline-header .time-head { color:#64748b; font-size:12px; text-transform:uppercase; display:grid; place-items:center; }
@@ -50,11 +46,7 @@
   .tool-timeline-shell { height:auto; min-height:0; overflow:visible; }
   .tool-timeline-scroll { overflow:visible; }
   .tool-timeline-header,
-<<<<<<< HEAD
   .tool-timeline-grid { grid-template-columns:48px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(96px,1fr)); min-width:calc(48px + ({{ timeline_staff_columns|length if timeline_staff_columns else 1 }} * 96px)); width:100%; }
-=======
-  .tool-timeline-grid { grid-template-columns:48px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(64px,1fr)); min-width:100%; width:100%; }
->>>>>>> 2eebcd99567f9e07fad621cefba80b9a8f29995c
   .tool-timeline-header > div { height:72px; }
   .tool-timeline-staff-head-inner { gap:4px; }
   .tool-timeline-staff-head-inner img { width:28px; height:28px; }
