@@ -99,7 +99,7 @@
     <div style="display:grid; gap:14px;"><div style="display:flex; align-items:center; gap:12px;"><img src="{{ staff.avatar_url }}" alt="{{ staff.name }}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:#fff;"><div><div style="font-weight:800;">現在の表示画像</div><div style="color:var(--subtext); font-size:13px;">写真未設定時は下のデフォルト画像が表示されます。</div></div></div><label>スタッフ名<input type="text" name="name" value="{{ staff.name }}" required></label></div>
 
     <div style="display:grid; gap:12px;">
-      <label>顔写真をアップロードまたは撮影<input type="file" name="photo" accept="image/*" capture="user"></label>
+      <label>顔写真をアップロードまたは撮影<input type="file" name="photo" accept="image/*"><div class="upload-choice-note">スマホでは撮影または写真ライブラリから選択できます。</div></label>
       <div>
         <label style="display:block; margin-bottom:10px; font-weight:700;">写真未設定時のデフォルト画像</label>
         <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px;">

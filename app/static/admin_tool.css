@@ -61,3 +61,12 @@
     flex-wrap: wrap !important;
   }
 }
+
+
+/* photo upload choice note */
+.upload-choice-note {
+  margin-top: 6px;
+  color: var(--subtext);
+  font-size: 12px;
+  line-height: 1.5;
+}

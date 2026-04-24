@@ -89,7 +89,7 @@
           {% endif %}
         </div>
         <form method="post" action="/admin/{{ shop_id }}/customers/{{ customer.id }}/photos" enctype="multipart/form-data">
-          <div class="tool-field"><label class="tool-label">写真を撮影・保存</label><input class="tool-input" type="file" name="photo" accept="image/*" capture="environment" {% if not customer_photo_policy.enabled %}disabled{% endif %} required></div>
+          <div class="tool-field"><label class="tool-label">写真を撮影・保存</label><input class="tool-input" type="file" name="photo" accept="image/*" {% if not customer_photo_policy.enabled %}disabled{% endif %} required><div class="upload-choice-note">スマホでは撮影または写真ライブラリから選択できます。</div></div>
           <div class="tool-actions with-top-gap"><button class="tool-btn is-primary" type="submit" {% if not customer_photo_policy.enabled %}disabled{% endif %}>写真を保存</button></div>
         </form>
 
