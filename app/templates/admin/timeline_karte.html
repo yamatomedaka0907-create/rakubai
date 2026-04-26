@@ -19,7 +19,7 @@
   .timeline-karte-shell { background:#fff; border:1px solid rgba(15,23,42,.07); border-radius:24px; box-shadow:var(--shadow-md); overflow:hidden; display:flex; flex-direction:column; flex:1 1 auto; min-height:0; height:calc(100vh - 280px); }
   .timeline-karte-scroll { position:relative; overflow:auto; flex:1 1 auto; min-height:0; }
   .timeline-karte-header,
-  .timeline-karte-grid { display:grid; grid-template-columns:64px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(120px, 1fr)); min-width:100%; width:max-content; }
+  .timeline-karte-grid { display:grid; grid-template-columns:64px repeat({{ timeline_staff_columns|length if timeline_staff_columns else 1 }}, minmax(120px, 1fr)); min-width:100%; width:100%; }
   .timeline-karte-header { border-bottom:1px solid var(--line); background:#f8fbfd; position:sticky; top:0; z-index:12; align-items:stretch; }
   .timeline-karte-header .time-head,
   .timeline-karte-header .staff-head { padding:10px 8px; font-weight:900; height:78px; box-sizing:border-box; }
@@ -33,6 +33,7 @@
   .timeline-karte-header .staff-head a { color:inherit; text-decoration:none; }
   .timeline-karte-header .staff-head a:hover { text-decoration:underline; }
   .timeline-karte-grid { position:relative; }
+  .timeline-karte-header *, .timeline-karte-grid * { box-sizing:border-box; }
   .timeline-time-column { position:relative; background:#fff; z-index:2; }
   .timeline-time-label { position:absolute; left:0; right:0; height:1px; }
   .timeline-time-label span { position:absolute; top:-10px; left:8px; font-size:10px; font-weight:800; color:var(--subtext); background:#fff; padding-right:4px; }
@@ -71,11 +72,27 @@
   </style>
 
   <div class="timeline-karte-shell">
-    <div class="timeline-karte-header">
-      <div class="time-head">時間</div>
-      {% for staff in timeline_staff_columns %}<div class="staff-head">{% if staff.id is not none and staff.id != '' %}<a href="/admin/{{ shop_id }}/staff/{{ staff.id }}?date={{ timeline_selected_date }}">{{ staff.name }}</a>{% else %}{{ staff.name }}{% endif %}</div>{% endfor %}
-    </div>
-    <div class="timeline-karte-scroll">
+    <div class="timeline-karte-scroll" id="timelineKarteScroll">
+      <div class="timeline-karte-header">
+        <div class="time-head">時間</div>
+        {% for staff in timeline_staff_columns %}
+        <div class="staff-head">
+          <div class="timeline-staff-head-inner">
+            {% set staff_photo = staff.photo_url or staff.image_url or staff.profile_image_url or staff.avatar_url or staff.photo_path or staff.image_path %}
+            {% if staff_photo %}
+              <img src="{{ staff_photo }}" alt="{{ staff.name }}">
+            {% endif %}
+            <span class="timeline-staff-head-name">
+              {% if staff.id is not none and staff.id != '' %}
+                <a href="/admin/{{ shop_id }}/staff/{{ staff.id }}?date={{ timeline_selected_date }}">{{ staff.name }}</a>
+              {% else %}
+                {{ staff.name }}
+              {% endif %}
+            </span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
       <div class="timeline-karte-grid" style="height:{{ timeline_total_height }}px;">
         <div class="timeline-time-column">
           {% for slot in timeline_slots %}<div class="timeline-time-label" style="top:{{ loop.index0 * timeline_slot_height }}px;"><span>{{ slot.label }}</span></div>{% endfor %}
@@ -92,7 +109,7 @@
           {% endfor %}
         </div>
         {% endfor %}
-        {% if timeline_now_line_top is not none %}<div class="timeline-now-line" style="top:{{ timeline_now_line_top }}px;"></div>{% endif %}
+        {% if timeline_now_line_top is not none %}<div class="timeline-now-line" id="timelineNowLine" style="top:{{ timeline_now_line_top }}px;"><span class="timeline-now-line-label" id="timelineNowLabel">現在 --:--</span></div>{% endif %}
       </div>
       <div class="timeline-center-now" aria-hidden="true">
         <div class="timeline-center-now-line"></div>
@@ -125,6 +142,14 @@
   function handleResize(){
     window.clearTimeout(resizeTimer);
     resizeTimer = window.setTimeout(centerTimelineNow, 120);
+  }
+  function updateCenterNowLabel(){ updateNowLabel(); }
+  function runCentering(){
+    updateNowLabel();
+    if (!hasCenteredOnce) {
+      centerTimelineNow();
+      hasCenteredOnce = true;
+    }
   }
   updateCenterNowLabel();
   window.setInterval(updateCenterNowLabel, 1000);

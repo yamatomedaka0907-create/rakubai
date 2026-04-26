@@ -1,65 +1,249 @@
 {% extends "admin/base.html" %}
 {% block content %}
+
 <style>
-@media (max-width: 640px) {
-  .staff-info-table-wrap { overflow:visible; }
-  .staff-info-table,
-  .staff-info-table thead,
-  .staff-info-table tbody,
-  .staff-info-table tr,
-  .staff-info-table th,
-  .staff-info-table td { display:block; width:100%; }
-  .staff-info-table thead { display:none; }
-  .staff-info-table tbody { display:grid; gap:12px; }
-  .staff-info-table tr {
-    border:1px solid var(--line);
-    border-radius:16px;
-    padding:12px;
-    background:#fff;
+.staff-info-page {
+  display: grid;
+  gap: 18px;
+}
+
+.staff-info-page .page-title {
+  font-size: 28px;
+  font-weight: 900;
+  margin: 0 0 4px;
+}
+
+.staff-info-card {
+  border-radius: 18px;
+}
+
+.staff-info-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+  font-weight: 900;
+  margin: 0 0 18px;
+}
+
+.staff-info-desktop {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.staff-info-head,
+.staff-info-row {
+  display: grid;
+  grid-template-columns: 1.4fr 2fr 1fr .8fr;
+  align-items: center;
+  gap: 16px;
+}
+
+.staff-info-head {
+  padding: 14px 18px;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--line);
+  color: var(--subtext);
+  font-weight: 900;
+}
+
+.staff-info-row {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.staff-info-row:last-child {
+  border-bottom: none;
+}
+
+.staff-person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  font-weight: 900;
+}
+
+.staff-person img,
+.staff-mobile-card img {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  background: #fff;
+  flex: 0 0 auto;
+}
+
+.staff-menu-text,
+.staff-holiday-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.55;
+}
+
+.staff-edit-button {
+  border: 1px solid #23b5aa;
+  background: #fff;
+  color: #23b5aa;
+  border-radius: 12px;
+  padding: 10px 14px;
+  min-height: 42px;
+  font-weight: 900;
+  text-decoration: none;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+}
+
+.staff-info-mobile {
+  display: none;
+}
+
+.staff-note {
+  text-align: center;
+  color: var(--subtext);
+  margin: 18px 0 0;
+  font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .staff-info-page .page-title {
+    font-size: 24px;
   }
-  .staff-info-table td {
-    border:none;
-    padding:8px 0;
-    white-space:normal;
-    overflow-wrap:anywhere;
+
+  .staff-info-title {
+    font-size: 20px;
   }
-  .staff-info-table td::before {
-    content: attr(data-label);
-    display:block;
-    margin-bottom:4px;
-    color:var(--muted);
-    font-size:12px;
-    font-weight:700;
+
+  .staff-info-desktop {
+    display: none;
   }
-  .staff-info-table td:last-child { padding-bottom:0; }
+
+  .staff-info-mobile {
+    display: grid;
+    gap: 12px;
+  }
+
+  .staff-mobile-card {
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: #fff;
+    padding: 14px;
+  }
+
+  .staff-mobile-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .staff-mobile-name {
+    font-size: 20px;
+    font-weight: 900;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .staff-mobile-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .staff-mobile-label {
+    color: var(--subtext);
+    font-weight: 900;
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+
+  .staff-mobile-value {
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .staff-edit-button {
+    width: 100%;
+    min-height: 48px;
+  }
 }
 </style>
-<style>
-@media (max-width: 720px) { .staff-info-table-wrap { overflow:visible; } .staff-info-table, .staff-info-table thead, .staff-info-table tbody, .staff-info-table tr, .staff-info-table th, .staff-info-table td { display:block; width:100%; } .staff-info-table { min-width:0; } .staff-info-table thead { display:none; } .staff-info-table tbody { display:grid; gap:12px; } .staff-info-table tr { border:1px solid var(--line); border-radius:18px; padding:12px; background:#fff; } .staff-info-table td { display:grid; grid-template-columns:88px minmax(0,1fr); gap:10px; padding:6px 0; border-bottom:1px solid var(--line); word-break:break-word; } .staff-info-table td:last-child { border-bottom:none; } .staff-info-table td::before { content:attr(data-label); font-size:12px; font-weight:800; color:var(--subtext); } }
-</style>
-<div class="hero"><div class="hero-top"><div><h1>スタッフ情報</h1><p>登録済みスタッフと対応メニューの一覧です。</p></div><div class="hero-actions"><a href="/admin/register/{{ shop_id }}" class="primary">新規スタッフ登録</a></div></div></div>
+
+
+<div class="staff-info-page">
+<div class="hero">
+      <div class="hero-top">
+        <div>
+          <h1>登録スタッフ一覧</h1>
+          <p>登録済みスタッフと対応メニュー・休日設定を確認できます。</p><p style="margin-top:10px;"><strong>スタッフ情報ページ</strong></p>
+        </div>
+      </div>
+    </div>
+
 {% if hidden_staff_count %}<div class="card" style="margin-bottom:16px;border-color:#fed7aa;background:#fff7ed;"><div class="card-header"><h2>表示制限中</h2><span class="badge">{{ hidden_staff_count }}名非表示</span></div><p class="section-note">現在のプラン上限を超えた新しいスタッフは削除せず、表示のみ停止しています。</p></div>{% endif %}
-{% if success_message %}<div class="card" style="margin-bottom:16px; color:var(--primary-dark); font-weight:800;">{{ success_message }}</div>{% endif %}
-<div class="card">
-  <div class="card-header"><h2>登録スタッフ一覧</h2><span class="badge">{{ staff_list|length }}名</span></div>
-  {% if staff_list %}
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>名前</th><th>対応メニュー</th><th>休日設定</th><th>設定</th></tr></thead>
-      <tbody>
-        {% for staff in staff_list %}
-        <tr>
-          <td><a href="/admin/{{ shop_id }}/staff/{{ staff.id }}">{{ staff.name }}</a></td>
-          <td>{% if staff.menu_names %}{{ staff.menu_names|join(' / ') }}{% else %}未設定{% endif %}</td>
-          <td>{% if staff.holiday_dates %}{{ staff.holiday_dates|length }}日登録済み{% else %}未設定{% endif %}</td>
-          <td><a class="secondary-link" href="/admin/{{ shop_id }}/staff-info/{{ staff.id }}/edit">編集 / 休日設定</a></td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  {% if success_message %}<div class="card" style="margin-bottom:16px; color:var(--primary-dark); font-weight:800;">{{ success_message }}</div>{% endif %}
+
+  <div class="card staff-info-card">
+    <h2 class="staff-info-title">👥 登録スタッフ一覧</h2>
+
+    {% if staff_list %}
+    <div class="staff-info-desktop">
+      <div class="staff-info-head">
+        <div>スタッフ</div>
+        <div>対応メニュー</div>
+        <div>休日設定</div>
+        <div>操作</div>
+      </div>
+
+      {% for staff in staff_list %}
+      <div class="staff-info-row">
+        <div class="staff-person">
+          <img src="{{ staff.avatar_url }}" alt="{{ staff.name }}">
+          <a href="/admin/{{ shop_id }}/staff/{{ staff.id }}">{{ staff.name }}</a>
+        </div>
+        <div class="staff-menu-text">{% if staff.menu_names %}{{ staff.menu_names|join(' / ') }}{% else %}未設定{% endif %}</div>
+        <div class="staff-holiday-text">{% if staff.holiday_dates %}{{ staff.holiday_dates|length }}日登録済み{% else %}未設定{% endif %}</div>
+        <div><a class="staff-edit-button" href="/admin/{{ shop_id }}/staff-info/{{ staff.id }}/edit">✎ 編集</a></div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="staff-info-mobile">
+      {% for staff in staff_list %}
+      <div class="staff-mobile-card">
+        <div class="staff-mobile-top">
+          <img src="{{ staff.avatar_url }}" alt="{{ staff.name }}">
+          <a class="staff-mobile-name" href="/admin/{{ shop_id }}/staff/{{ staff.id }}">{{ staff.name }}</a>
+        </div>
+
+        <div class="staff-mobile-grid">
+          <div>
+            <div class="staff-mobile-label">対応メニュー</div>
+            <div class="staff-mobile-value">{% if staff.menu_names %}{{ staff.menu_names|join(' / ') }}{% else %}未設定{% endif %}</div>
+          </div>
+          <div>
+            <div class="staff-mobile-label">休日設定</div>
+            <div class="staff-mobile-value">{% if staff.holiday_dates %}{{ staff.holiday_dates|length }}日登録済み{% else %}未設定{% endif %}</div>
+          </div>
+        </div>
+
+        <a class="staff-edit-button" href="/admin/{{ shop_id }}/staff-info/{{ staff.id }}/edit">✎ 編集</a>
+      </div>
+      {% endfor %}
+    </div>
+
+    <p class="staff-note">※ 表示内容をクリックすると詳細を確認・編集できます。</p>
+    {% else %}
+    <p class="empty">スタッフがまだ登録されていません。</p>
+    {% endif %}
   </div>
-  {% else %}
-  <p class="empty">スタッフがまだ登録されていません。</p>
-  {% endif %}
 </div>
 {% endblock %}

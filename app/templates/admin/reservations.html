@@ -1,96 +1,429 @@
 {% extends "admin/base.html" %}
 {% block content %}
+
+<style>
+.admin-reservation-page {
+  display: grid;
+  gap: 18px;
+}
+
+.admin-reservation-page .page-title {
+  font-size: 28px;
+  font-weight: 900;
+  margin: 0 0 4px;
+}
+
+.today-reservation-card,
+.staff-list-card,
+.reservation-form-card {
+  border-radius: 18px;
+}
+
+.today-title,
+.staff-title,
+.form-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+  font-weight: 900;
+  margin: 0 0 18px;
+}
+
+.today-reservation-list {
+  display: grid;
+  gap: 12px;
+}
+
+.today-reservation-item {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.today-reservation-desktop-head,
+.today-reservation-desktop-row {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1.3fr 1fr .8fr .8fr .9fr .9fr;
+  align-items: center;
+  gap: 12px;
+}
+
+.today-reservation-desktop-head {
+  padding: 12px 18px;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--line);
+  font-weight: 900;
+  color: var(--text);
+}
+
+.today-reservation-desktop-row {
+  padding: 14px 18px;
+}
+
+.staff-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-weight: 800;
+}
+
+.staff-cell img,
+.staff-list-row img {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  background: #fff;
+  flex: 0 0 auto;
+}
+
+.reservation-actions {
+  display: contents;
+}
+
+.reservation-actions form {
+  margin: 0;
+}
+
+.reservation-actions button,
+.staff-reservation-link {
+  border: 1px solid #23b5aa;
+  background: #23b5aa;
+  color: #fff;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-weight: 900;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 42px;
+}
+
+.reservation-actions .cancel-button,
+.reservation-actions .danger-button {
+  background: #ef3f5f;
+  border-color: #ef3f5f;
+}
+
+.today-reservation-mobile {
+  display: none;
+}
+
+.staff-list {
+  display: grid;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.staff-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+}
+
+.staff-list-row:last-child {
+  border-bottom: none;
+}
+
+.staff-list-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-weight: 900;
+}
+
+.staff-reservation-link {
+  background: #fff;
+  color: #23b5aa;
+  flex: 0 0 auto;
+}
+
+.reservation-form-card form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  gap: 16px 24px;
+  align-items: end;
+}
+
+.reservation-form-card form button[type="submit"] {
+  min-height: 46px;
+  border-radius: 12px;
+  font-weight: 900;
+}
+
+@media (max-width: 768px) {
+  .admin-reservation-page {
+    gap: 18px;
+  }
+
+  .admin-reservation-page .page-title {
+    font-size: 24px;
+  }
+
+  .today-title,
+  .staff-title,
+  .form-title {
+    font-size: 20px;
+  }
+
+  .today-reservation-desktop-head,
+  .today-reservation-desktop-row {
+    display: none;
+  }
+
+  .today-reservation-mobile {
+    display: grid;
+    gap: 0;
+  }
+
+  .today-mobile-main {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    padding: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .today-mobile-person {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    min-width: 0;
+  }
+
+  .today-mobile-person img {
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 1px solid var(--line);
+    flex: 0 0 auto;
+  }
+
+  .today-mobile-staff {
+    font-size: 17px;
+    font-weight: 900;
+    line-height: 1.35;
+  }
+
+  .today-mobile-customer {
+    color: var(--subtext);
+    margin-top: 2px;
+    font-weight: 700;
+  }
+
+  .today-mobile-time {
+    align-self: start;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: #dff7f3;
+    color: #15877f;
+    font-weight: 900;
+    white-space: nowrap;
+  }
+
+  .today-mobile-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .today-mobile-field {
+    padding: 14px 16px;
+    min-width: 0;
+  }
+
+  .today-mobile-field:nth-child(odd) {
+    border-right: 1px solid var(--line);
+  }
+
+  .today-mobile-label {
+    font-size: 15px;
+    font-weight: 900;
+    margin-bottom: 8px;
+  }
+
+  .today-mobile-value {
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .today-mobile-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 14px 16px;
+  }
+
+  .today-mobile-actions form {
+    margin: 0;
+  }
+
+  .today-mobile-actions button {
+    width: 100%;
+    min-height: 48px;
+    border-radius: 12px;
+    font-weight: 900;
+  }
+
+  .staff-list-row {
+    padding: 12px;
+  }
+
+  .staff-reservation-link {
+    min-width: 108px;
+  }
+
+  .reservation-form-card form {
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .reservation-form-card form button[type="submit"] {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 520px) {
+  .reservation-form-card form {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+
+
+<div class="admin-reservation-page">
 <div class="hero">
-  <div class="hero-top">
-    <div>
-      <h1>予約管理</h1>
-      <p>現在時刻 {{ current_time_label }} 時点のスタッフ一覧です。名前を押すとスタッフページの週間予定へ移動します。</p>
-    </div>
-  </div>
-</div>
-
-<div class="card">
-  <div class="card-header">
-    <h2>スタッフ一覧</h2>
-    <span class="badge">{{ current_slot_label }} 時点</span>
-  </div>
-  {% if staff_now_list %}
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>名前</th><th>現在の内容</th></tr></thead>
-      <tbody>
-        {% for staff in staff_now_list %}
-        <tr>
-          <td><div style="display:flex; align-items:center; gap:10px;"><img src="{{ staff.avatar_url }}" alt="{{ staff.name }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:#fff;"><a href="{{ staff.jump_url or ('/admin/' ~ shop_id ~ '/staff/' ~ staff.id ~ '?date=' ~ selected_date ~ '&week_start=' ~ week_start) }}">{{ staff.name }}</a></div></td>
-          <td><strong>{{ staff.now_status }}</strong><div style="margin-top:6px; color:var(--text-muted);">{{ staff.now_detail }}</div></td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% else %}
-  <p class="empty">スタッフがまだ登録されていません。</p>
-  {% endif %}
-</div>
-
-
-<div class="card">
-  <div class="day-header">
-    <div>
-      <h2 class="day-title">{{ selected_date or today }} のタイムスケジュール</h2>
-      <p class="day-sub">予約 {{ selected_day_count or 0 }}件</p>
-    </div>
-    <a href="/admin/{{ shop_id }}/reservations?date={{ today }}&week_start={{ week_start }}" class="badge" style="text-decoration:none;">今日を見る</a>
-  </div>
-  {% if selected_day_schedule %}
-  <div class="timeline">
-    {% for reservation in selected_day_schedule %}
-    <div class="timeline-item">
-      <div class="timeline-top">
-        <div class="timeline-time">{{ reservation.start_time }} - {{ reservation.end_time }}</div>
-        {% if reservation.status == "キャンセル" %}<span class="status status-cancelled">キャンセル</span>{% elif reservation.status == "来店済み" %}<span class="status status-done">来店済み</span>{% else %}<span class="status status-reserved">予約済み</span>{% endif %}
-      </div>
-      <div class="timeline-main">
-        <div><strong>顧客:</strong> {{ reservation.customer_name }}</div>
-        <div style="display:flex; align-items:center; gap:8px;"><img src="{{ reservation.staff_avatar_url }}" alt="{{ reservation.staff_name }}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:#fff;"><div><strong>スタッフ:</strong> <a href="/admin/{{ shop_id }}/staff/{{ reservation.staff_id }}?date={{ reservation.reservation_date }}&week_start={{ week_start }}">{{ reservation.staff_name }}</a></div></div>
-        <div><strong>メニュー:</strong> {{ reservation.menu_name }} / {{ reservation.duration }}分 / ¥{{ reservation.price }}</div>
+      <div class="hero-top">
+        <div>
+          <h1>予約一覧</h1>
+          <p>本日の予約・スタッフ別予約・予約登録を確認できます。</p><p style="margin-top:10px;"><strong>予約管理ページ</strong></p>
+        </div>
       </div>
     </div>
-    {% endfor %}
-  </div>
-  {% else %}
-  <p class="empty">この日の予約はまだありません。</p>
-  {% endif %}
-</div>
 
-<div class="card">
-  <div class="card-header"><h2>予約一覧</h2><span class="badge">{{ reservations|length }}件</span></div>
-  {% if reservations %}
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>ID</th><th>日付</th><th>開始</th><th>終了</th><th>所要時間</th><th>料金</th><th>顧客</th><th>スタッフ</th><th>メニュー</th><th>状態</th><th>操作</th></tr></thead>
-      <tbody id="reservation-list-body">
-        {% for reservation in reservations %}
-        <tr class="reservation-row">
-          <td>{{ reservation.id }}</td><td>{{ reservation.reservation_date }}</td><td>{{ reservation.start_time }}</td><td>{{ reservation.end_time }}</td><td>{{ reservation.duration }}分</td><td class="price">¥{{ reservation.price }}</td><td>{{ reservation.customer_name }}</td>
-          <td><div style="display:flex; align-items:center; gap:8px;"><img src="{{ reservation.staff_avatar_url }}" alt="{{ reservation.staff_name }}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:#fff;"><a href="/admin/{{ shop_id }}/staff/{{ reservation.staff_id }}?date={{ reservation.reservation_date }}&week_start={{ week_start }}">{{ reservation.staff_name }}</a></div></td>
-          <td>{{ reservation.menu_name }}</td>
-          <td>{% if reservation.status == "キャンセル" %}<span class="status status-cancelled">キャンセル</span>{% elif reservation.status == "来店済み" %}<span class="status status-done">来店済み</span>{% else %}<span class="status status-reserved">予約済み</span>{% endif %}</td>
-          <td><div class="action-buttons">{% if reservation.status == "予約済み" %}<form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/done"><button type="submit" class="done-button">来店済み</button></form><form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/cancel"><button type="submit" class="danger-button">キャンセル</button></form>{% else %}<span>-</span>{% endif %}</div></td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  <div id="reservation-pagination" style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
-    <button type="button" id="reservation-prev" class="secondary-button">戻る</button>
-    <button type="button" id="reservation-next" class="secondary-button">次へ</button>
-  </div>
-  {% else %}<p class="empty">まだ予約が登録されていません。</p>{% endif %}
-</div>
+<div class="card today-reservation-card">
+    <h2 class="today-title">📅 本日の予約 <span class="badge">{{ today }}</span></h2>
 
+    {% if reservations %}
+    <div class="today-reservation-list">
+      <div class="today-reservation-desktop-head">
+        <div>スタッフ</div>
+        <div>顧客名</div>
+        <div>メニュー</div>
+        <div>時間（予約）</div>
+        <div>所要時間</div>
+        <div>料金</div>
+        <div>来店済</div>
+        <div>キャンセル</div>
+      </div>
 
-<div class="card">
+      {% for reservation in reservations|sort(attribute='start_time') %}
+      <div class="today-reservation-item">
+        <div class="today-reservation-desktop-row">
+          <div class="staff-cell">
+            <img src="{{ reservation.staff_avatar_url }}" alt="{{ reservation.staff_name }}">
+            <span>{{ reservation.staff_name }}</span>
+          </div>
+          <div>{{ reservation.customer_name }}</div>
+          <div>{{ reservation.menu_name }}</div>
+          <div>{{ reservation.start_time }}-{{ reservation.end_time }}</div>
+          <div>{{ reservation.duration }}分</div>
+          <div class="price">¥{{ reservation.price }}</div>
+          <div class="reservation-actions">
+            {% if reservation.status == "予約済み" %}
+            <form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/done" class="stay-form"><input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button type="submit">来店済</button></form>
+            <form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/cancel" class="stay-form"><input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button type="submit" class="cancel-button">キャンセル</button></form>
+            {% else %}
+            <span>{{ reservation.status }}</span><span>-</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="today-reservation-mobile">
+          <div class="today-mobile-main">
+            <div class="today-mobile-person">
+              <img src="{{ reservation.staff_avatar_url }}" alt="{{ reservation.staff_name }}">
+              <div>
+                <div class="today-mobile-staff">{{ reservation.staff_name }}</div>
+                <div class="today-mobile-customer">{{ reservation.customer_name }}</div>
+              </div>
+            </div>
+            <div class="today-mobile-time">{{ reservation.start_time }}-{{ reservation.end_time }}</div>
+          </div>
+
+          <div class="today-mobile-grid">
+            <div class="today-mobile-field">
+              <div class="today-mobile-label">メニュー</div>
+              <div class="today-mobile-value">{{ reservation.menu_name }}</div>
+            </div>
+            <div class="today-mobile-field">
+              <div class="today-mobile-label">所要時間</div>
+              <div class="today-mobile-value">{{ reservation.duration }}分</div>
+            </div>
+            <div class="today-mobile-field">
+              <div class="today-mobile-label">料金</div>
+              <div class="today-mobile-value">¥{{ reservation.price }}</div>
+            </div>
+            <div class="today-mobile-field">
+              <div class="today-mobile-label">状態</div>
+              <div class="today-mobile-value">{{ reservation.status }}</div>
+            </div>
+          </div>
+
+          <div class="today-mobile-actions">
+            {% if reservation.status == "予約済み" %}
+            <form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/done" class="stay-form"><input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button type="submit">来店済</button></form>
+            <form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/cancel" class="stay-form"><input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button type="submit" class="cancel-button">キャンセル</button></form>
+            {% else %}
+            <button type="button" disabled>{{ reservation.status }}</button>
+            <button type="button" disabled>-</button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty">本日の予約はまだありません。</p>
+    {% endif %}
+  </div>
+
+  <div class="card staff-list-card">
+    <h2 class="staff-title">👥 スタッフ一覧</h2>
+    {% if staff_list %}
+    <div class="staff-list">
+      {% for staff in staff_list %}
+      <div class="staff-list-row">
+        <div class="staff-list-name">
+          <img src="{{ staff.avatar_url }}" alt="{{ staff.name }}">
+          <span>{{ staff.name }}</span>
+        </div>
+        <a class="staff-reservation-link" href="/admin/{{ shop_id }}/staff/{{ staff.id }}">予約一覧</a>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty">スタッフがまだ登録されていません。</p>
+    {% endif %}
+  </div>
+
+  <div class="reservation-form-card">
+    <div class="card">
   <div class="card-header">
     <h2>予約登録</h2>
     <span class="badge">予約</span>
@@ -105,114 +438,28 @@
     <button type="submit">予約を登録する</button>
   </form>
 </div>
+  </div>
+</div>
+
+
 
 <script>
 (function(){
-  const forms = Array.from(document.querySelectorAll('form')).filter(function(form){
-    return form.querySelector('select[name="staff_id"]') && form.querySelector('select[name="menu_id"]');
-  });
-  forms.forEach(function(form){
-    const staffSelect = form.querySelector('select[name="staff_id"]');
-    const menuSelect = form.querySelector('select[name="menu_id"]');
-    if (!staffSelect || !menuSelect) return;
-
-    const allOptions = Array.from(menuSelect.querySelectorAll('option')).map(function(option){
-      return {
-        value: option.value,
-        text: option.textContent,
-        selected: option.selected,
-        menuIds: (option.dataset.staffMenuIds || '').split(',').map(function(item){ return item.trim(); }).filter(Boolean),
-        disabled: option.disabled
-      };
-    });
-
-    function renderOptions(){
-      const selectedStaff = staffSelect.value;
-      const currentValue = menuSelect.value;
-      menuSelect.innerHTML = '';
-      let hasVisibleOption = false;
-
-      allOptions.forEach(function(optionData, index){
-        const option = document.createElement('option');
-        option.value = optionData.value;
-        option.textContent = optionData.text;
-        if (optionData.menuIds.length) {
-          option.dataset.staffMenuIds = optionData.menuIds.join(',');
-        }
-        if (index === 0 && !option.value) {
-          option.disabled = false;
-          option.hidden = false;
-          menuSelect.appendChild(option);
-          return;
-        }
-        const visible = !selectedStaff || !optionData.menuIds.length || optionData.menuIds.indexOf(selectedStaff) !== -1;
-        if (!visible) {
-          return;
-        }
-        if (optionData.disabled) {
-          option.disabled = true;
-        }
-        if (optionData.value === currentValue) {
-          option.selected = true;
-        }
-        if (optionData.selected && !currentValue) {
-          option.selected = true;
-        }
-        menuSelect.appendChild(option);
-        hasVisibleOption = true;
+  document.querySelectorAll('form.stay-form').forEach(function(form){
+    form.addEventListener('submit', function(event){
+      event.preventDefault();
+      fetch(form.action, {
+        method: 'POST',
+        body: new FormData(form),
+        credentials: 'same-origin'
+      }).then(function(){
+        window.location.reload();
+      }).catch(function(){
+        form.submit();
       });
-
-      if (!hasVisibleOption) {
-        const placeholder = document.createElement('option');
-        placeholder.value = '';
-        placeholder.textContent = '選択できるメニューがありません';
-        placeholder.selected = true;
-        menuSelect.appendChild(placeholder);
-      }
-
-      const availableValues = Array.from(menuSelect.options).map(function(option){ return option.value; });
-      if (currentValue && availableValues.indexOf(currentValue) === -1) {
-        menuSelect.value = '';
-      }
-    }
-
-    staffSelect.addEventListener('change', renderOptions);
-    renderOptions();
+    });
   });
-
-  const rows = Array.from(document.querySelectorAll('.reservation-row'));
-  const prevButton = document.getElementById('reservation-prev');
-  const nextButton = document.getElementById('reservation-next');
-  const pageSize = 10;
-  let currentPage = 1;
-
-  function renderReservationPage(){
-    if (!rows.length || !prevButton || !nextButton) return;
-    const totalPages = Math.ceil(rows.length / pageSize);
-    rows.forEach(function(row, index){
-      const start = (currentPage - 1) * pageSize;
-      const end = start + pageSize;
-      row.style.display = (index >= start && index < end) ? '' : 'none';
-    });
-    prevButton.disabled = currentPage === 1;
-    nextButton.disabled = currentPage >= totalPages;
-  }
-
-  if (prevButton && nextButton) {
-    prevButton.addEventListener('click', function(){
-      if (currentPage > 1) {
-        currentPage -= 1;
-        renderReservationPage();
-      }
-    });
-    nextButton.addEventListener('click', function(){
-      if (currentPage < Math.ceil(rows.length / pageSize)) {
-        currentPage += 1;
-        renderReservationPage();
-      }
-    });
-    renderReservationPage();
-  }
 })();
 </script>
+
 {% endblock %}

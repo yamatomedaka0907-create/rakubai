@@ -82,6 +82,7 @@ DEFAULT_HOMEPAGE_TEMPLATES = [
 ]
 
 from app.config_paths import DB_PATH
+from app.migrations.line_settings_migration import ensure_line_setting_columns
 
 
 def get_connection() -> sqlite3.Connection:
@@ -153,7 +154,13 @@ def init_db() -> None:
                 staff_list_json TEXT NOT NULL DEFAULT '[]',
                 menus_json TEXT NOT NULL DEFAULT '[]',
                 admin_ui_mode TEXT NOT NULL DEFAULT 'web',
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    line_mode TEXT DEFAULT 'off',
+    line_channel_access_token TEXT,
+    line_channel_secret TEXT,
+    line_liff_id TEXT,
+    line_official_url TEXT,
+    line_webhook_enabled INTEGER DEFAULT 0
             )
             '''
         )
@@ -3754,3 +3761,19 @@ def get_member_unread_chat_summary(phone_or_normalized: str) -> list[dict[str, A
             (normalized_phone,),
         ).fetchall()
     return _rows_to_dicts(rows)
+
+
+def ensure_line_settings_schema():
+    """LINE連携設定カラムを既存DBに追加します。"""
+    try:
+        conn = get_connection()
+    except NameError:
+        try:
+            conn = get_db_connection()
+        except NameError:
+            return
+    ensure_line_setting_columns(conn)
+    try:
+        conn.close()
+    except Exception:
+        pass
