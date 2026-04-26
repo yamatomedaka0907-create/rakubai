@@ -3235,6 +3235,7 @@ def admin_line_settings(request: Request, shop_id: str):
         raise HTTPException(status_code=404, detail="店舗が見つかりません")
 
     settings = get_shop_line_settings(shop_id)
+    recent_line_users = get_recent_line_webhook_users(shop_id)
     line_mode = normalize_line_mode(settings.get("line_mode"))
     liff_id = str(settings.get("line_liff_id") or "").strip()
     channel_access_token = str(settings.get("line_channel_access_token") or "").strip()
@@ -3247,6 +3248,23 @@ def admin_line_settings(request: Request, shop_id: str):
     developers_url = "https://developers.line.biz/console/"
     shop_name = str(shop.get("shop_name") or shop_id)
     webhook_url = f"https://rakubai.com/line/webhook/{shop_id}"
+    recent_line_user_options_html = ""
+    if recent_line_users:
+        for item in recent_line_users:
+            uid = str(item.get("line_user_id") or "").strip()
+            updated = str(item.get("updated_at") or "").strip()
+            msg = str(item.get("message_text") or "").strip()
+            if uid:
+                recent_line_user_options_html += (
+                    f'<div class="line-user-row">'
+                    f'<div class="line-user-id">{uid}</div>'
+                    f'<button type="button" class="btn-secondary" onclick="setTestLineUserId(\'{uid}\')">このIDを使う</button>'
+                    f'<div class="line-user-meta">取得日時：{updated} / メッセージ：{msg}</div>'
+                    f'</div>'
+                )
+    else:
+        recent_line_user_options_html = '<div class="empty-line-user">まだ取得されていません。Webhook URLを保存後、公式LINEに「テスト」と送ってから、この画面を再読み込みしてください。</div>'
+
 
     html = """
 <!doctype html>
@@ -3506,7 +3524,40 @@ def admin_line_settings(request: Request, shop_id: str):
         font-size: 25px;
       }
     }
-  </style>
+  
+        .line-user-list {
+          border: 1px solid #dbe4f0;
+          border-radius: 16px;
+          background: #f8fafc;
+          padding: 12px;
+          margin-top: 8px;
+        }
+        .line-user-row {
+          padding: 10px 0;
+          border-bottom: 1px solid #e5e7eb;
+        }
+        .line-user-row:last-child {
+          border-bottom: 0;
+        }
+        .line-user-id {
+          font-weight: 900;
+          word-break: break-all;
+          color: #0f172a;
+          margin-bottom: 8px;
+        }
+        .line-user-meta {
+          color: #64748b;
+          font-size: 12px;
+          margin-top: 6px;
+          line-height: 1.6;
+        }
+        .empty-line-user {
+          color: #64748b;
+          line-height: 1.7;
+          font-weight: 700;
+        }
+
+      </style>
 </head>
 <body>
   <div class="wrap">
@@ -3905,6 +3956,17 @@ function fallbackCopyWebhookUrl(url) {
 }
 </script>
 
+
+<script>
+function setTestLineUserId(userId) {
+  const input = document.querySelector('input[name="test_line_user_id"]');
+  if (input) {
+    input.value = userId;
+    input.focus();
+  }
+}
+</script>
+
 </body>
 </html>
 """
@@ -3932,7 +3994,7 @@ function fallbackCopyWebhookUrl(url) {
     for key, value in replacements.items():
         html = html.replace(key, value)
 
-    return HTMLResponse(html.replace('{shop_id}', shop_id))
+    return HTMLResponse(html.replace("__WEBHOOK_URL__", webhook_url).replace("__RECENT_LINE_USERS__", recent_line_user_options_html).replace("{shop_id}", shop_id))
 
 
 @app.post("/admin/{shop_id}/line-settings")
@@ -6622,28 +6684,3 @@ async def save_line_settings(request: Request, shop_id: str):
 
     return RedirectResponse(f"/admin/{shop_id}/line-settings", status_code=303)
 
-
-
-# ======== 追加：LINE Webhook（user_id取得）========
-from fastapi import Request
-from fastapi.responses import JSONResponse
-
-@app.post("/line/webhook/{shop_id}")
-async def line_webhook(shop_id: str, request: Request):
-    body = await request.json()
-    try:
-        events = body.get("events", [])
-        for event in events:
-            if event.get("type") == "message":
-                user_id = event["source"]["userId"]
-
-                save_line_webhook_user(
-                    shop_id,
-                    user_id,
-                    event_type=event.get("type", ""),
-                    message_text=event.get("message", {}).get("text", "")
-                )
-    except Exception as e:
-        print("Webhook error:", e)
-
-    return JSONResponse({"ok": True})
