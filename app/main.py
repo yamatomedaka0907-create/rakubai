@@ -4044,47 +4044,46 @@ async def save_line_settings(request: Request, shop_id: str):
 
 
 
+
+@app.post("/line/webhook/{shop_id}/")
 @app.post("/line/webhook/{shop_id}")
-async def line_webhook_receive(shop_id: str, request: Request):
-    """LINE Webhookを受け取り、テスト送信用のuser_idを保存します。
-
-    LINE Official Account ManagerのWebhook URLには以下を設定します。
-    https://あなたのドメイン/line/webhook/{shop_id}
-    """
+async def line_webhook(shop_id: str, request: Request):
     try:
-        payload = await request.json()
+        body = await request.json()
     except Exception:
-        payload = {}
+        body = {}
 
-    events = payload.get("events") if isinstance(payload, dict) else []
+    saved_count = 0
+    events = body.get("events", []) if isinstance(body, dict) else []
     if not isinstance(events, list):
         events = []
 
-    saved_count = 0
     for event in events:
         if not isinstance(event, dict):
             continue
+
         source = event.get("source") or {}
-        line_user_id = str(source.get("userId") or "").strip()
-        if not line_user_id:
+        if not isinstance(source, dict):
+            source = {}
+
+        user_id = str(source.get("userId") or "").strip()
+        if not user_id:
             continue
 
-        event_type = str(event.get("type") or "").strip()
-        message_text = ""
         message = event.get("message") or {}
+        message_text = ""
         if isinstance(message, dict):
             message_text = str(message.get("text") or "").strip()
 
         save_line_webhook_user(
             shop_id,
-            line_user_id,
-            event_type=event_type,
+            user_id,
+            event_type=str(event.get("type") or ""),
             message_text=message_text,
         )
         saved_count += 1
 
-    return {"ok": True, "saved_count": saved_count}
-
+    return JSONResponse({"ok": True, "saved_count": saved_count}, status_code=200)
 
 
 @app.post("/admin/{shop_id}/line-settings/test")
