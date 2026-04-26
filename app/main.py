@@ -4045,13 +4045,18 @@ async def save_line_settings(request: Request, shop_id: str):
 
 
 
+
 @app.post("/line/webhook/{shop_id}/")
 @app.post("/line/webhook/{shop_id}")
 async def line_webhook(shop_id: str, request: Request):
     try:
         body = await request.json()
-    except Exception:
+    except Exception as exc:
+        print("LINE Webhook JSON parse error:", repr(exc))
         body = {}
+
+    print("LINE Webhook received shop_id:", shop_id)
+    print("LINE Webhook body:", body)
 
     saved_count = 0
     events = body.get("events", []) if isinstance(body, dict) else []
@@ -4067,6 +4072,9 @@ async def line_webhook(shop_id: str, request: Request):
             source = {}
 
         user_id = str(source.get("userId") or "").strip()
+        print("LINE Webhook event source:", source)
+        print("LINE Webhook user_id:", user_id)
+
         if not user_id:
             continue
 
@@ -4082,6 +4090,7 @@ async def line_webhook(shop_id: str, request: Request):
             message_text=message_text,
         )
         saved_count += 1
+        print("LINE user_id saved:", shop_id, user_id)
 
     return JSONResponse({"ok": True, "saved_count": saved_count}, status_code=200)
 
