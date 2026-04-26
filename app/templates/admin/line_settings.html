@@ -1,0 +1,238 @@
+{% extends "admin/base.html" %}
+{% block content %}
+
+<style>
+.line-settings-grid {
+  display: grid;
+  grid-template-columns: 1.08fr .92fr;
+  gap: 16px;
+  align-items: start;
+}
+.mode-guide {
+  display: none;
+}
+.mode-guide.is-active {
+  display: block;
+}
+.mode-title {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 8px 13px;
+  background: #dcfce7;
+  color: #166534;
+  font-weight: 900;
+  margin: 8px 0 12px;
+}
+.mode-lead {
+  color: #374151;
+  font-weight: 700;
+  line-height: 1.8;
+  margin: 0 0 12px;
+}
+.copybox {
+  width: 100%;
+  background: #f8fafc;
+  border: 1px solid #dbe4ef;
+  border-radius: 16px;
+  padding: 14px;
+  font-size: 14px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  color: #0f172a;
+  margin-top: 8px;
+}
+@media (max-width: 900px) {
+  .line-settings-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.step-detail {
+  margin: 10px 0 0;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+}
+.step-detail h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #111827;
+}
+.step-detail dl {
+  margin: 0;
+}
+.step-detail dt {
+  margin-top: 10px;
+  font-weight: 900;
+  color: #0f172a;
+}
+.step-detail dd {
+  margin: 4px 0 0 0;
+  color: #374151;
+  line-height: 1.7;
+}
+.step-note {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  color: #9a3412;
+  font-weight: 700;
+  line-height: 1.7;
+}
+
+</style>
+
+<div class="hero">
+  <div class="hero-top">
+    <div>
+      <h1>LINE連携設定</h1>
+      <p>店舗のLINE公式アカウントと連携します。</p>
+    </div>
+  </div>
+</div>
+
+<div class="line-settings-grid">
+  <div class="card">
+    <div class="card-header">
+      <h2>店舗スタッフ向け：操作説明</h2>
+      <span class="badge">モード連動</span>
+    </div>
+
+    <div id="guide-off" class="mode-guide">
+      <div class="mode-title">利用しない</div>
+      <p class="mode-lead">LINE連携は無効です。予約通知やリマインドはメール中心で運用します。</p>
+      <p>LINE設定は入力しなくてOKです。あとから簡単モードやLINE完結モードへ変更できます。</p>
+    </div>
+
+    <div id="guide-login" class="mode-guide">
+      <div class="mode-title">簡単モード：Web予約＋LINE通知</div>
+      <p class="mode-lead">はじめての店舗におすすめです。予約は通常のWebページで行い、予約完了通知とリマインドをLINEで送ります。</p>
+      <ol>
+        <li>LINE Developersにログインします。</li>
+        <li>プロバイダーとLINEログインチャネルを作成します。<br>まだプロバイダーがない場合は、店舗名で新しく作成してください。</li>
+        <li>
+          LINEログインチャネルの作成画面を入力します。
+          <div class="step-detail">
+            <h4>入力項目の目安</h4>
+            <dl>
+              <dt>サービス提供地域</dt>
+              <dd>店舗がある国を選びます。日本国内の店舗なら「日本」を選択してください。</dd>
+
+              <dt>会社・事業者の所在国・地域</dt>
+              <dd>店舗または運営会社の所在地を選びます。個人事業や日本の会社で運営している場合は「日本」でOKです。</dd>
+
+              <dt>チャネル名</dt>
+              <dd>お客様に見えても分かりやすい名前にします。例：「店舗名 予約」「店舗名 LINE予約」など。</dd>
+
+              <dt>チャネル説明</dt>
+              <dd>何に使うチャネルかを書きます。例：「Web予約時にLINE通知を受け取るためのログインチャネルです。」</dd>
+
+              <dt>アプリタイプ</dt>
+              <dd>通常の予約サイトで使う場合は「ウェブアプリ」を選択します。簡単モードではLIFFアプリではなくWeb予約に連携します。</dd>
+
+              <dt>メールアドレス</dt>
+              <dd>LINE Developersからの重要なお知らせを受け取れる店舗または運営者のメールアドレスを入力します。</dd>
+
+              <dt>プライバシーポリシーURL</dt>
+              <dd>用意している場合は店舗サイトや予約サイトのプライバシーポリシーページURLを入力します。未整備の場合は、先にページを用意してから設定するのがおすすめです。</dd>
+
+              <dt>利用規約URL</dt>
+              <dd>用意している場合は予約サイトの利用規約ページURLを入力します。予約キャンセル、通知、個人情報の扱いが分かる内容にしておくと安心です。</dd>
+
+              <dt>LINE開発者契約への同意</dt>
+              <dd>内容を確認し、問題なければチェックを入れて作成します。店舗側が自分で設定する場合は、同意内容を確認してから進めてください。</dd>
+            </dl>
+            <div class="step-note">迷った場合は、チャネル名・説明は「店舗名＋予約通知」と分かる形にして、地域や所在国は店舗の所在地に合わせてください。</div>
+          </div>
+        </li>
+        <li>チャネルシークレットをコピーして右側に貼り付けます。</li>
+        <li>Messaging APIの長期アクセストークンを発行して右側に貼り付けます。</li>
+        <li>保存して通常予約ページでテストします。</li>
+      </ol>
+      <p>簡単モードではLIFF IDは不要です。</p>
+    </div>
+
+    <div id="guide-liff" class="mode-guide">
+      <div class="mode-title">LINE完結モード：LIFF予約＋LINE通知</div>
+      <p class="mode-lead">LINEアプリ内で予約まで完結させる上級者向けモードです。</p>
+      <ol>
+        <li>プロバイダーとLINEログインチャネルを作成します。<br>まだプロバイダーがない場合は、店舗名で新しく作成してください。</li>
+        <li>LINEログインチャネルの作成画面では、サービス提供地域・会社の国・チャネル名・説明・アプリタイプ・メールアドレス・プライバシーポリシー・利用規約・LINE開発者同意を入力します。</li>
+        <li>LIFFアプリを追加します。</li>
+        <li>LIFF URLに予約入口URLを貼り付けます。</li>
+        <li>LIFF IDを右側に貼り付けます。</li>
+        <li>Messaging API情報も保存します。</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2>保存する情報</h2>
+      <span class="badge">店舗別</span>
+    </div>
+
+    <form method="post" action="/admin/{{ shop_id }}/line-settings">
+      <label>LINE連携モード
+        <select id="line_mode_select" name="line_mode">
+          <option value="off" {% if (shop.line_mode or 'off') == 'off' %}selected{% endif %}>利用しない（メール中心）</option>
+          <option value="login" {% if shop.line_mode == 'login' %}selected{% endif %}>簡単モード：Web予約＋LINE通知</option>
+          <option value="liff" {% if shop.line_mode == 'liff' %}selected{% endif %}>LINE完結モード：LIFF予約＋LINE通知</option>
+        </select>
+      </label>
+
+      <label>チャネルアクセストークン
+        <input type="text" name="line_channel_access_token" value="{{ shop.line_channel_access_token or '' }}">
+      </label>
+
+      <label>チャネルシークレット
+        <input type="text" name="line_channel_secret" value="{{ shop.line_channel_secret or '' }}">
+      </label>
+
+      <label>LIFF ID
+        <input type="text" name="line_liff_id" value="{{ shop.line_liff_id or '' }}">
+      </label>
+
+      <label>公式LINE URL
+        <input type="text" name="line_official_url" value="{{ shop.line_official_url or '' }}">
+      </label>
+
+      <label style="display:flex;align-items:center;gap:10px;">
+        <input type="checkbox" name="line_webhook_enabled" {% if shop.line_webhook_enabled %}checked{% endif %}>
+        LINE連携を有効にする
+      </label>
+
+      <button type="submit">保存する</button>
+    </form>
+  </div>
+</div>
+
+<script>
+function updateModeGuide() {
+  const select = document.getElementById("line_mode_select");
+  const mode = select ? select.value : "off";
+  document.querySelectorAll(".mode-guide").forEach(function(el) {
+    el.classList.remove("is-active");
+  });
+  const target = document.getElementById("guide-" + mode);
+  if (target) {
+    target.classList.add("is-active");
+  } else {
+    const off = document.getElementById("guide-off");
+    if (off) off.classList.add("is-active");
+  }
+}
+document.addEventListener("DOMContentLoaded", function() {
+  updateModeGuide();
+  const select = document.getElementById("line_mode_select");
+  if (select) {
+    select.addEventListener("change", updateModeGuide);
+  }
+});
+</script>
+
+{% endblock %}

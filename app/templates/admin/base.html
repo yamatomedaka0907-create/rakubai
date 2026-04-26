@@ -198,6 +198,11 @@
             <span class="nav-label">予約サイト設定</span>
           </span>
         </a>
+        <a href="/admin/{{ shop_id }}/line-settings" class="{% if active_page == 'line_settings' %}active{% endif %}">
+          <span class="nav-link-main">
+            <span class="nav-label">LINE連携設定</span>
+          </span>
+        </a>
         <a href="/admin/{{ shop_id }}/website" class="{% if active_page == 'website' %}active{% endif %}">
           <span class="nav-link-main">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15.3 15.3 0 0 1 4 9 15.3 15.3 0 0 1-4 9 15.3 15.3 0 0 1-4-9 15.3 15.3 0 0 1 4-9Z"/></svg>
