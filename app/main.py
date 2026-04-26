@@ -3994,7 +3994,7 @@ function setTestLineUserId(userId) {
     for key, value in replacements.items():
         html = html.replace(key, value)
 
-    return HTMLResponse(html.replace("__WEBHOOK_URL__", webhook_url).replace("__RECENT_LINE_USERS__", recent_line_user_options_html).replace("{shop_id}", shop_id))
+    return HTMLResponse(html.replace("__RECENT_LINE_USERS__", recent_line_user_options_html).replace("{webhook_url}", webhook_url).replace("{shop_id}", shop_id))
 
 
 @app.post("/admin/{shop_id}/line-settings")
