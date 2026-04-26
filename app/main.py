@@ -3247,7 +3247,7 @@ def admin_line_settings(request: Request, shop_id: str):
     liff_endpoint_url = f"{base_url}/shop/{shop_id}/line-reserve"
     developers_url = "https://developers.line.biz/console/"
     shop_name = str(shop.get("shop_name") or shop_id)
-    webhook_url = f"https://rakubai.com/line/webhook/{shop_id}"
+    webhook_url = f"__WEBHOOK_URL__"
     recent_line_user_options_html = ""
     if recent_line_users:
         for item in recent_line_users:
@@ -3842,7 +3842,7 @@ def admin_line_settings(request: Request, shop_id: str):
           <div class="form-section">
             <label>あなたのWebhook URLはこれです</label>
             <div class="copybox" style="display:flex;gap:10px;align-items:center;justify-content:space-between;">
-              <span id="webhook-url-text">https://rakubai.com/line/webhook/{shop_id}</span>
+              <span id="webhook-url-text">__WEBHOOK_URL__</span>
               <button type="button" class="btn-secondary" onclick="copyWebhookUrl()" style="white-space:nowrap;">コピー</button>
             </div>
             <p class="hint"><b>このURLをそのまま貼り付ければOKです。</b><br>
@@ -3994,7 +3994,7 @@ function setTestLineUserId(userId) {
     for key, value in replacements.items():
         html = html.replace(key, value)
 
-    return HTMLResponse(html.replace("__RECENT_LINE_USERS__", recent_line_user_options_html).replace("{webhook_url}", webhook_url).replace("{shop_id}", shop_id))
+    return HTMLResponse(html.replace("__WEBHOOK_URL__", webhook_url).replace("__RECENT_LINE_USERS__", recent_line_user_options_html).replace("{shop_id}", shop_id))
 
 
 @app.post("/admin/{shop_id}/line-settings")
@@ -4046,17 +4046,23 @@ async def save_line_settings(request: Request, shop_id: str):
 
 
 
+
+
+
 @app.post("/line/webhook/{shop_id}/")
 @app.post("/line/webhook/{shop_id}")
 async def line_webhook(shop_id: str, request: Request):
+    """LINEからのWebhookを受け取り、送信者のLINE user_idを保存します。"""
     try:
         body = await request.json()
     except Exception as exc:
         print("LINE Webhook JSON parse error:", repr(exc))
         body = {}
 
-    print("LINE Webhook received shop_id:", shop_id)
-    print("LINE Webhook body:", body)
+    print("====== LINE WEBHOOK DEBUG ======")
+    print("shop_id:", shop_id)
+    print("body:", body)
+    print("================================")
 
     saved_count = 0
     events = body.get("events", []) if isinstance(body, dict) else []
@@ -4067,12 +4073,14 @@ async def line_webhook(shop_id: str, request: Request):
         if not isinstance(event, dict):
             continue
 
+        print("LINE Webhook event:", event)
+
         source = event.get("source") or {}
         if not isinstance(source, dict):
             source = {}
 
         user_id = str(source.get("userId") or "").strip()
-        print("LINE Webhook event source:", source)
+        print("LINE Webhook source:", source)
         print("LINE Webhook user_id:", user_id)
 
         if not user_id:
@@ -4093,7 +4101,6 @@ async def line_webhook(shop_id: str, request: Request):
         print("LINE user_id saved:", shop_id, user_id)
 
     return JSONResponse({"ok": True, "saved_count": saved_count}, status_code=200)
-
 
 @app.post("/admin/{shop_id}/line-settings/test")
 def admin_line_settings_test_send(
