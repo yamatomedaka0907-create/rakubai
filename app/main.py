@@ -19,6 +19,7 @@ from pathlib import Path
 import secrets
 import re
 import unicodedata
+import requests
 from zoneinfo import ZoneInfo
 
 load_dotenv()
@@ -32,6 +33,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.db import (
+    get_connection,
     init_db,
     get_shop,
     get_all_shops_for_platform,
@@ -110,6 +112,7 @@ from app.db import (
     force_cancel_member_for_audit_api,
     restore_shop_for_audit_api,
     restore_member_for_audit_api,
+    ensure_line_settings_schema,
 )
 from app.runtime_data import (
     get_platform_admin,
@@ -119,6 +122,7 @@ from app.runtime_data import (
 )
 from app.routers.admin import router as admin_router
 from app.routers import admin_patch
+from app.migrations.line_settings_migration import ensure_line_setting_columns
 
 
 Path("data/uploads/shops").mkdir(parents=True, exist_ok=True)
@@ -132,6 +136,318 @@ templates = Jinja2Templates(directory="app/templates")
 templates.env.globals["is_premium_subscription"] = lambda subscription: _is_premium_subscription(subscription)
 PLATFORM_ADMIN = get_platform_admin()
 JST = ZoneInfo("Asia/Tokyo")
+
+
+def send_line_message(access_token: str, user_id: str, message: str) -> dict:
+    access_token = str(access_token or "").strip()
+    user_id = str(user_id or "").strip()
+    message = str(message or "").strip()
+
+    if not access_token:
+        print("LINE send skipped: no access token")
+        return {"ok": False, "reason": "no access token"}
+    if not user_id:
+        print("LINE send skipped: no user_id")
+        return {"ok": False, "reason": "no user_id"}
+    if not message:
+        print("LINE send skipped: empty message")
+        return {"ok": False, "reason": "empty message"}
+
+    url = "https://api.line.me/v2/bot/message/push"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "to": user_id,
+        "messages": [
+            {
+                "type": "text",
+                "text": message,
+            }
+        ],
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=10)
+        print("LINE send result:", response.status_code, response.text)
+        return {
+            "ok": 200 <= response.status_code < 300,
+            "status_code": response.status_code,
+            "response": response.text,
+        }
+    except Exception as exc:
+        print("LINE send error:", repr(exc))
+        return {"ok": False, "reason": str(exc)}
+
+
+@app.get("/line-test")
+def line_test(shop_id: str = "yamato", user_id: str = ""):
+    settings = get_shop_line_settings(shop_id)
+    access_token = str(settings.get("line_channel_access_token") or "").strip()
+    target_user_id = str(user_id or "").strip()
+
+    if not target_user_id:
+        recent_users = get_recent_line_webhook_users(shop_id, limit=1)
+        if recent_users:
+            target_user_id = str(recent_users[0].get("line_user_id") or "").strip()
+
+    result = send_line_message(
+        access_token=access_token,
+        user_id=target_user_id,
+        message="LINEテスト送信OKです。",
+    )
+    print("LINE test result:", result)
+    return result
+
+
+
+def build_line_reservation_url(shop_id: str, line_user_id: str) -> str:
+    shop_id = str(shop_id or "").strip()
+    line_user_id = str(line_user_id or "").strip()
+    return f"https://www.rakubai.net/shop/{shop_id}?line_user_id={line_user_id}"
+
+
+def send_line_reservation_button(access_token: str, user_id: str, shop_id: str) -> dict:
+    access_token = str(access_token or "").strip()
+    user_id = str(user_id or "").strip()
+    shop_id = str(shop_id or "").strip()
+    reserve_url = build_line_reservation_url(shop_id, user_id)
+
+    if not access_token:
+        print("LINE reservation button skipped: no access token")
+        return {"ok": False, "reason": "no access token"}
+    if not user_id:
+        print("LINE reservation button skipped: no user_id")
+        return {"ok": False, "reason": "no user_id"}
+    if not shop_id:
+        print("LINE reservation button skipped: no shop_id")
+        return {"ok": False, "reason": "no shop_id"}
+
+    url = "https://api.line.me/v2/bot/message/push"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "to": user_id,
+        "messages": [
+            {
+                "type": "template",
+                "altText": "予約ページを開く",
+                "template": {
+                    "type": "buttons",
+                    "title": "ご予約はこちら",
+                    "text": "下のボタンから予約ページを開いてください。",
+                    "actions": [
+                        {
+                            "type": "uri",
+                            "label": "予約する",
+                            "uri": reserve_url,
+                        }
+                    ],
+                },
+            }
+        ],
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=10)
+        print("LINE reservation button result:", response.status_code, response.text)
+        return {
+            "ok": 200 <= response.status_code < 300,
+            "status_code": response.status_code,
+            "response": response.text,
+            "reserve_url": reserve_url,
+        }
+    except Exception as exc:
+        print("LINE reservation button error:", repr(exc))
+        return {"ok": False, "reason": str(exc), "reserve_url": reserve_url}
+
+
+
+
+@app.get("/line-reservation-button-test")
+def line_reservation_button_test(shop_id: str = "yamato", user_id: str = ""):
+    settings = get_shop_line_settings(shop_id)
+    access_token = str(settings.get("line_channel_access_token") or "").strip()
+    target_user_id = str(user_id or "").strip()
+
+    if not target_user_id:
+        recent_users = get_recent_line_webhook_users(shop_id, limit=1)
+        if recent_users:
+            target_user_id = str(recent_users[0].get("line_user_id") or "").strip()
+
+    result = send_line_reservation_button(
+        access_token=access_token,
+        user_id=target_user_id,
+        shop_id=shop_id,
+    )
+    print("LINE reservation button test result:", result)
+    return result
+
+
+
+def get_shop_line_settings(shop_id: str) -> dict:
+    """店舗のLINE連携設定を取得します。
+
+    既存DBではLINE用カラムが未作成の場合があるため、
+    読み込み前に必要なカラムを自動追加します。
+    """
+    with get_connection() as conn:
+        ensure_line_setting_columns(conn)
+        row = conn.execute(
+            """
+            SELECT
+                shop_id,
+                line_mode,
+                line_channel_access_token,
+                line_channel_secret,
+                line_liff_id,
+                line_official_url,
+                line_webhook_enabled
+            FROM shops
+            WHERE shop_id = ?
+            LIMIT 1
+            """,
+            (str(shop_id or "").strip(),),
+        ).fetchone()
+    settings = dict(row) if row else {}
+    settings["line_mode"] = normalize_line_mode(settings.get("line_mode"))
+    return settings
+
+
+def normalize_line_mode(value: str) -> str:
+    """LINE連携モードを off / login / liff に正規化します。"""
+    mode = str(value or "off").strip().lower()
+    if mode in {"simple", "web", "login"}:
+        return "login"
+    if mode in {"perfect", "complete", "liff"}:
+        return "liff"
+    return "off"
+
+
+def line_mode_label(mode: str) -> str:
+    labels = {
+        "off": "利用しない",
+        "login": "簡単モード（Web予約＋LINE通知）",
+        "liff": "LINE完結モード（LIFF）",
+    }
+    return labels.get(normalize_line_mode(mode), labels["off"])
+
+
+
+
+def ensure_line_webhook_test_schema() -> None:
+    """LINE Webhookで取得したテスト用user_idを保存するテーブルを用意します。"""
+    with get_connection() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS line_webhook_users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                shop_id TEXT NOT NULL,
+                line_user_id TEXT NOT NULL,
+                display_name TEXT DEFAULT '',
+                event_type TEXT DEFAULT '',
+                message_text TEXT DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_line_webhook_users_shop_user
+            ON line_webhook_users(shop_id, line_user_id)
+            """
+        )
+        conn.commit()
+
+
+def save_line_webhook_user(shop_id: str, line_user_id: str, *, event_type: str = "", message_text: str = "") -> None:
+    """Webhookで受け取ったLINE user_idを保存します。"""
+    shop_id = str(shop_id or "").strip()
+    line_user_id = str(line_user_id or "").strip()
+    if not shop_id or not line_user_id:
+        return
+
+    ensure_line_webhook_test_schema()
+    now_text = datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
+    with get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO line_webhook_users (
+                shop_id, line_user_id, event_type, message_text, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(shop_id, line_user_id) DO UPDATE SET
+                event_type = excluded.event_type,
+                message_text = excluded.message_text,
+                updated_at = excluded.updated_at
+            """,
+            (shop_id, line_user_id, str(event_type or ""), str(message_text or ""), now_text, now_text),
+        )
+        conn.commit()
+
+
+def get_recent_line_webhook_users(shop_id: str, limit: int = 5) -> list[dict]:
+    """管理画面表示用に、直近で取得したLINE user_idを返します。"""
+    shop_id = str(shop_id or "").strip()
+    if not shop_id:
+        return []
+
+    ensure_line_webhook_test_schema()
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT line_user_id, event_type, message_text, created_at, updated_at
+            FROM line_webhook_users
+            WHERE shop_id = ?
+            ORDER BY updated_at DESC, id DESC
+            LIMIT ?
+            """,
+            (shop_id, int(limit or 5)),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+
+def update_customer_line_user_id(shop_id: str, customer_id: int, line_user_id: str) -> None:
+    """顧客にLINE user_idを紐づけます。"""
+    line_user_id = str(line_user_id or "").strip()
+    if not line_user_id:
+        return
+
+    with get_connection() as conn:
+        conn.execute(
+            """
+            UPDATE customers
+            SET line_user_id = ?
+            WHERE shop_id = ? AND id = ?
+            """,
+            (line_user_id, str(shop_id or "").strip(), int(customer_id)),
+        )
+        conn.commit()
+
+
+def build_reservation_line_message(shop: dict, reservation: dict) -> str:
+    """予約完了LINEの本文を作ります。"""
+    shop_name = str((shop or {}).get("shop_name") or "店舗")
+    customer_name = str((reservation or {}).get("customer_name") or "")
+    reservation_date = str((reservation or {}).get("reservation_date") or "")
+    start_time = str((reservation or {}).get("start_time") or "")
+    end_time = str((reservation or {}).get("end_time") or "")
+    staff_name = str((reservation or {}).get("staff_name") or "")
+    menu_name = str((reservation or {}).get("menu_name") or "")
+
+    return (
+        f"{customer_name}様\n"
+        f"{shop_name}のご予約ありがとうございます。\n\n"
+        f"■日時\n{reservation_date} {start_time}-{end_time}\n\n"
+        f"■メニュー\n{menu_name}\n\n"
+        f"■担当\n{staff_name}\n\n"
+        f"ご来店をお待ちしております。"
+    )
 
 
 def _request_client_ip(request: Request) -> str:
@@ -1677,6 +1993,9 @@ def build_shop_booking_context(shop_id: str, request: Request, error_message: st
         'form_data': form_data,
         'member': member,
         'member_page_url': member_page_url,
+        'line_user_id': str(request.session.get('line_user_id') or ''),
+        'line_display_name': str(request.session.get('line_display_name') or ''),
+        'line_booking_entry_url': f"/shop/{shop_id}/line-reserve",
         'error_message': error_message,
     }
 
@@ -1684,6 +2003,7 @@ def build_shop_booking_context(shop_id: str, request: Request, error_message: st
 @app.on_event("startup")
 def startup():
     init_db()
+    ensure_line_settings_schema()
     _start_reservation_reminder_worker()
 
 
@@ -3001,6 +3321,1197 @@ def admin_customers_page(request: Request, shop_id: str, error_message: str = ""
     )
 
 
+
+
+
+@app.get("/admin/{shop_id}/line-settings", response_class=HTMLResponse)
+def admin_line_settings(request: Request, shop_id: str):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+
+    shop = get_shop(shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+
+    settings = get_shop_line_settings(shop_id)
+    recent_line_users = get_recent_line_webhook_users(shop_id)
+    line_mode = normalize_line_mode(settings.get("line_mode"))
+    liff_id = str(settings.get("line_liff_id") or "").strip()
+    channel_access_token = str(settings.get("line_channel_access_token") or "").strip()
+    channel_secret = str(settings.get("line_channel_secret") or "").strip()
+    official_url = str(settings.get("line_official_url") or "").strip()
+    saved = str(request.query_params.get("saved") or "").strip()
+
+    base_url = str(request.base_url).rstrip("/")
+    liff_endpoint_url = f"{base_url}/shop/{shop_id}/line-reserve"
+    developers_url = "https://developers.line.biz/console/"
+    shop_name = str(shop.get("shop_name") or shop_id)
+    webhook_url = f"https://www.rakubai.net/line/webhook/{shop_id}/"
+    recent_line_user_options_html = ""
+    if recent_line_users:
+        for item in recent_line_users:
+            uid = str(item.get("line_user_id") or "").strip()
+            updated = str(item.get("updated_at") or "").strip()
+            msg = str(item.get("message_text") or "").strip()
+            if uid:
+                recent_line_user_options_html += (
+                    f'<div class="line-user-row">'
+                    f'<div class="line-user-id">{uid}</div>'
+                    f'<button type="button" class="btn-secondary" onclick="setTestLineUserId(\'{uid}\')">このIDを使う</button>'
+                    f'<div class="line-user-meta">取得日時：{updated} / メッセージ：{msg}</div>'
+                    f'</div>'
+                )
+    else:
+        recent_line_user_options_html = '<div class="empty-line-user">まだ取得されていません。Webhook URLを保存後、公式LINEに「テスト」と送ってから、この画面を再読み込みしてください。</div>'
+
+
+    html = """
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LINE連携設定</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f7fb;
+      color: #111827;
+    }
+    .wrap {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 24px 16px 44px;
+    }
+    .hero {
+      border-radius: 28px;
+      padding: 28px;
+      color: #fff;
+      background: linear-gradient(135deg, #16a34a, #22c55e);
+      box-shadow: 0 18px 48px rgba(22, 163, 74, .22);
+      margin-bottom: 18px;
+    }
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+    }
+    .hero p {
+      margin: 0;
+      line-height: 1.75;
+      opacity: .96;
+      font-weight: 600;
+    }
+    .hero .small {
+      margin-top: 10px;
+      font-size: 13px;
+      opacity: .92;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.08fr .92fr;
+      gap: 16px;
+      align-items: start;
+    }
+    .card {
+      background: #fff;
+      border-radius: 24px;
+      padding: 22px;
+      box-shadow: 0 12px 36px rgba(15, 23, 42, .08);
+    }
+    h2 {
+      margin: 0 0 16px;
+      font-size: 22px;
+    }
+    .saved {
+      background: #dcfce7;
+      color: #166534;
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      font-weight: 900;
+    }
+    .step {
+      display: grid;
+      grid-template-columns: 38px 1fr;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .step:last-child {
+      border-bottom: 0;
+    }
+    .num {
+      width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #dcfce7;
+      color: #15803d;
+      font-weight: 900;
+      font-size: 16px;
+    }
+    .step-title {
+      display: block;
+      font-weight: 900;
+      margin-bottom: 5px;
+      font-size: 15px;
+    }
+    .step-text {
+      color: #6b7280;
+      line-height: 1.7;
+      font-size: 14px;
+    }
+    .step-text b {
+      color: #111827;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 14px 0;
+    }
+    .btn, button {
+      appearance: none;
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font-weight: 900;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+    }
+    .btn-primary, button.btn-primary {
+      background: #16a34a;
+      color: white;
+    }
+    .btn-secondary, button.btn-secondary {
+      background: #eef2f7;
+      color: #374151;
+    }
+    .copybox {
+      width: 100%;
+      background: #f8fafc;
+      border: 1px solid #dbe4ef;
+      border-radius: 16px;
+      padding: 14px;
+      font-size: 14px;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+      color: #0f172a;
+      margin-top: 8px;
+    }
+    .notice {
+      margin-top: 12px;
+      padding: 13px 14px;
+      border-radius: 16px;
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      line-height: 1.65;
+      font-size: 13px;
+      font-weight: 650;
+    }
+    .status {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 10px 0 14px;
+    }
+    .pill {
+      background: #eef2f7;
+      color: #374151;
+      border-radius: 999px;
+      padding: 7px 11px;
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .pill.ok {
+      background: #dcfce7;
+      color: #166534;
+    }
+    label {
+      display: block;
+      margin: 14px 0 7px;
+      font-weight: 900;
+    }
+    input, textarea {
+      width: 100%;
+      border: 1px solid #d1d5db;
+      border-radius: 15px;
+      padding: 13px 14px;
+      font-size: 15px;
+      background: #fff;
+      box-sizing: border-box;
+    }
+    textarea {
+      min-height: 88px;
+      resize: vertical;
+      font-family: inherit;
+    }
+    .hint {
+      color: #6b7280;
+      font-size: 13px;
+      line-height: 1.65;
+      margin-top: 7px;
+    }
+    .checklist {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      padding: 14px 16px;
+      margin: 12px 0 0;
+    }
+    .checklist ul {
+      margin: 8px 0 0;
+      padding-left: 20px;
+      line-height: 1.9;
+      color: #374151;
+      font-size: 14px;
+    }
+    .manual {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #14532d;
+      padding: 13px 14px;
+      border-radius: 16px;
+      line-height: 1.7;
+      font-size: 13px;
+      font-weight: 700;
+      margin: 10px 0 0;
+    }
+    .mode-guide {
+      display: none;
+    }
+    .mode-guide.is-active {
+      display: block;
+    }
+    .mode-title {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 8px 13px;
+      background: #dcfce7;
+      color: #166534;
+      font-weight: 900;
+      margin: 8px 0 12px;
+    }
+    .mode-lead {
+      color: #374151;
+      font-weight: 700;
+      line-height: 1.8;
+      margin: 0 0 12px;
+    }
+    .mini {
+      color: #6b7280;
+      font-size: 13px;
+      line-height: 1.7;
+      margin-top: 16px;
+    }
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      .hero h1 {
+        font-size: 25px;
+      }
+    }
+  
+        .line-user-list {
+          border: 1px solid #dbe4f0;
+          border-radius: 16px;
+          background: #f8fafc;
+          padding: 12px;
+          margin-top: 8px;
+        }
+        .line-user-row {
+          padding: 10px 0;
+          border-bottom: 1px solid #e5e7eb;
+        }
+        .line-user-row:last-child {
+          border-bottom: 0;
+        }
+        .line-user-id {
+          font-weight: 900;
+          word-break: break-all;
+          color: #0f172a;
+          margin-bottom: 8px;
+        }
+        .line-user-meta {
+          color: #64748b;
+          font-size: 12px;
+          margin-top: 6px;
+          line-height: 1.6;
+        }
+        .empty-line-user {
+          color: #64748b;
+          line-height: 1.7;
+          font-weight: 700;
+        }
+
+      </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <h1>LINE連携設定</h1>
+      <p>{{SHOP_NAME}} の公式LINEと予約ページを連携します。ログインからLIFF ID保存まで、1つずつ進めます。</p>
+      <div class="small">この設定は最初の1回だけです。設定後は、お客様がLINEから予約した時にLINE user_idを自動で紐づけられます。</div>
+    </div>
+
+    <div class="grid">
+      <section class="card">
+        <h2>店舗スタッフ向け：操作説明</h2>
+        <div class="hint">右側の「LINE連携モード」を変更すると、この説明も自動で切り替わります。</div>
+
+        <div id="guide-off" class="mode-guide">
+          <div class="mode-title">利用しない</div>
+          <p class="mode-lead">LINE連携は無効です。予約通知やリマインドはメール中心で運用します。</p>
+
+          <div class="step">
+            <div class="num">1</div>
+            <div>
+              <span class="step-title">LINE設定は入力しなくてOKです</span>
+              <div class="step-text">LINE通知を使わない場合は、このモードのままで保存してください。</div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="num">2</div>
+            <div>
+              <span class="step-title">予約ページは通常どおり使えます</span>
+              <div class="step-text">お客様はWeb予約を行い、店舗は通常の予約管理画面で確認できます。</div>
+            </div>
+          </div>
+
+          <div class="notice">あとから簡単モードやLINE完結モードへ変更できます。</div>
+        </div>
+
+        <div id="guide-login" class="mode-guide">
+          <div class="mode-title">簡単モード：Web予約＋LINE通知</div>
+          <p class="mode-lead">はじめての店舗におすすめです。予約は通常のWebページで行い、予約完了通知とリマインドをLINEで送ります。</p>
+
+          <div class="actions">
+            <a class="btn btn-primary" href="{{DEVELOPERS_URL}}" target="_blank" rel="noopener">1. LINE Developersを開く</a>
+          </div>
+
+          <div class="step">
+            <div class="num">1</div>
+            <div>
+              <span class="step-title">LINE Developersにログインします</span>
+              <div class="step-text">LINEアカウントでログインし、店舗用のプロバイダーを選びます。なければ店舗名で作成してください。</div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="num">2</div>
+            <div>
+              <span class="step-title">プロバイダーを作成します</span>
+              <div class="step-text">まだプロバイダーがない場合は、店舗名または運営会社名で新しく作成してください。すでに店舗用のプロバイダーがある場合は、そのプロバイダーを選びます。</div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="num">3</div>
+            <div>
+              <span class="step-title">LINEログインチャネルを作成します</span>
+              <div class="step-text">
+                作成したプロバイダーの中で、LINEログインチャネルを作成します。入力項目は次の内容を目安にしてください。<br><br>
+                <b>サービス提供地域：</b>店舗がある国を選びます。日本の店舗なら「日本」を選択します。<br>
+                <b>会社・事業者の所在国・地域：</b>店舗または運営会社の所在地を選びます。日本で運営している場合は「日本」でOKです。<br>
+                <b>チャネル名：</b>お客様に見えても分かりやすい名前にします。例：「店舗名 予約」「店舗名 LINE予約」。<br>
+                <b>チャネル説明：</b>用途を書きます。例：「Web予約時にLINE通知を受け取るためのログインチャネルです。」<br>
+                <b>アプリタイプ：</b>簡単モードでは <b>Webアプリ</b> を選択します。<br>
+                <b>メールアドレス：</b>LINE Developersからのお知らせを受け取れる店舗または運営者のメールアドレスを入力します。<br>
+                <b>プライバシーポリシーURL：</b>用意している場合は予約サイトや店舗サイトのプライバシーポリシーページURLを入力します。未整備なら先にページを用意するのがおすすめです。<br>
+                <b>利用規約URL：</b>用意している場合は予約サイトの利用規約ページURLを入力します。予約、キャンセル、通知、個人情報の扱いが分かる内容にしておくと安心です。<br>
+                <b>LINE開発者契約への同意：</b>内容を確認し、問題なければチェックを入れて作成します。
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="num">4</div>
+            <div>
+              <span class="step-title">チャネルシークレットをコピーします</span>
+              <div class="step-text">作成したLINEログインチャネルの基本設定から、チャネルシークレットを右側に貼り付けます。</div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="num">5</div>
+            <div>
+              <span class="step-title">Messaging APIとWebhookを設定します</span>
+              <div class="step-text">
+                ここでは、LINE通知を送るための準備を、順番どおりに設定します。<br>
+                この順番どおりに進めれば、user_id取得とテスト送信までできます。<br><br>
+
+                <b>① LINE公式アカウントを用意します</b><br>
+                すでに店舗の公式LINEアカウントがある場合は、そのアカウントを使います。<br>
+                まだ無い場合は、先にLINE Official Account Managerで公式LINEアカウントを作成します。<br><br>
+
+                <b>② LINE Official Account ManagerでMessaging APIを有効にします</b><br>
+                LINE Official Account Managerで店舗の公式LINEアカウントを開きます。<br>
+                右上の <b>設定（歯車マーク）</b> を開きます。<br>
+                左メニューの <b>Messaging API</b> を開きます。<br>
+                <b>「Messaging APIを利用する」</b> が表示されている場合は押します。<br>
+                この操作をすると、LINE通知用のMessaging APIが使える状態になります。<br><br>
+
+                <b>③ プロバイダーを選びます</b><br>
+                Messaging APIを有効にする途中で、プロバイダーを選ぶ画面が出る場合があります。<br>
+                店舗用のプロバイダーがある場合はそれを選びます。<br>
+                無い場合は、店舗名または運営会社名で新しく作成します。<br><br>
+
+                <b>④ この管理画面のWebhook URLをコピーします</b><br>
+                右側に <b>あなたのWebhook URLはこれです</b> が表示されています。<br>
+                これは、この予約システムがLINEからの通知を受け取るためのURLです。<br>
+                このURLをコピーします。<br><br>
+
+                <b>⑤ LINE Official Account ManagerにWebhook URLを貼り付けます</b><br>
+                LINE Official Account Managerに戻り、店舗の公式LINEアカウントを開きます。<br>
+                右上の <b>設定（歯車マーク）</b> → 左メニューの <b>Messaging API</b> を開きます。<br>
+                <b>Webhook URL</b> 欄に、④でコピーしたURLを貼り付けます。<br>
+                その後、<b>Webhookの利用</b> をONにします。<br><br>
+
+                <b>⑥ LINE DevelopersでMessaging APIチャネルを開きます</b><br>
+                LINE Developersを開き、③で選んだプロバイダーを開きます。<br>
+                チャネル一覧に <b>Messaging API</b> と書かれたチャネルが表示されます。<br>
+                それを開きます。<br>
+                ※ <b>LINEログイン</b> と書かれたチャネルではありません。通知に使うのは <b>Messaging API</b> です。<br><br>
+
+                <b>⑦ チャネルアクセストークンを発行します</b><br>
+                Messaging APIチャネルの詳細画面で、<b>Messaging API設定</b> タブを開きます。<br>
+                下の方にある <b>チャネルアクセストークン</b> の項目を探します。<br>
+                <b>発行</b> または <b>再発行</b> を押して、長い文字列のアクセストークンを表示します。<br><br>
+
+                <b>⑧ アクセストークンをこの画面に貼り付けます</b><br>
+                表示された長い文字列をコピーして、右側の <b>チャネルアクセストークン（長期）</b> 欄に貼り付けます。<br><br>
+
+                <b>⑨ user_idを取得します</b><br>
+                Webhook URLを設定してONにしたあと、自分のスマホから店舗の公式LINEへ「テスト」と送ります。<br>
+                この管理画面を再読み込みすると、右側の <b>直近で取得したLINE user_id</b> に表示されます。<br><br>
+
+                <b>⑩ LINEテスト送信をします</b><br>
+                表示されたLINE user_idをコピーして、<b>テスト送信先LINE user_id</b> に貼り付けます。<br>
+                <b>LINEテスト送信</b> を押して、スマホにテストメッセージが届けば設定完了です。<br><br>
+
+                <b>注意点</b><br>
+                ・Webhook URLは手入力で作るものではなく、この管理画面に自動表示されるものを使います。<br>
+                ・WebhookをONにしないと、user_idは取得できません。<br>
+                ・LINEログインチャネルとMessaging APIチャネルは別物です。<br>
+                ・アクセストークンがないと、予約完了通知やリマインドをLINEで送れません。<br>
+                ・アクセストークンは外部に漏れないように管理してください。
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="num">6</div>
+            <div>
+              <span class="step-title">保存して通常予約ページでテストします</span>
+              <div class="step-text">簡単モードではLIFF IDは不要です。予約ページ側に「LINEで通知を受け取る」導線を追加して使います。</div>
+            </div>
+          </div>
+
+          <div class="manual">まず店舗に使ってもらうなら、この簡単モードが一番おすすめです。</div>
+        </div>
+
+        
+          <div class="step">
+            <div class="num">7</div>
+            <div>
+              <span class="step-title">テスト送信用のLINE user_idを取得します</span>
+              <div class="step-text">
+                右側に表示されているWebhook URLを、LINE Official Account Managerの「設定 → Messaging API → Webhook URL」に貼り付けます。<br>
+                Webhookの利用をONにしたあと、管理者のスマホから店舗の公式LINEへ「テスト」と送ってください。<br>
+                送信すると、この画面右側の「直近で取得したLINE user_id」に自動で表示されます。
+              </div>
+            </div>
+          </div>
+
+
+        <div id="guide-liff" class="mode-guide">
+          <div class="mode-title">LINE完結モード：LIFF予約＋LINE通知</div>
+          <p class="mode-lead">LINEアプリ内で予約まで完結させる上級者向けモードです。設定項目は多いですが、お客様の体験は一番スムーズです。</p>
+
+          <div class="actions">
+            <a class="btn btn-primary" href="{{DEVELOPERS_URL}}" target="_blank" rel="noopener">1. LINE Developersを開く</a>
+            <button type="button" class="btn-secondary" onclick="copyText('liff-url')">LIFF URLをコピー</button>
+          </div>
+
+          <div class="step">
+            <div class="num">1</div>
+            <div>
+              <span class="step-title">プロバイダーとLINEログインチャネルを作成します</span>
+              <div class="step-text">
+                まだプロバイダーがない場合は、店舗名または運営会社名で新しく作成してください。その中でLINEログインチャネルを作成します。<br><br>
+                <b>サービス提供地域：</b>店舗がある国を選びます。日本の店舗なら「日本」を選択します。<br>
+                <b>会社・事業者の所在国・地域：</b>店舗または運営会社の所在地を選びます。<br>
+                <b>チャネル名：</b>例：「店舗名 LINE予約」。<br>
+                <b>チャネル説明：</b>例：「LINEアプリ内で予約するためのログインチャネルです。」<br>
+                <b>アプリタイプ：</b><b>Webアプリ</b> を選択します。<br>
+                <b>メールアドレス：</b>店舗または運営者のメールアドレスを入力します。<br>
+                <b>プライバシーポリシーURL・利用規約URL：</b>用意しているページURLを入力します。未整備の場合は先にページを用意するのがおすすめです。<br>
+                <b>LINE開発者契約への同意：</b>内容を確認し、問題なければチェックします。
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="num">2</div>
+            <div>
+              <span class="step-title">LIFFアプリを追加します</span>
+              <div class="step-text">LINEログインチャネルのLIFFタブで追加します。サイズは <b>Full</b>、Scopeは <b>profile</b>、ボットリンク機能は <b>ON</b> にします。</div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="num">3</div>
+            <div>
+              <span class="step-title">LIFF URLに下のURLを貼り付けます</span>
+              <div class="step-text">「LIFF URLをコピー」ボタンを押して、LINE DevelopersのLIFF URL欄に貼ります。</div>
+              <div id="liff-url" class="copybox">{{LIFF_URL}}</div>
+              <div class="notice">注意：このURLが localhost の場合、LINEアプリからは開けません。本番またはngrokの https URL を使ってください。</div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="num">4</div>
+            <div>
+              <span class="step-title">LIFF IDを右側に貼り付けます</span>
+              <div class="step-text">例：<b>2009893827-D6LOyXp5</b> のような文字列です。</div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="num">5</div>
+            <div>
+              <span class="step-title">Messaging API情報も保存します</span>
+              <div class="step-text">予約完了通知やリマインドを送るため、長期アクセストークンとチャネルシークレットを右側に貼り付けます。</div>
+            </div>
+          </div>
+
+          <div class="manual">公式LINEの予約ボタンには、保存後に「LINE予約入口を開く」のURLを設定します。</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>保存する情報</h2>
+        {{SAVED_MESSAGE}}
+
+        <div class="status">
+          <span class="pill {{LIFF_PILL_CLASS}}">LIFF ID：{{LIFF_STATUS}}</span>
+          <span class="pill {{TOKEN_PILL_CLASS}}">アクセストークン：{{TOKEN_STATUS}}</span>
+          <span class="pill {{SECRET_PILL_CLASS}}">シークレット：{{SECRET_STATUS}}</span>
+        </div>
+
+        <form method="post">
+          <label>LINE連携モード</label>
+          <select id="line_mode_select" name="line_mode">
+            <option value="off" {{MODE_OFF_SELECTED}}>利用しない（メール中心）</option>
+            <option value="login" {{MODE_LOGIN_SELECTED}}>簡単モード：Web予約＋LINE通知</option>
+            <option value="liff" {{MODE_LIFF_SELECTED}}>LINE完結モード：LIFF予約＋LINE通知</option>
+          </select>
+          <div class="hint">まずは簡単モード、LINE内で完結させたい店舗だけLINE完結モードを選びます。</div>
+
+          <label>LIFF ID</label>
+          <input name="line_liff_id" value="{{LIFF_ID}}" placeholder="例：2009893827-D6LOyXp5">
+
+          <label>チャネルアクセストークン（長期）</label>
+          <textarea name="line_channel_access_token" placeholder="Messaging API設定にある長期アクセストークン">{{ACCESS_TOKEN}}</textarea>
+          <div class="hint">予約完了通知やリマインドLINEを送るために使います。</div>
+
+          <label>チャネルシークレット</label>
+          <input name="line_channel_secret" value="{{CHANNEL_SECRET}}" placeholder="Messaging APIチャネルのチャネルシークレット">
+
+          <label>公式LINE URL（任意）</label>
+          <input name="line_official_url" value="{{OFFICIAL_URL}}" placeholder="例：https://lin.ee/xxxx">
+
+          <div class="actions">
+            
+          <div class="form-section">
+            
+          <div class="form-section">
+            <label>あなたのWebhook URLはこれです</label>
+            <div class="copybox" style="display:flex;gap:10px;align-items:center;justify-content:space-between;">
+              <span id="webhook-url-text">__WEBHOOK_URL__</span>
+              <button type="button" class="btn-secondary" onclick="copyWebhookUrl()" style="white-space:nowrap;">コピー</button>
+            </div>
+            <p class="hint"><b>このURLをそのまま貼り付ければOKです。</b><br>
+              このURLをそのままコピーして、LINEのWebhook URL欄に貼り付けて保存してください。<br>
+              後の手順で、LINE Official Account ManagerのWebhook URL欄に貼り付けます。
+            </p>
+          </div>
+
+            <label>テスト送信先LINE user_id</label>
+            <input type="text" name="test_line_user_id" placeholder="例：Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" form="line-test-form">
+            <p class="hint">管理者やテスト用ユーザーのLINE user_idを入力して、保存済みアクセストークンで送信テストできます。</p>
+          </div>
+
+          <form id="line-test-form" method="post" action="/admin/{shop_id}/line-settings/test" style="margin:0;"></form>
+
+<button type="submit" class="btn-primary">保存する</button>
+          <button type="submit" form="line-test-form" class="btn-secondary">LINEテスト送信</button>
+            <a class="btn btn-secondary" href="/shop/{{SHOP_ID}}/line-reserve" target="_blank" rel="noopener">LINE予約入口を開く</a>
+            <a class="btn btn-secondary" href="/admin/{{SHOP_ID}}">管理画面へ戻る</a>
+          </div>
+        </form>
+
+        <div class="checklist">
+          <b>保存前チェック</b>
+          <ul>
+            <li>LINEログインチャネルでLIFFを作った</li>
+            <li>LIFF URLに左のURLを貼った</li>
+            <li>Scopeは profile を選んだ</li>
+            <li>LIFF IDを右側に貼った</li>
+            <li>Messaging APIの長期アクセストークンを貼った</li>
+          </ul>
+        </div>
+
+        <p class="mini">
+          ここに保存した情報は、この店舗専用です。他店舗の公式LINEとは混ざりません。
+        </p>
+      </section>
+    </div>
+  </div>
+
+<script>
+function copyText(id) {
+  const el = document.getElementById(id);
+  const text = el ? el.innerText.trim() : "";
+  if (!text) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() {
+      alert("コピーしました");
+    }).catch(function() {
+      fallbackCopy(text);
+    });
+  } else {
+    fallbackCopy(text);
+  }
+}
+function fallbackCopy(text) {
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand("copy");
+  document.body.removeChild(ta);
+  alert("コピーしました");
+}
+function updateModeGuide() {
+  const select = document.getElementById("line_mode_select");
+  const mode = select ? select.value : "off";
+  document.querySelectorAll(".mode-guide").forEach(function(el) {
+    el.classList.remove("is-active");
+  });
+  const target = document.getElementById("guide-" + mode);
+  if (target) {
+    target.classList.add("is-active");
+  } else {
+    const off = document.getElementById("guide-off");
+    if (off) off.classList.add("is-active");
+  }
+}
+document.addEventListener("DOMContentLoaded", function() {
+  updateModeGuide();
+  const select = document.getElementById("line_mode_select");
+  if (select) {
+    select.addEventListener("change", updateModeGuide);
+  }
+});
+</script>
+
+<script>
+function copyWebhookUrl() {
+  const el = document.getElementById("webhook-url-text");
+  if (!el) return;
+  const url = el.innerText.trim();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(function() {
+      alert("Webhook URLをコピーしました");
+    }).catch(function() {
+      fallbackCopyWebhookUrl(url);
+    });
+  } else {
+    fallbackCopyWebhookUrl(url);
+  }
+}
+function fallbackCopyWebhookUrl(url) {
+  const input = document.createElement("textarea");
+  input.value = url;
+  document.body.appendChild(input);
+  input.select();
+  document.execCommand("copy");
+  document.body.removeChild(input);
+  alert("Webhook URLをコピーしました");
+}
+</script>
+
+
+<script>
+function setTestLineUserId(userId) {
+  const input = document.querySelector('input[name="test_line_user_id"]');
+  if (input) {
+    input.value = userId;
+    input.focus();
+  }
+}
+</script>
+
+</body>
+</html>
+"""
+
+    replacements = {
+        "{{SHOP_NAME}}": shop_name,
+        "{{DEVELOPERS_URL}}": developers_url,
+        "{{LIFF_URL}}": liff_endpoint_url,
+        "{{SAVED_MESSAGE}}": f'<div class="saved">{saved}</div>' if saved else "",
+        "{{MODE_OFF_SELECTED}}": "selected" if line_mode == "off" else "",
+        "{{MODE_LOGIN_SELECTED}}": "selected" if line_mode == "login" else "",
+        "{{MODE_LIFF_SELECTED}}": "selected" if line_mode == "liff" else "",
+        "{{LIFF_PILL_CLASS}}": "ok" if liff_id else "",
+        "{{LIFF_STATUS}}": "設定済み" if liff_id else "未設定",
+        "{{TOKEN_PILL_CLASS}}": "ok" if channel_access_token else "",
+        "{{TOKEN_STATUS}}": "設定済み" if channel_access_token else "未設定",
+        "{{SECRET_PILL_CLASS}}": "ok" if channel_secret else "",
+        "{{SECRET_STATUS}}": "設定済み" if channel_secret else "未設定",
+        "{{LIFF_ID}}": liff_id,
+        "{{ACCESS_TOKEN}}": channel_access_token,
+        "{{CHANNEL_SECRET}}": channel_secret,
+        "{{OFFICIAL_URL}}": official_url,
+        "{{SHOP_ID}}": shop_id,
+    }
+    for key, value in replacements.items():
+        html = html.replace(key, value)
+
+    return HTMLResponse(html.replace("__WEBHOOK_URL__", webhook_url).replace("__RECENT_LINE_USERS__", recent_line_user_options_html).replace("{shop_id}", shop_id))
+@app.post("/admin/{shop_id}/line-settings")
+async def save_line_settings(request: Request, shop_id: str):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+
+    form = await request.form()
+    line_mode = normalize_line_mode(form.get("line_mode"))
+    line_liff_id = str(form.get("line_liff_id") or "").strip()
+    line_channel_access_token = str(form.get("line_channel_access_token") or "").strip()
+    line_channel_secret = str(form.get("line_channel_secret") or "").strip()
+    line_official_url = str(form.get("line_official_url") or "").strip()
+
+    with get_connection() as conn:
+        ensure_line_setting_columns(conn)
+        conn.execute(
+            """
+            UPDATE shops
+            SET
+                line_mode = ?,
+                line_liff_id = ?,
+                line_channel_access_token = ?,
+                line_channel_secret = ?,
+                line_official_url = ?,
+                line_webhook_enabled = 1
+            WHERE shop_id = ?
+            """,
+            (
+                line_mode,
+                line_liff_id,
+                line_channel_access_token,
+                line_channel_secret,
+                line_official_url,
+                str(shop_id or "").strip(),
+            ),
+        )
+        conn.commit()
+
+    return RedirectResponse(
+        f"/admin/{shop_id}/line-settings?saved=LINE設定を保存しました",
+        status_code=303,
+    )
+
+
+
+
+
+
+
+
+
+
+
+
+@app.post("/line/webhook/{shop_id}/")
+@app.post("/line/webhook/{shop_id}")
+async def line_webhook_receive(shop_id: str, request: Request):
+    try:
+        payload = await request.json()
+    except Exception as exc:
+        print("LINE webhook json error:", repr(exc))
+        payload = {}
+
+    print("===== LINE WEBHOOK DEBUG =====")
+    print("shop_id:", shop_id)
+    print("body:", payload)
+    print("==============================")
+
+    saved_count = 0
+    sent_count = 0
+
+    settings = get_shop_line_settings(shop_id)
+    access_token = str(settings.get("line_channel_access_token") or "").strip()
+
+    events = payload.get("events", []) if isinstance(payload, dict) else []
+    if not isinstance(events, list):
+        events = []
+
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+
+        source = event.get("source") or {}
+        if not isinstance(source, dict):
+            source = {}
+
+        user_id = str(source.get("userId") or "").strip()
+        if not user_id:
+            continue
+
+        message = event.get("message") or {}
+        message_text = ""
+        if isinstance(message, dict):
+            message_text = str(message.get("text") or "").strip()
+
+        save_line_webhook_user(
+            shop_id,
+            user_id,
+            event_type=str(event.get("type") or ""),
+            message_text=message_text,
+        )
+        saved_count += 1
+        print("LINE user_id saved:", shop_id, user_id)
+
+        if str(event.get("type") or "") == "message" and message_text:
+            normalized_text = message_text.replace(" ", "").replace("　", "").strip()
+
+            if "予約" in normalized_text:
+                send_result = send_line_reservation_button(
+                    access_token=access_token,
+                    user_id=user_id,
+                    shop_id=shop_id,
+                )
+            else:
+                reserve_url = build_line_reservation_url(shop_id, user_id)
+                send_result = send_line_message(
+                    access_token=access_token,
+                    user_id=user_id,
+                    message=(
+                        "LINE連携は正常に動いています。\n"
+                        "予約する場合は「予約」と送信してください。\n\n"
+                        f"予約ページ：{reserve_url}"
+                    ),
+                )
+
+            if send_result.get("ok"):
+                sent_count += 1
+            print("LINE reply result:", send_result)
+
+    return JSONResponse(
+        {"ok": True, "saved_count": saved_count, "sent_count": sent_count},
+        status_code=200,
+    )
+
+
+@app.post("/line/webhook/{shop_id}")
+async def line_webhook_receive(shop_id: str, request: Request):
+    try:
+        payload = await request.json()
+    except Exception as exc:
+        print("LINE webhook json error:", repr(exc))
+        payload = {}
+
+    print("===== LINE WEBHOOK DEBUG =====")
+    print("shop_id:", shop_id)
+    print("body:", payload)
+    print("==============================")
+
+    saved_count = 0
+    sent_count = 0
+
+    settings = get_shop_line_settings(shop_id)
+    access_token = str(settings.get("line_channel_access_token") or "").strip()
+
+    events = payload.get("events", []) if isinstance(payload, dict) else []
+    if not isinstance(events, list):
+        events = []
+
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+
+        source = event.get("source") or {}
+        if not isinstance(source, dict):
+            source = {}
+
+        user_id = str(source.get("userId") or "").strip()
+        if not user_id:
+            continue
+
+        message = event.get("message") or {}
+        message_text = ""
+        if isinstance(message, dict):
+            message_text = str(message.get("text") or "").strip()
+
+        save_line_webhook_user(
+            shop_id,
+            user_id,
+            event_type=str(event.get("type") or ""),
+            message_text=message_text,
+        )
+        saved_count += 1
+        print("LINE user_id saved:", shop_id, user_id)
+
+        # テキストメッセージを受けたら確認返信する
+        if str(event.get("type") or "") == "message" and message_text:
+            send_result = send_line_message(
+                access_token=access_token,
+                user_id=user_id,
+                message="テスト送信OKです。LINE連携は正常に動いています。",
+            )
+            if send_result.get("ok"):
+                sent_count += 1
+            print("LINE auto reply result:", send_result)
+
+    return JSONResponse(
+        {"ok": True, "saved_count": saved_count, "sent_count": sent_count},
+        status_code=200,
+    )
+
+
+@app.post("/line/webhook/{shop_id}")
+async def line_webhook(shop_id: str, request: Request):
+    """LINEからのWebhookを受け取り、送信者のLINE user_idを保存します。"""
+    try:
+        body = await request.json()
+    except Exception as exc:
+        print("LINE Webhook JSON parse error:", repr(exc))
+        body = {}
+
+    print("====== LINE WEBHOOK DEBUG ======")
+    print("shop_id:", shop_id)
+    print("body:", body)
+    print("================================")
+
+    saved_count = 0
+    events = body.get("events", []) if isinstance(body, dict) else []
+    if not isinstance(events, list):
+        events = []
+
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+
+        print("LINE Webhook event:", event)
+
+        source = event.get("source") or {}
+        if not isinstance(source, dict):
+            source = {}
+
+        user_id = str(source.get("userId") or "").strip()
+        print("LINE Webhook source:", source)
+        print("LINE Webhook user_id:", user_id)
+
+        if not user_id:
+            continue
+
+        message = event.get("message") or {}
+        message_text = ""
+        if isinstance(message, dict):
+            message_text = str(message.get("text") or "").strip()
+
+        save_line_webhook_user(
+            shop_id,
+            user_id,
+            event_type=str(event.get("type") or ""),
+            message_text=message_text,
+        )
+        saved_count += 1
+        print("LINE user_id saved:", shop_id, user_id)
+
+    return JSONResponse({"ok": True, "saved_count": saved_count}, status_code=200)
+
+@app.post("/admin/{shop_id}/line-settings/test")
+def admin_line_settings_test_send(
+    request: Request,
+    shop_id: str,
+    test_line_user_id: str = Form(""),
+):
+    login_redirect = require_store_login(request, shop_id)
+    if login_redirect:
+        return login_redirect
+
+    settings = get_shop_line_settings(shop_id)
+    access_token = str(settings.get("line_channel_access_token") or "").strip()
+    test_line_user_id = str(test_line_user_id or "").strip()
+
+    if not access_token:
+        request.session["flash_error"] = "チャネルアクセストークンが未設定です。保存してからテストしてください。"
+        return RedirectResponse(f"/admin/{shop_id}/line-settings", status_code=303)
+
+    if not test_line_user_id:
+        request.session["flash_error"] = "テスト送信先のLINE user_idを入力してください。"
+        return RedirectResponse(f"/admin/{shop_id}/line-settings", status_code=303)
+
+    shop = get_shop(shop_id) or {}
+    shop_name = str(shop.get("shop_name") or shop_id)
+    message = (
+        f"【{shop_name}】LINEテスト送信です。\\n"
+        "このメッセージが届いていれば、LINE通知設定は有効です。"
+    )
+
+    result = send_line_message(access_token, test_line_user_id, message)
+    if result.get("ok"):
+        request.session["flash_success"] = "LINEテスト送信に成功しました。"
+    else:
+        reason = result.get("reason") or result.get("response") or "送信に失敗しました。"
+        request.session["flash_error"] = f"LINEテスト送信に失敗しました：{reason}"
+
+    return RedirectResponse(f"/admin/{shop_id}/line-settings", status_code=303)
+
+
+
+@app.get("/admin/{shop_id}/customers/{customer_id}/line", response_class=HTMLResponse)
+def admin_customer_line_setting_page(request: Request, shop_id: str, customer_id: int):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+
+    customer = get_customer_by_id(shop_id, customer_id)
+    if customer is None:
+        raise HTTPException(status_code=404, detail="顧客が見つかりません")
+
+    line_user_id = str(customer.get("line_user_id") or "")
+    customer_name = str(customer.get("name") or "")
+    saved = str(request.query_params.get("saved") or "")
+
+    return HTMLResponse(f"""
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LINE ID設定</title>
+  <style>
+    body {{
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f6f7fb;
+      color: #111827;
+    }}
+    .wrap {{ max-width: 760px; margin: 24px auto; padding: 16px; }}
+    .hero {{
+      border-radius: 24px;
+      padding: 24px;
+      color: #fff;
+      background: linear-gradient(135deg, #16a34a, #22c55e);
+      box-shadow: 0 16px 40px rgba(22, 163, 74, .22);
+      margin-bottom: 18px;
+    }}
+    .hero h1 {{ margin: 0 0 8px; font-size: 28px; }}
+    .hero p {{ margin: 0; opacity: .95; }}
+    .card {{
+      background: #fff;
+      border-radius: 22px;
+      padding: 22px;
+      box-shadow: 0 12px 36px rgba(15, 23, 42, .08);
+    }}
+    label {{ display: block; font-weight: 800; margin-bottom: 8px; }}
+    input {{
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #d1d5db;
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 16px;
+    }}
+    .hint {{ margin-top: 8px; color: #6b7280; font-size: 13px; line-height: 1.6; }}
+    .actions {{ display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }}
+    button, a.btn {{
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font-weight: 800;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }}
+    button {{ color: #fff; background: #16a34a; }}
+    a.btn {{ color: #374151; background: #eef2f7; }}
+    .saved {{
+      background: #dcfce7;
+      color: #166534;
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      font-weight: 800;
+    }}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <h1>LINE ID設定</h1>
+      <p>{customer_name} 様のLINE user_idを登録します。</p>
+    </div>
+
+    <div class="card">
+      {f'<div class="saved">{saved}</div>' if saved else ''}
+      <form method="post">
+        <label>LINE user_id</label>
+        <input name="line_user_id" value="{line_user_id}" placeholder="Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+        <div class="hint">
+          お客様が公式LINEにメッセージを送った時、Webhookログに出る <strong>LINE user_id</strong> を貼り付けて保存します。
+        </div>
+        <div class="actions">
+          <button type="submit">保存する</button>
+          <a class="btn" href="/admin/{shop_id}/customers">顧客一覧に戻る</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
+""")
+
+
+@app.post("/admin/{shop_id}/customers/{customer_id}/line")
+async def admin_customer_line_setting_save(request: Request, shop_id: str, customer_id: int):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+
+    customer = get_customer_by_id(shop_id, customer_id)
+    if customer is None:
+        raise HTTPException(status_code=404, detail="顧客が見つかりません")
+
+    form = await request.form()
+    line_user_id = str(form.get("line_user_id") or "").strip()
+    update_customer_line_user_id(shop_id, customer_id, line_user_id)
+
+    return RedirectResponse(
+        f"/admin/{shop_id}/customers/{customer_id}/line?saved=LINE IDを保存しました",
+        status_code=303,
+    )
+
+
 @app.get("/admin/{shop_id}/customers/{customer_id}", response_class=HTMLResponse)
 def admin_customer_detail_page(request: Request, shop_id: str, customer_id: int, error_message: str = ""):
     redirect = require_store_login(request, shop_id)
@@ -3450,6 +4961,7 @@ def admin_create_reservation(
     menu_id: int = Form(...),
     reservation_date: str = Form(...),
     start_time: str = Form(...),
+    line_user_id: str = Form(""),
 ):
     redirect = require_store_login(request, shop_id)
     if redirect:
@@ -3505,7 +5017,7 @@ def admin_create_reservation(
         target_label=str(customer.get("name") or ""),
         detail={"status": str(reservation.get("status") or "")},
     )
-    return RedirectResponse(f"/admin/{shop_id}", status_code=303)
+    return RedirectResponse(f"/admin/{shop_id}/customers/{customer_id}/line?saved=LINE IDを保存しました", status_code=303)
 
 
 @app.post("/admin/{shop_id}/reservations/{reservation_id}/done")
@@ -3525,7 +5037,7 @@ def admin_mark_reservation_done(request: Request, shop_id: str, reservation_id: 
         target_id=reservation_id,
         detail={"status": "来店済み"},
     )
-    return RedirectResponse(f"/admin/{shop_id}", status_code=303)
+    return RedirectResponse(f"/admin/{shop_id}/customers/{customer_id}/line?saved=LINE IDを保存しました", status_code=303)
 
 
 @app.post("/admin/{shop_id}/reservations/{reservation_id}/cancel")
@@ -3545,7 +5057,7 @@ def admin_mark_reservation_cancel(request: Request, shop_id: str, reservation_id
         target_id=reservation_id,
         detail={"status": "キャンセル"},
     )
-    return RedirectResponse(f"/admin/{shop_id}", status_code=303)
+    return RedirectResponse(f"/admin/{shop_id}/customers/{customer_id}/line?saved=LINE IDを保存しました", status_code=303)
 
 
 @app.get("/admin/{shop_id}/booking-page/editor", response_class=HTMLResponse)
@@ -3612,6 +5124,160 @@ def shop_page(request: Request, shop_id: str):
         name="shop/index.html",
         context=context,
     )
+
+
+
+@app.get("/shop/{shop_id}/line-reserve", response_class=HTMLResponse)
+def shop_line_reserve_entry(request: Request, shop_id: str):
+    """
+    公式LINEの「予約する」ボタンから開く入口ページ。
+    LIFFでLINE user_idを取得して、セッションに保存してから予約ページへ移動します。
+    """
+    shop = get_shop(shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+
+    line_settings = get_shop_line_settings(shop_id)
+    line_mode = normalize_line_mode(line_settings.get("line_mode"))
+    if line_mode != "liff":
+        return RedirectResponse(f"/shop/{shop_id}", status_code=303)
+    liff_id = str(line_settings.get("line_liff_id") or "").strip()
+
+    if not liff_id:
+        return HTMLResponse(f"""
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LINE予約設定</title>
+  <style>
+    body {{ margin:0; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:#f6f7fb; color:#111827; }}
+    .wrap {{ max-width:720px; margin:24px auto; padding:18px; }}
+    .card {{ background:#fff; border-radius:22px; padding:22px; box-shadow:0 14px 36px rgba(15,23,42,.08); }}
+    h1 {{ margin:0 0 12px; font-size:24px; }}
+    p {{ line-height:1.7; color:#4b5563; }}
+    code {{ background:#eef2f7; border-radius:8px; padding:3px 6px; }}
+    a {{ color:#0f766e; font-weight:700; }}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>LIFF IDが未設定です</h1>
+      <p>管理画面の <strong>LINE連携設定</strong> で <code>LIFF ID</code> を保存してください。</p>
+      <p>設定後、公式LINEの「予約する」ボタンにはこのURLを設定します。</p>
+      <p><code>/shop/{shop_id}/line-reserve</code></p>
+      <p><a href="/shop/{shop_id}">通常の予約ページへ進む</a></p>
+    </div>
+  </div>
+</body>
+</html>
+""")
+
+    return HTMLResponse(f"""
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LINE予約へ進む</title>
+  <style>
+    body {{ margin:0; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:#f6f7fb; color:#111827; }}
+    .wrap {{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:18px; box-sizing:border-box; }}
+    .card {{ width:min(520px,100%); background:#fff; border-radius:24px; padding:26px; text-align:center; box-shadow:0 18px 44px rgba(15,23,42,.10); }}
+    .badge {{ display:inline-flex; align-items:center; justify-content:center; width:62px; height:62px; border-radius:50%; background:#dcfce7; color:#16a34a; font-size:30px; margin-bottom:12px; }}
+    h1 {{ margin:0 0 10px; font-size:24px; }}
+    p {{ color:#6b7280; line-height:1.7; }}
+    .error {{ display:none; margin-top:14px; padding:12px; border-radius:14px; background:#fef2f2; color:#991b1b; text-align:left; font-size:14px; }}
+    a {{ color:#0f766e; font-weight:700; }}
+  </style>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="badge">✓</div>
+      <h1>LINE予約を準備しています</h1>
+      <p>このまま予約ページへ進みます。</p>
+      <div id="error" class="error"></div>
+    </div>
+  </div>
+
+<script>
+(async function() {{
+  const errorBox = document.getElementById("error");
+
+  function showError(message) {{
+    errorBox.style.display = "block";
+    errorBox.innerHTML = message + '<br><br><a href="/shop/{shop_id}">通常の予約ページへ進む</a>';
+  }}
+
+  try {{
+    await liff.init({{ liffId: "{liff_id}" }});
+
+    if (!liff.isLoggedIn()) {{
+      liff.login({{ redirectUri: window.location.href }});
+      return;
+    }}
+
+    const profile = await liff.getProfile();
+    const lineUserId = profile && profile.userId ? profile.userId : "";
+
+    if (!lineUserId) {{
+      showError("LINE user_idを取得できませんでした。");
+      return;
+    }}
+
+    const response = await fetch("/shop/{shop_id}/line-session", {{
+      method: "POST",
+      headers: {{
+        "Content-Type": "application/json"
+      }},
+      body: JSON.stringify({{
+        line_user_id: lineUserId,
+        display_name: profile.displayName || ""
+      }})
+    }});
+
+    if (!response.ok) {{
+      showError("LINE情報の保存に失敗しました。");
+      return;
+    }}
+
+    window.location.href = "/shop/{shop_id}";
+  }} catch (error) {{
+    showError("LIFF連携でエラーが発生しました: " + String(error));
+  }}
+}})();
+</script>
+</body>
+</html>
+""")
+
+
+@app.post("/shop/{shop_id}/line-session")
+async def shop_line_session(request: Request, shop_id: str):
+    """
+    LIFFで取得したLINE user_idを一時保存します。
+    予約フォーム送信時に、この値を顧客へ紐づけます。
+    """
+    shop = get_shop(shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+
+    body = await request.json()
+    line_user_id = str((body or {}).get("line_user_id") or "").strip()
+    display_name = str((body or {}).get("display_name") or "").strip()
+
+    if not line_user_id:
+        raise HTTPException(status_code=400, detail="LINE user_idが空です")
+
+    request.session["line_user_id"] = line_user_id
+    request.session["line_display_name"] = display_name
+    request.session["line_shop_id"] = shop_id
+
+    return JSONResponse({"ok": True})
 
 
 @app.post("/shop/{shop_id}/confirm", response_class=HTMLResponse)
@@ -3750,6 +5416,13 @@ def shop_reserve(
     updated_customer = update_customer_contact(shop_id, int(customer['id']), customer_name, phone, email)
     if updated_customer is not None:
         customer = updated_customer
+    resolved_line_user_id = (
+        str(line_user_id or "").strip()
+        or str(request.session.get("line_user_id") or "").strip()
+    )
+    if resolved_line_user_id:
+        update_customer_line_user_id(shop_id, int(customer["id"]), resolved_line_user_id)
+        customer = get_customer_by_id(shop_id, int(customer["id"])) or customer
     start_dt = datetime.strptime(start_time, "%H:%M")
     duration = int(menu.get("duration", 60))
     end_time = (start_dt + timedelta(minutes=duration)).strftime("%H:%M")
@@ -3784,6 +5457,15 @@ def shop_reserve(
     )
     if email and receive_email == '1':
         _send_reservation_mail(to_email=email, shop=shop, reservation_date=reservation_date, start_time=start_time, reply_to_email=str(shop.get('reply_to_email') or ''))
+    if resolved_line_user_id:
+        line_settings = get_shop_line_settings(shop_id)
+        access_token = str(line_settings.get("line_channel_access_token") or "").strip()
+        if access_token:
+            send_line_message(
+                access_token,
+                resolved_line_user_id,
+                build_reservation_line_message(shop, reservation),
+            )
     return templates.TemplateResponse(
         request=request,
         name="shop/complete.html",
@@ -5211,3 +6893,55 @@ async def audit_api_force_cancel(request: Request):
         )
         return JSONResponse({"item": after})
     raise HTTPException(status_code=400, detail="target_type は shop または member を指定してください")
+
+async def line_settings(request: Request, shop_id: str):
+    with get_connection() as conn:
+        shop = conn.execute(
+            "SELECT * FROM shops WHERE shop_id = ? LIMIT 1",
+            (shop_id,)
+        ).fetchone()
+
+    if not shop:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+
+    return templates.TemplateResponse("admin/line_settings.html", {
+        "request": request,
+        "shop": shop,
+        "shop_id": shop_id,
+    })
+
+
+async def save_line_settings(request: Request, shop_id: str):
+    form = await request.form()
+
+    with get_connection() as conn:
+        shop = conn.execute(
+            "SELECT shop_id FROM shops WHERE shop_id = ? LIMIT 1",
+            (shop_id,)
+        ).fetchone()
+
+        if not shop:
+            raise HTTPException(status_code=404, detail="店舗が見つかりません")
+
+        conn.execute("""
+            UPDATE shops SET
+                line_mode = ?,
+                line_channel_access_token = ?,
+                line_channel_secret = ?,
+                line_liff_id = ?,
+                line_official_url = ?,
+                line_webhook_enabled = ?
+            WHERE shop_id = ?
+        """, (
+            form.get("line_mode") or "off",
+            form.get("line_channel_access_token") or "",
+            form.get("line_channel_secret") or "",
+            form.get("line_liff_id") or "",
+            form.get("line_official_url") or "",
+            1 if form.get("line_webhook_enabled") else 0,
+            shop_id,
+        ))
+        conn.commit()
+
+    return RedirectResponse(f"/admin/{shop_id}/line-settings", status_code=303)
+
