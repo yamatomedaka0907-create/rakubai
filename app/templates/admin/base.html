@@ -173,6 +173,12 @@
             <span class="nav-label">顧客管理</span>
           </span>
         </a>
+        <a href="/admin/{{ shop_id }}/analysis" class="{% if active_page == 'analysis' %}active{% endif %}">
+          <span class="nav-link-main">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5"/><path d="M12 16V8"/><path d="M16 16v-7"/></svg>
+            <span class="nav-label">解析ツール</span>
+          </span>
+        </a>
         <a href="/admin/{{ shop_id }}/staff-info" class="{% if active_page == 'staff_info' %}active{% endif %}">
           <span class="nav-link-main">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-1.5A3.5 3.5 0 0 0 12.5 16h-5A3.5 3.5 0 0 0 4 19.5V21"/><circle cx="10" cy="8" r="4"/><path d="M18 8h3M19.5 6.5v3"/></svg>

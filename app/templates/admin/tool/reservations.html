@@ -103,7 +103,7 @@
         <div class="tool-field full"><label class="tool-label">メニュー</label><select class="tool-input" name="menu_id" required><option value="">メニューを選んでください</option>{% for menu in menus %}<option value="{{ menu.id }}" data-staff-menu-ids="{% for staff in staff_list if not staff.menu_ids or menu.id in staff.menu_ids %}{{ staff.id }}{% if not loop.last %},{% endif %}{% endfor %}">{{ menu.name }}（{{ menu.duration }}分 / ¥{{ menu.price }}）</option>{% endfor %}</select></div>
         <div class="tool-field"><label class="tool-label">日付</label><input class="tool-input" type="date" name="reservation_date" value="{{ today }}" required></div>
         <div class="tool-field"><label class="tool-label">開始時間</label><input class="tool-input" type="time" name="start_time" required></div>
-        <div class="tool-field"><label class="tool-label">流入経路</label><select class="tool-input" name="source" required><option value="phone" selected>電話</option><option value="store">店頭</option><option value="line">LINE</option><option value="google">Google検索</option><option value="web">WEB</option></select></div>
+        <div class="tool-field"><label class="tool-label">流入経路</label><select class="tool-input" name="source" required><option value="admin" selected>管理画面</option><option value="line">LINE</option><option value="web">WEB</option><option value="google">Google検索</option><option value="phone">電話</option><option value="store">店頭</option></select></div>
       </div>
       <div class="tool-actions with-top-gap"><button class="tool-btn is-primary" type="submit">予約を登録する</button></div>
     </form>

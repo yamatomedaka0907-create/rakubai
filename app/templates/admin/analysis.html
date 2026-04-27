@@ -1,0 +1,63 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h2>解析ツール</h2>
+    <span class="badge">売上・予約流入</span>
+  </div>
+  <p class="section-note">予約数、売上、リピート率、流入経路を確認できます。</p>
+</div>
+
+<div class="stats-grid" style="margin-top:18px;">
+  <div class="stat-card"><div class="stat-label">予約数</div><div class="stat-value">{{ analysis_summary.reservation_count }}</div><div class="stat-note">キャンセル除外</div></div>
+  <div class="stat-card"><div class="stat-label">売上</div><div class="stat-value">¥{{ analysis_summary.total_sales }}</div><div class="stat-note">来店済み分</div></div>
+  <div class="stat-card"><div class="stat-label">リピート率</div><div class="stat-value">{{ analysis_summary.repeat_rate }}%</div><div class="stat-note">2回以上予約した顧客</div></div>
+  <div class="stat-card"><div class="stat-label">来店済み</div><div class="stat-value">{{ analysis_summary.completed_count }}</div><div class="stat-note">完了予約</div></div>
+</div>
+
+<div class="card" style="margin-top:18px;">
+  <div class="card-header">
+    <h2>予約流入</h2>
+    <span class="badge">経路別</span>
+  </div>
+  {% if source_summary %}
+  <div style="display:grid;gap:12px;">
+    {% for item in source_summary %}
+    <div style="border:1px solid #e5e7eb;border-radius:16px;padding:14px 16px;background:#fff;">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;">
+        <strong>{{ item.label }}</strong>
+        <span>{{ item.count }}件 / ¥{{ item.sales }}</span>
+      </div>
+      <div style="height:10px;background:#eef2f7;border-radius:999px;overflow:hidden;margin-top:10px;">
+        <div style="width:{{ item.percent }}%;height:100%;background:var(--primary);border-radius:999px;"></div>
+      </div>
+      <div class="section-note" style="margin-top:6px;">{{ item.percent }}%</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty">まだ予約データがありません。</p>
+  {% endif %}
+</div>
+
+<div class="card" style="margin-top:18px;">
+  <div class="card-header">
+    <h2>月別サマリー</h2>
+    <span class="badge">直近6ヶ月</span>
+  </div>
+  {% if monthly_summary %}
+  <div style="overflow-x:auto;">
+    <table>
+      <thead><tr><th>月</th><th>予約数</th><th>売上</th></tr></thead>
+      <tbody>
+        {% for item in monthly_summary %}
+        <tr><td>{{ item.month }}</td><td>{{ item.count }}件</td><td>¥{{ item.sales }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">まだ集計できる予約がありません。</p>
+  {% endif %}
+</div>
+{% endblock %}

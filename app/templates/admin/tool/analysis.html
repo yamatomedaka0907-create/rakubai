@@ -1,0 +1,71 @@
+{% extends "admin/tool/base.html" %}
+{% block page_title %}解析ツール{% endblock %}
+{% block page_subtitle %}売上・予約数・リピート率・予約流入を確認できます。{% endblock %}
+{% block content %}
+<section class="tool-panel">
+  <div class="tool-panel-head is-wide">
+    <div>
+      <h2>売上・予約サマリー</h2>
+      <div class="tool-note">キャンセルを除外した予約データを集計しています。</div>
+    </div>
+  </div>
+  <div class="tool-kpi-grid">
+    <div class="tool-kpi-card"><div class="tool-kpi-title">予約数</div><div class="tool-kpi-number">{{ analysis_summary.reservation_count }}</div><div class="tool-kpi-meta">キャンセル除外</div></div>
+    <div class="tool-kpi-card"><div class="tool-kpi-title">売上</div><div class="tool-kpi-number">¥{{ analysis_summary.total_sales }}</div><div class="tool-kpi-meta">来店済み分</div></div>
+    <div class="tool-kpi-card"><div class="tool-kpi-title">リピート率</div><div class="tool-kpi-number">{{ analysis_summary.repeat_rate }}%</div><div class="tool-kpi-meta">2回以上予約した顧客</div></div>
+    <div class="tool-kpi-card"><div class="tool-kpi-title">来店済み</div><div class="tool-kpi-number">{{ analysis_summary.completed_count }}</div><div class="tool-kpi-meta">完了予約</div></div>
+  </div>
+</section>
+
+<section class="tool-panel" style="margin-top:20px;">
+  <div class="tool-panel-head">
+    <h2>予約流入</h2>
+    <div class="tool-note">LINE / WEB / Google検索 / 電話 / 店頭</div>
+  </div>
+  <div class="tool-panel-body">
+    {% if source_summary %}
+    <div class="tool-card-stack">
+      {% for item in source_summary %}
+      <div class="tool-card-lite">
+        <div class="tool-card-lite-head">
+          <div>
+            <div class="tool-card-lite-title">{{ item.label }}</div>
+            <div class="tool-note">{{ item.percent }}%</div>
+          </div>
+          <div style="text-align:right;font-weight:800;">{{ item.count }}件<br>¥{{ item.sales }}</div>
+        </div>
+        <div style="height:10px;background:#eef2f7;border-radius:999px;overflow:hidden;margin-top:12px;">
+          <div style="width:{{ item.percent }}%;height:100%;background:#14b8a6;border-radius:999px;"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="tool-empty">まだ予約データがありません。</div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="tool-panel" style="margin-top:20px;">
+  <div class="tool-panel-head">
+    <h2>月別サマリー</h2>
+    <div class="tool-note">直近6ヶ月</div>
+  </div>
+  <div class="tool-panel-body">
+    {% if monthly_summary %}
+    <div class="tool-table-wrap">
+      <table class="tool-table">
+        <thead><tr><th>月</th><th>予約数</th><th>売上</th></tr></thead>
+        <tbody>
+          {% for item in monthly_summary %}
+          <tr><td>{{ item.month }}</td><td>{{ item.count }}件</td><td>¥{{ item.sales }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="tool-empty">まだ集計できる予約がありません。</div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
