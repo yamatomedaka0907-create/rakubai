@@ -139,19 +139,17 @@ JST = ZoneInfo("Asia/Tokyo")
 
 
 def send_line_message(access_token: str, user_id: str, message: str) -> dict:
+    """Send a LINE text message."""
     access_token = str(access_token or "").strip()
     user_id = str(user_id or "").strip()
     message = str(message or "").strip()
 
     if not access_token:
-        print("LINE send skipped: no access token")
-        return {"ok": False, "reason": "no access token"}
+        return {"ok": False, "reason": "アクセストークンが未設定です"}
     if not user_id:
-        print("LINE send skipped: no user_id")
-        return {"ok": False, "reason": "no user_id"}
+        return {"ok": False, "reason": "LINE user_idが未設定です"}
     if not message:
-        print("LINE send skipped: empty message")
-        return {"ok": False, "reason": "empty message"}
+        return {"ok": False, "reason": "メッセージが空です"}
 
     url = "https://api.line.me/v2/bot/message/push"
     headers = {
@@ -160,132 +158,41 @@ def send_line_message(access_token: str, user_id: str, message: str) -> dict:
     }
     payload = {
         "to": user_id,
-        "messages": [
-            {
-                "type": "text",
-                "text": message,
-            }
-        ],
+        "messages": [{"type": "text", "text": message}],
     }
 
     try:
-        response = requests.post(url, headers=headers, json=payload, timeout=10)
-        print("LINE send result:", response.status_code, response.text)
+        response = requests.post(url, headers=headers, json=payload, timeout=5)
+        print("LINE送信:", response.status_code, response.text)
         return {
             "ok": 200 <= response.status_code < 300,
             "status_code": response.status_code,
             "response": response.text,
         }
     except Exception as exc:
-        print("LINE send error:", repr(exc))
+        print("LINE送信エラー:", repr(exc))
         return {"ok": False, "reason": str(exc)}
 
 
 @app.get("/line-test")
-def line_test(shop_id: str = "yamato", user_id: str = ""):
-    settings = get_shop_line_settings(shop_id)
-    access_token = str(settings.get("line_channel_access_token") or "").strip()
-    target_user_id = str(user_id or "").strip()
+def line_test():
+    access_token = "XqBo4QmqJy+QvQhUDI/6hYer8an5zFhelRIGQIWvmoyjGZBI0q0oWr85li29LOZgZz+gJLDAgDj60DyFAbc2EQr3K4Ciuh2r+CJFJf8tapJ0s1W/N62csJqLsPc5LmyyVMnAejCOcIAhyaIGMktmsAdB04t89/1O/w1cDnyilFU="
+    user_id = "Ue602960495515b0c1e2b2502ce406f2b"
 
-    if not target_user_id:
-        recent_users = get_recent_line_webhook_users(shop_id, limit=1)
-        if recent_users:
-            target_user_id = str(recent_users[0].get("line_user_id") or "").strip()
+    print("LINEテスト開始")
+    result = send_line_message(access_token, user_id, "テスト送信")
+    print("LINEテスト結果:", result)
 
-    result = send_line_message(
-        access_token=access_token,
-        user_id=target_user_id,
-        message="LINEテスト送信OKです。",
-    )
-    print("LINE test result:", result)
     return result
+
+
 
 
 
 def build_line_reservation_url(shop_id: str, line_user_id: str) -> str:
     shop_id = str(shop_id or "").strip()
     line_user_id = str(line_user_id or "").strip()
-    return f"https://www.rakubai.net/shop/{shop_id}?line_user_id={line_user_id}"
-
-
-def send_line_reservation_button(access_token: str, user_id: str, shop_id: str) -> dict:
-    access_token = str(access_token or "").strip()
-    user_id = str(user_id or "").strip()
-    shop_id = str(shop_id or "").strip()
-    reserve_url = build_line_reservation_url(shop_id, user_id)
-
-    if not access_token:
-        print("LINE reservation button skipped: no access token")
-        return {"ok": False, "reason": "no access token"}
-    if not user_id:
-        print("LINE reservation button skipped: no user_id")
-        return {"ok": False, "reason": "no user_id"}
-    if not shop_id:
-        print("LINE reservation button skipped: no shop_id")
-        return {"ok": False, "reason": "no shop_id"}
-
-    url = "https://api.line.me/v2/bot/message/push"
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json",
-    }
-    payload = {
-        "to": user_id,
-        "messages": [
-            {
-                "type": "template",
-                "altText": "予約ページを開く",
-                "template": {
-                    "type": "buttons",
-                    "title": "ご予約はこちら",
-                    "text": "下のボタンから予約ページを開いてください。",
-                    "actions": [
-                        {
-                            "type": "uri",
-                            "label": "予約する",
-                            "uri": reserve_url,
-                        }
-                    ],
-                },
-            }
-        ],
-    }
-
-    try:
-        response = requests.post(url, headers=headers, json=payload, timeout=10)
-        print("LINE reservation button result:", response.status_code, response.text)
-        return {
-            "ok": 200 <= response.status_code < 300,
-            "status_code": response.status_code,
-            "response": response.text,
-            "reserve_url": reserve_url,
-        }
-    except Exception as exc:
-        print("LINE reservation button error:", repr(exc))
-        return {"ok": False, "reason": str(exc), "reserve_url": reserve_url}
-
-
-
-
-@app.get("/line-reservation-button-test")
-def line_reservation_button_test(shop_id: str = "yamato", user_id: str = ""):
-    settings = get_shop_line_settings(shop_id)
-    access_token = str(settings.get("line_channel_access_token") or "").strip()
-    target_user_id = str(user_id or "").strip()
-
-    if not target_user_id:
-        recent_users = get_recent_line_webhook_users(shop_id, limit=1)
-        if recent_users:
-            target_user_id = str(recent_users[0].get("line_user_id") or "").strip()
-
-    result = send_line_reservation_button(
-        access_token=access_token,
-        user_id=target_user_id,
-        shop_id=shop_id,
-    )
-    print("LINE reservation button test result:", result)
-    return result
-
+    return f"https://www.rakubai.net/shop/{shop_id}?line_user_id={line_user_id}#reserve-form"
 
 
 def get_shop_line_settings(shop_id: str) -> dict:
@@ -4147,155 +4054,7 @@ async def save_line_settings(request: Request, shop_id: str):
 
 
 
-
-
 @app.post("/line/webhook/{shop_id}/")
-@app.post("/line/webhook/{shop_id}")
-async def line_webhook_receive(shop_id: str, request: Request):
-    try:
-        payload = await request.json()
-    except Exception as exc:
-        print("LINE webhook json error:", repr(exc))
-        payload = {}
-
-    print("===== LINE WEBHOOK DEBUG =====")
-    print("shop_id:", shop_id)
-    print("body:", payload)
-    print("==============================")
-
-    saved_count = 0
-    sent_count = 0
-
-    settings = get_shop_line_settings(shop_id)
-    access_token = str(settings.get("line_channel_access_token") or "").strip()
-
-    events = payload.get("events", []) if isinstance(payload, dict) else []
-    if not isinstance(events, list):
-        events = []
-
-    for event in events:
-        if not isinstance(event, dict):
-            continue
-
-        source = event.get("source") or {}
-        if not isinstance(source, dict):
-            source = {}
-
-        user_id = str(source.get("userId") or "").strip()
-        if not user_id:
-            continue
-
-        message = event.get("message") or {}
-        message_text = ""
-        if isinstance(message, dict):
-            message_text = str(message.get("text") or "").strip()
-
-        save_line_webhook_user(
-            shop_id,
-            user_id,
-            event_type=str(event.get("type") or ""),
-            message_text=message_text,
-        )
-        saved_count += 1
-        print("LINE user_id saved:", shop_id, user_id)
-
-        if str(event.get("type") or "") == "message" and message_text:
-            normalized_text = message_text.replace(" ", "").replace("　", "").strip()
-
-            if "予約" in normalized_text:
-                send_result = send_line_reservation_button(
-                    access_token=access_token,
-                    user_id=user_id,
-                    shop_id=shop_id,
-                )
-            else:
-                reserve_url = build_line_reservation_url(shop_id, user_id)
-                send_result = send_line_message(
-                    access_token=access_token,
-                    user_id=user_id,
-                    message=(
-                        "LINE連携は正常に動いています。\n"
-                        "予約する場合は「予約」と送信してください。\n\n"
-                        f"予約ページ：{reserve_url}"
-                    ),
-                )
-
-            if send_result.get("ok"):
-                sent_count += 1
-            print("LINE reply result:", send_result)
-
-    return JSONResponse(
-        {"ok": True, "saved_count": saved_count, "sent_count": sent_count},
-        status_code=200,
-    )
-
-
-@app.post("/line/webhook/{shop_id}")
-async def line_webhook_receive(shop_id: str, request: Request):
-    try:
-        payload = await request.json()
-    except Exception as exc:
-        print("LINE webhook json error:", repr(exc))
-        payload = {}
-
-    print("===== LINE WEBHOOK DEBUG =====")
-    print("shop_id:", shop_id)
-    print("body:", payload)
-    print("==============================")
-
-    saved_count = 0
-    sent_count = 0
-
-    settings = get_shop_line_settings(shop_id)
-    access_token = str(settings.get("line_channel_access_token") or "").strip()
-
-    events = payload.get("events", []) if isinstance(payload, dict) else []
-    if not isinstance(events, list):
-        events = []
-
-    for event in events:
-        if not isinstance(event, dict):
-            continue
-
-        source = event.get("source") or {}
-        if not isinstance(source, dict):
-            source = {}
-
-        user_id = str(source.get("userId") or "").strip()
-        if not user_id:
-            continue
-
-        message = event.get("message") or {}
-        message_text = ""
-        if isinstance(message, dict):
-            message_text = str(message.get("text") or "").strip()
-
-        save_line_webhook_user(
-            shop_id,
-            user_id,
-            event_type=str(event.get("type") or ""),
-            message_text=message_text,
-        )
-        saved_count += 1
-        print("LINE user_id saved:", shop_id, user_id)
-
-        # テキストメッセージを受けたら確認返信する
-        if str(event.get("type") or "") == "message" and message_text:
-            send_result = send_line_message(
-                access_token=access_token,
-                user_id=user_id,
-                message="テスト送信OKです。LINE連携は正常に動いています。",
-            )
-            if send_result.get("ok"):
-                sent_count += 1
-            print("LINE auto reply result:", send_result)
-
-    return JSONResponse(
-        {"ok": True, "saved_count": saved_count, "sent_count": sent_count},
-        status_code=200,
-    )
-
-
 @app.post("/line/webhook/{shop_id}")
 async def line_webhook(shop_id: str, request: Request):
     """LINEからのWebhookを受け取り、送信者のLINE user_idを保存します。"""
@@ -5118,6 +4877,12 @@ async def admin_booking_page_editor_save(request: Request, shop_id: str):
 
 @app.get("/shop/{shop_id}", response_class=HTMLResponse)
 def shop_page(request: Request, shop_id: str):
+    line_user_id = str(request.query_params.get("line_user_id") or "").strip()
+    if line_user_id:
+        request.session["line_user_id"] = line_user_id
+        request.session["line_shop_id"] = shop_id
+        print("予約ページでLINE user_idを保存:", shop_id, line_user_id)
+
     context = build_shop_booking_context(shop_id, request)
     return templates.TemplateResponse(
         request=request,
@@ -5379,6 +5144,7 @@ def shop_reserve(
     menu_id: int = Form(...),
     reservation_date: str = Form(...),
     start_time: str = Form(...),
+    line_user_id: str = Form(""),
 ):
     shop = get_shop(shop_id)
     if not shop:
