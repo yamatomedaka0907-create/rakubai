@@ -4348,6 +4348,145 @@ def admin_page(request: Request, shop_id: str, error_message: str = ""):
     )
 
 
+def _format_analysis_price(value) -> str:
+    try:
+        return f"{int(value or 0):,}"
+    except (TypeError, ValueError):
+        return "0"
+
+
+def _analysis_period_key(reservation_date: date, period: str) -> tuple[str, str]:
+    if period == "month":
+        return reservation_date.strftime("%Y-%m"), reservation_date.strftime("%Y年%m月")
+    if period == "week":
+        week_start = reservation_date - timedelta(days=reservation_date.weekday())
+        return week_start.isoformat(), f"{week_start.strftime('%m/%d')}週"
+    return reservation_date.isoformat(), reservation_date.strftime("%m/%d")
+
+
+def _source_label(source: str) -> str:
+    labels = {
+        "admin": "管理画面",
+        "line": "LINE",
+        "web": "WEB",
+        "google": "Google検索",
+        "phone": "電話",
+        "store": "店頭",
+    }
+    key = (source or "").strip().lower()
+    return labels.get(key, source or "未設定")
+
+
+def _build_analysis_context(reservations: list[dict], customers: list[dict], period: str) -> dict:
+    period = period if period in {"day", "week", "month"} else "day"
+    active_reservations = [r for r in reservations if str(r.get("status") or "") != "キャンセル"]
+    completed_reservations = [r for r in active_reservations if str(r.get("status") or "") == "来店済み"]
+
+    total_sales = sum(int(r.get("price") or 0) for r in completed_reservations)
+    completed_count = len(completed_reservations)
+
+    customer_counts: dict[str, int] = {}
+    for r in active_reservations:
+        customer_key = str(r.get("customer_id") or r.get("customer_email") or r.get("customer_name") or "").strip()
+        if customer_key:
+            customer_counts[customer_key] = customer_counts.get(customer_key, 0) + 1
+    repeat_customers = sum(1 for count in customer_counts.values() if count >= 2)
+    repeat_rate = round((repeat_customers / len(customer_counts) * 100), 1) if customer_counts else 0
+
+    grouped: dict[str, dict] = {}
+    for r in active_reservations:
+        parsed_date = _safe_parse_date(r.get("reservation_date"), None)
+        if not parsed_date:
+            continue
+        key, label = _analysis_period_key(parsed_date, period)
+        if key not in grouped:
+            grouped[key] = {"key": key, "label": label, "count": 0, "sales_raw": 0}
+        grouped[key]["count"] += 1
+        if str(r.get("status") or "") == "来店済み":
+            grouped[key]["sales_raw"] += int(r.get("price") or 0)
+
+    rows = [grouped[key] for key in sorted(grouped.keys())][-14:]
+    max_count = max([row["count"] for row in rows] or [1])
+    max_sales = max([row["sales_raw"] for row in rows] or [1])
+    period_summary = []
+    for row in rows:
+        period_summary.append({
+            "label": row["label"],
+            "count": row["count"],
+            "sales": _format_analysis_price(row["sales_raw"]),
+            "count_height": max(4, round(row["count"] / max_count * 100)) if max_count else 4,
+            "sales_height": max(4, round(row["sales_raw"] / max_sales * 100)) if max_sales else 4,
+        })
+
+    source_grouped: dict[str, dict] = {}
+    for r in active_reservations:
+        label = _source_label(str(r.get("source") or ""))
+        if label not in source_grouped:
+            source_grouped[label] = {"label": label, "count": 0, "sales_raw": 0}
+        source_grouped[label]["count"] += 1
+        if str(r.get("status") or "") == "来店済み":
+            source_grouped[label]["sales_raw"] += int(r.get("price") or 0)
+
+    total_source_count = sum(item["count"] for item in source_grouped.values()) or 1
+    source_summary = []
+    for item in sorted(source_grouped.values(), key=lambda x: (-x["count"], x["label"])):
+        source_summary.append({
+            "label": item["label"],
+            "count": item["count"],
+            "sales": _format_analysis_price(item["sales_raw"]),
+            "percent": round(item["count"] / total_source_count * 100, 1),
+        })
+
+    return {
+        "selected_period": period,
+        "selected_period_label": {"day": "日別", "week": "週別", "month": "月別"}.get(period, "日別"),
+        "analysis_summary": {
+            "reservation_count": len(active_reservations),
+            "total_sales": _format_analysis_price(total_sales),
+            "repeat_rate": repeat_rate,
+            "completed_count": completed_count,
+        },
+        "period_summary": period_summary,
+        "source_summary": source_summary,
+    }
+
+
+@app.get("/admin/{shop_id}/analysis", response_class=HTMLResponse)
+def admin_analysis_page(request: Request, shop_id: str, period: str = "day"):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+
+    shop_id, shop, reservations, customers, admin_users, subscription, available_plans, current_admin_name = _build_admin_common_context(request, shop_id)
+    template_name = "admin/tool/analysis.html" if shop.get("admin_ui_mode") == "tool" else "admin/analysis.html"
+    plan_context = _build_admin_plan_context(
+        subscription=subscription,
+        available_plans=available_plans,
+        customers=customers,
+        reservations=reservations,
+        staff_list=shop.get("staff_list", []),
+    )
+    return templates.TemplateResponse(
+        request=request,
+        name=template_name,
+        context={
+            "request": request,
+            "shop": shop,
+            "shop_id": shop_id,
+            "customers": customers,
+            "reservations": reservations,
+            "admin_users": admin_users,
+            "subscription": subscription,
+            "subscription_status_label": _format_admin_subscription_status_label(subscription),
+            "available_plans": available_plans,
+            **plan_context,
+            "current_admin_name": current_admin_name,
+            "active_page": "analysis",
+            **_build_analysis_context(reservations, customers, period),
+        },
+    )
+
+
 @app.get("/admin/{shop_id}/reservations", response_class=HTMLResponse)
 def admin_reservations_page(request: Request, shop_id: str, error_message: str = ""):
     redirect = require_store_login(request, shop_id)
