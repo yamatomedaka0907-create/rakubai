@@ -435,6 +435,7 @@
     <label>メニュー<select name="menu_id" required><option value="">メニューを選んでください</option>{% for menu in menus %}<option value="{{ menu.id }}" data-staff-menu-ids="{% for staff in staff_list if not staff.menu_ids or menu.id in staff.menu_ids %}{{ staff.id }}{% if not loop.last %},{% endif %}{% endfor %}">{{ menu.name }}（{{ menu.duration }}分 / ¥{{ menu.price }}）</option>{% endfor %}</select></label>
     <label>日付<input type="date" name="reservation_date" value="{{ today }}" required></label>
     <label>開始時間<input type="time" name="start_time" required></label>
+    <label>流入経路<select name="source" required><option value="admin" selected>管理画面</option><option value="line">LINE</option><option value="web">WEB</option><option value="google">Google検索</option><option value="phone">電話</option><option value="store">店頭</option></select></label>
     <button type="submit">予約を登録する</button>
   </form>
 </div>

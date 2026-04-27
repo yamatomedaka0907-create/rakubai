@@ -46,6 +46,10 @@
           <span class="tool-nav-symbol">◎</span>
           <span class="tool-nav-label">顧客管理</span>
         </a>
+        <a href="/admin/{{ shop_id }}/analysis" class="tool-nav-tile {% if active_page == 'analysis' %}is-active{% endif %}">
+          <span class="tool-nav-symbol">▣</span>
+          <span class="tool-nav-label">解析ツール</span>
+        </a>
         <a href="/admin/{{ shop_id }}/timeline-karte" class="tool-nav-tile {% if active_page == 'timeline_karte' %}is-active{% endif %}">
           <span class="tool-nav-symbol">◪</span>
           <span class="tool-nav-label">タイムラインカルテ{% if not is_premium_subscription(subscription) %}（Premium）{% endif %}</span>
