@@ -66,6 +66,31 @@
 
         <div class="tool-panel is-subpanel">
           <div class="tool-panel-head">
+            <h2>予約・売上分析</h2>
+            <div class="tool-note">{{ calendar_month_label }}の予約数・売上・リピート率・流入経路です。</div>
+          </div>
+          <div class="tool-kpi-grid">
+            <div class="tool-kpi-card"><div class="tool-kpi-title">今月の予約数</div><div class="tool-kpi-number">{{ dashboard_analytics.month_reservation_count }}</div><div class="tool-kpi-meta">キャンセル除外</div></div>
+            <div class="tool-kpi-card"><div class="tool-kpi-title">今月の売上</div><div class="tool-kpi-number">¥{{ dashboard_analytics.month_sales }}</div><div class="tool-kpi-meta">来店済み分のみ</div></div>
+            <div class="tool-kpi-card"><div class="tool-kpi-title">本日の予約数</div><div class="tool-kpi-number">{{ dashboard_analytics.today_reservation_count }}</div><div class="tool-kpi-meta">キャンセル除外</div></div>
+            <div class="tool-kpi-card"><div class="tool-kpi-title">リピート率</div><div class="tool-kpi-number">{{ dashboard_analytics.repeat_rate }}%</div><div class="tool-kpi-meta">2回以上予約 {{ dashboard_analytics.repeat_customer_count }}名</div></div>
+          </div>
+          <div class="tool-table-wrap" style="margin-top:16px;">
+            <table class="tool-table">
+              <thead><tr><th>流入経路</th><th>予約数</th><th>割合</th><th>売上</th></tr></thead>
+              <tbody>
+                {% for row in dashboard_analytics.source_rows %}
+                <tr><td>{{ row.label }}</td><td>{{ row.count }}件</td><td>{{ row.percent }}%</td><td>¥{{ row.sales }}</td></tr>
+                {% else %}
+                <tr><td colspan="4">今月の予約データがありません。</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="tool-panel is-subpanel">
+          <div class="tool-panel-head">
             <h2>主要メニュー</h2>
             <div class="tool-note">日常運用で使う機能を上段に集約しています。</div>
           </div>

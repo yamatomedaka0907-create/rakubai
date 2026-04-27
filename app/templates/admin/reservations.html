@@ -346,10 +346,8 @@
           <div class="price">¥{{ reservation.price }}</div>
           <div class="reservation-actions">
             {% if reservation.status == "予約済み" %}
-            <form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/done" class="stay-form"><input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button type="submit">来店済</button><label>流入経路<select name="source"><option value="WEB" selected>WEB</option><option value="LINE">LINE</option><option value="GOOGLE">Google検索</option><option value="PHONE">電話</option><option value="STORE">店頭</option></select></label>
-</form>
-            <form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/cancel" class="stay-form"><input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button type="submit" class="cancel-button">キャンセル</button><label>流入経路<select name="source"><option value="WEB" selected>WEB</option><option value="LINE">LINE</option><option value="GOOGLE">Google検索</option><option value="PHONE">電話</option><option value="STORE">店頭</option></select></label>
-</form>
+            <form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/done" class="stay-form"><input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button type="submit">来店済</button></form>
+            <form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/cancel" class="stay-form"><input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button type="submit" class="cancel-button">キャンセル</button></form>
             {% else %}
             <span>{{ reservation.status }}</span><span>-</span>
             {% endif %}
@@ -389,10 +387,8 @@
 
           <div class="today-mobile-actions">
             {% if reservation.status == "予約済み" %}
-            <form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/done" class="stay-form"><input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button type="submit">来店済</button><label>流入経路<select name="source"><option value="WEB" selected>WEB</option><option value="LINE">LINE</option><option value="GOOGLE">Google検索</option><option value="PHONE">電話</option><option value="STORE">店頭</option></select></label>
-</form>
-            <form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/cancel" class="stay-form"><input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button type="submit" class="cancel-button">キャンセル</button><label>流入経路<select name="source"><option value="WEB" selected>WEB</option><option value="LINE">LINE</option><option value="GOOGLE">Google検索</option><option value="PHONE">電話</option><option value="STORE">店頭</option></select></label>
-</form>
+            <form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/done" class="stay-form"><input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button type="submit">来店済</button></form>
+            <form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/cancel" class="stay-form"><input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button type="submit" class="cancel-button">キャンセル</button></form>
             {% else %}
             <button type="button" disabled>{{ reservation.status }}</button>
             <button type="button" disabled>-</button>
@@ -439,9 +435,9 @@
     <label>メニュー<select name="menu_id" required><option value="">メニューを選んでください</option>{% for menu in menus %}<option value="{{ menu.id }}" data-staff-menu-ids="{% for staff in staff_list if not staff.menu_ids or menu.id in staff.menu_ids %}{{ staff.id }}{% if not loop.last %},{% endif %}{% endfor %}">{{ menu.name }}（{{ menu.duration }}分 / ¥{{ menu.price }}）</option>{% endfor %}</select></label>
     <label>日付<input type="date" name="reservation_date" value="{{ today }}" required></label>
     <label>開始時間<input type="time" name="start_time" required></label>
+    <label>流入経路<select name="source" required><option value="phone" selected>電話</option><option value="store">店頭</option><option value="line">LINE</option><option value="google">Google検索</option><option value="web">WEB</option></select></label>
     <button type="submit">予約を登録する</button>
-  <label>流入経路<select name="source"><option value="WEB" selected>WEB</option><option value="LINE">LINE</option><option value="GOOGLE">Google検索</option><option value="PHONE">電話</option><option value="STORE">店頭</option></select></label>
-</form>
+  </form>
 </div>
   </div>
 </div>
