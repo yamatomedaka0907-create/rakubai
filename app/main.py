@@ -981,12 +981,14 @@ def _line_slot_options(shop_id: str, staff_id: str, duration: int, days: int = 3
             if len(slots) >= target_count:
                 return slots[safe_offset:target_count]
 
+    return slots[safe_offset:target_count]
+
 
 def _line_datetime_page_labels(shop_id: str, staff_id: str, duration: int, page: int = 0) -> tuple[list[str], bool]:
     page_size = 12
     safe_page = max(0, int(page or 0))
     offset = safe_page * page_size
-    slots = _line_slot_options(shop_id, staff_id, duration, limit=page_size + 1, offset=offset)
+    slots = _line_slot_options(shop_id, staff_id, duration, limit=page_size + 1, offset=offset) or []
     visible_slots = slots[:page_size]
     labels = [str(slot.get("label") or "") for slot in visible_slots if str(slot.get("label") or "").strip()]
     has_next = len(slots) > page_size
@@ -1000,8 +1002,6 @@ def _line_datetime_page_message(page: int = 0) -> str:
     if safe_page <= 0:
         return "日時を選んでください。"
     return f"日時を選んでください。（{safe_page + 1}ページ目）"
-
-    return slots[safe_offset:target_count]
 
 
 def _line_customer_from_member(shop_id: str, member: dict) -> dict | None:
@@ -1323,7 +1323,7 @@ def handle_line_complete_reservation_flow(shop_id: str, user_id: str, access_tok
                     "label": f"{slot_match.group(1)} {slot_match.group(2)}",
                 }
         else:
-            slots = _line_slot_options(shop_id, session.get("staff_id"), int(session.get("duration") or 60), limit=500, offset=0)
+            slots = _line_slot_options(shop_id, session.get("staff_id"), int(session.get("duration") or 60), limit=500, offset=0) or []
             selected = next((slot for slot in slots if str(slot.get("label") or "") == text), None)
         if not selected:
             labels, _has_next = _line_datetime_page_labels(shop_id, session.get("staff_id"), int(session.get("duration") or 60), page=current_page)
@@ -3233,7 +3233,6 @@ def build_shop_booking_context(shop_id: str, request: Request, error_message: st
         'line_user_id': str(request.session.get('line_user_id') or ''),
         'line_display_name': str(request.session.get('line_display_name') or ''),
         'line_booking_entry_url': f"/shop/{shop_id}/line-reserve",
-        'line_official_url': str(get_shop_line_settings(shop_id).get('line_official_url') or '').strip(),
         'error_message': error_message,
     }
 
