@@ -4261,7 +4261,7 @@ def admin_page(request: Request, shop_id: str, error_message: str = ""):
 
 def _build_admin_analysis_context(reservations: list[dict], customers: list[dict]) -> dict:
     active_reservations = [r for r in reservations if str(r.get("status") or "") != "キャンセル"]
-    completed_reservations = [r for r in reservations if str(r.get("status") or "") == "来店済み"]
+    completed_reservations = [r for r in active_reservations if str(r.get("status") or "") == "来店済み"]
     total_sales = sum(int(r.get("price") or 0) for r in completed_reservations)
     active_count = len(active_reservations)
 
@@ -4285,6 +4285,7 @@ def _build_admin_analysis_context(reservations: list[dict], customers: list[dict
         "store": "店頭",
         "STORE": "店頭",
         "admin": "管理画面",
+        "ADMIN": "管理画面",
     }
     source_summary_map: dict[str, dict] = {}
     for r in active_reservations:
@@ -4309,6 +4310,7 @@ def _build_admin_analysis_context(reservations: list[dict], customers: list[dict
         month_summary_map[month_key]["count"] += 1
         if str(r.get("status") or "") == "来店済み":
             month_summary_map[month_key]["sales"] += int(r.get("price") or 0)
+
     monthly_summary = sorted(month_summary_map.values(), key=lambda item: item["month"], reverse=True)[:6]
 
     return {
@@ -4333,22 +4335,25 @@ def admin_analysis_page(request: Request, shop_id: str):
 
     shop_id, shop, reservations, customers, admin_users, subscription, available_plans, current_admin_name = _build_admin_common_context(request, shop_id)
     template_name = "admin/tool/analysis.html" if shop.get("admin_ui_mode") == "tool" else "admin/analysis.html"
-    context = {
-        "request": request,
-        "shop": shop,
-        "shop_id": shop_id,
-        "customers": customers,
-        "reservations": reservations,
-        "admin_users": admin_users,
-        "subscription": subscription,
-        "subscription_status_label": _format_admin_subscription_status_label(subscription),
-        "available_plans": available_plans,
-        "current_admin_name": current_admin_name,
-        "today": date.today().isoformat(),
-        "active_page": "analysis",
-        **_build_admin_analysis_context(reservations, customers),
-    }
-    return templates.TemplateResponse(request=request, name=template_name, context=context)
+    return templates.TemplateResponse(
+        request=request,
+        name=template_name,
+        context={
+            "request": request,
+            "shop": shop,
+            "shop_id": shop_id,
+            "customers": customers,
+            "reservations": reservations,
+            "admin_users": admin_users,
+            "subscription": subscription,
+            "subscription_status_label": _format_admin_subscription_status_label(subscription),
+            "available_plans": available_plans,
+            "current_admin_name": current_admin_name,
+            "today": date.today().isoformat(),
+            "active_page": "analysis",
+            **_build_admin_analysis_context(reservations, customers),
+        },
+    )
 
 
 

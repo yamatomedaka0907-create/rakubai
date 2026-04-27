@@ -2,69 +2,83 @@
 {% block page_title %}解析ツール{% endblock %}
 {% block page_subtitle %}売上・予約数・リピート率・予約流入を確認できます。{% endblock %}
 {% block content %}
-<section class="tool-panel">
-  <div class="tool-panel-head is-wide">
-    <div>
-      <h2>売上・予約サマリー</h2>
-      <div class="tool-note">キャンセルを除外した予約データを集計しています。</div>
-    </div>
+<style>
+.analysis-tool-hero{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;padding:26px;border-radius:28px;background:linear-gradient(135deg,#0f172a 0%,#0f766e 100%);color:#fff;box-shadow:0 18px 50px rgba(15,23,42,.18);margin-bottom:22px;}
+.analysis-tool-hero h2{margin:0 0 8px;font-size:28px;letter-spacing:-.04em;color:#fff;}
+.analysis-tool-hero p{margin:0;color:rgba(255,255,255,.78);line-height:1.8;font-weight:700;}
+.analysis-tool-pill{padding:9px 13px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);font-size:13px;font-weight:900;white-space:nowrap;}
+.analysis-tool-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:22px;}
+.analysis-tool-kpi{border-radius:24px;background:#fff;border:1px solid #e5e7eb;padding:22px;box-shadow:0 12px 30px rgba(15,23,42,.06);}
+.analysis-tool-label{font-size:13px;font-weight:900;color:#64748b;margin-bottom:10px;}
+.analysis-tool-value{font-size:34px;font-weight:950;color:#0f172a;letter-spacing:-.04em;}
+.analysis-tool-note{margin-top:8px;color:#94a3b8;font-size:12px;font-weight:800;}
+.analysis-tool-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;}
+.analysis-tool-panel{border-radius:26px;background:#fff;border:1px solid #e5e7eb;box-shadow:0 12px 30px rgba(15,23,42,.06);padding:22px;}
+.analysis-tool-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px;}
+.analysis-tool-head h2{margin:0;font-size:22px;letter-spacing:-.03em;color:#0f172a;}
+.analysis-tool-badge{display:inline-flex;padding:7px 10px;border-radius:999px;background:#ecfeff;color:#0e7490;font-size:12px;font-weight:900;}
+.analysis-tool-list{display:grid;gap:12px;}
+.analysis-tool-source{padding:16px;border-radius:18px;background:#f8fafc;border:1px solid #e5e7eb;}
+.analysis-tool-source-top{display:flex;justify-content:space-between;align-items:center;gap:12px;font-weight:900;color:#0f172a;}
+.analysis-tool-source-meta{color:#64748b;font-size:13px;font-weight:800;margin-top:4px;}
+.analysis-tool-bar{height:12px;border-radius:999px;background:#e2e8f0;overflow:hidden;margin-top:12px;}
+.analysis-tool-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#14b8a6,#2563eb);}
+.analysis-tool-table{width:100%;border-collapse:separate;border-spacing:0 10px;}
+.analysis-tool-table th{font-size:12px;color:#64748b;text-align:left;padding:0 12px;font-weight:900;}
+.analysis-tool-table td{background:#f8fafc;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;padding:14px 12px;font-weight:850;}
+.analysis-tool-table td:first-child{border-left:1px solid #e5e7eb;border-radius:14px 0 0 14px;}
+.analysis-tool-table td:last-child{border-right:1px solid #e5e7eb;border-radius:0 14px 14px 0;text-align:right;}
+.analysis-tool-empty{padding:28px;border-radius:18px;background:#f8fafc;color:#64748b;font-weight:900;text-align:center;}
+@media(max-width:1100px){.analysis-tool-kpis{grid-template-columns:1fr 1fr}.analysis-tool-grid{grid-template-columns:1fr}}
+@media(max-width:640px){.analysis-tool-kpis{grid-template-columns:1fr}.analysis-tool-hero{flex-direction:column}.analysis-tool-value{font-size:30px}}
+</style>
+
+<section class="analysis-tool-hero">
+  <div>
+    <h2>解析ツール</h2>
+    <p>予約の入り口、売上、リピート状況をここで確認できます。</p>
   </div>
-  <div class="tool-kpi-grid">
-    <div class="tool-kpi-card"><div class="tool-kpi-title">予約数</div><div class="tool-kpi-number">{{ analysis_summary.reservation_count }}</div><div class="tool-kpi-meta">キャンセル除外</div></div>
-    <div class="tool-kpi-card"><div class="tool-kpi-title">売上</div><div class="tool-kpi-number">¥{{ analysis_summary.total_sales }}</div><div class="tool-kpi-meta">来店済み分</div></div>
-    <div class="tool-kpi-card"><div class="tool-kpi-title">リピート率</div><div class="tool-kpi-number">{{ analysis_summary.repeat_rate }}%</div><div class="tool-kpi-meta">2回以上予約した顧客</div></div>
-    <div class="tool-kpi-card"><div class="tool-kpi-title">来店済み</div><div class="tool-kpi-number">{{ analysis_summary.completed_count }}</div><div class="tool-kpi-meta">完了予約</div></div>
-  </div>
+  <div class="analysis-tool-pill">売上・予約流入</div>
 </section>
 
-<section class="tool-panel" style="margin-top:20px;">
-  <div class="tool-panel-head">
-    <h2>予約流入</h2>
-    <div class="tool-note">LINE / WEB / Google検索 / 電話 / 店頭</div>
-  </div>
-  <div class="tool-panel-body">
+<section class="analysis-tool-kpis">
+  <div class="analysis-tool-kpi"><div class="analysis-tool-label">予約数</div><div class="analysis-tool-value">{{ analysis_summary.reservation_count }}</div><div class="analysis-tool-note">キャンセル除外</div></div>
+  <div class="analysis-tool-kpi"><div class="analysis-tool-label">売上</div><div class="analysis-tool-value">¥{{ analysis_summary.total_sales }}</div><div class="analysis-tool-note">来店済み分</div></div>
+  <div class="analysis-tool-kpi"><div class="analysis-tool-label">リピート率</div><div class="analysis-tool-value">{{ analysis_summary.repeat_rate }}%</div><div class="analysis-tool-note">2回以上予約した顧客</div></div>
+  <div class="analysis-tool-kpi"><div class="analysis-tool-label">来店済み</div><div class="analysis-tool-value">{{ analysis_summary.completed_count }}</div><div class="analysis-tool-note">完了予約</div></div>
+</section>
+
+<section class="analysis-tool-grid">
+  <div class="analysis-tool-panel">
+    <div class="analysis-tool-head"><h2>予約流入</h2><span class="analysis-tool-badge">経路別</span></div>
     {% if source_summary %}
-    <div class="tool-card-stack">
+    <div class="analysis-tool-list">
       {% for item in source_summary %}
-      <div class="tool-card-lite">
-        <div class="tool-card-lite-head">
-          <div>
-            <div class="tool-card-lite-title">{{ item.label }}</div>
-            <div class="tool-note">{{ item.percent }}%</div>
-          </div>
-          <div style="text-align:right;font-weight:800;">{{ item.count }}件<br>¥{{ item.sales }}</div>
-        </div>
-        <div style="height:10px;background:#eef2f7;border-radius:999px;overflow:hidden;margin-top:12px;">
-          <div style="width:{{ item.percent }}%;height:100%;background:#14b8a6;border-radius:999px;"></div>
-        </div>
+      <div class="analysis-tool-source">
+        <div class="analysis-tool-source-top"><span>{{ item.label }}</span><span>{{ item.count }}件 / ¥{{ item.sales }}</span></div>
+        <div class="analysis-tool-source-meta">{{ item.percent }}%</div>
+        <div class="analysis-tool-bar"><div class="analysis-tool-fill" style="width:{{ item.percent }}%;"></div></div>
       </div>
       {% endfor %}
     </div>
     {% else %}
-    <div class="tool-empty">まだ予約データがありません。</div>
+    <div class="analysis-tool-empty">まだ予約データがありません。</div>
     {% endif %}
   </div>
-</section>
 
-<section class="tool-panel" style="margin-top:20px;">
-  <div class="tool-panel-head">
-    <h2>月別サマリー</h2>
-    <div class="tool-note">直近6ヶ月</div>
-  </div>
-  <div class="tool-panel-body">
+  <div class="analysis-tool-panel">
+    <div class="analysis-tool-head"><h2>月別サマリー</h2><span class="analysis-tool-badge">直近6ヶ月</span></div>
     {% if monthly_summary %}
-    <div class="tool-table-wrap">
-      <table class="tool-table">
-        <thead><tr><th>月</th><th>予約数</th><th>売上</th></tr></thead>
-        <tbody>
-          {% for item in monthly_summary %}
-          <tr><td>{{ item.month }}</td><td>{{ item.count }}件</td><td>¥{{ item.sales }}</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+    <table class="analysis-tool-table">
+      <thead><tr><th>月</th><th>予約数</th><th style="text-align:right;">売上</th></tr></thead>
+      <tbody>
+        {% for item in monthly_summary %}
+        <tr><td>{{ item.month }}</td><td>{{ item.count }}件</td><td>¥{{ item.sales }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
     {% else %}
-    <div class="tool-empty">まだ集計できる予約がありません。</div>
+    <div class="analysis-tool-empty">まだ集計できる予約がありません。</div>
     {% endif %}
   </div>
 </section>
