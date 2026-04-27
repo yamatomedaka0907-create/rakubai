@@ -418,7 +418,7 @@ def handle_line_complete_booking_message(shop_id: str, user_id: str, message_tex
             str(session.get("end_time") or ""), "予約済み", "line"
         )
         clear_line_booking_session(shop_id, user_id)
-        done = f"予約が完了しました。\n\n予約番号：{reservation.get('id')}\n担当者：{reservation.get('staff_name')}\nメニュー：{reservation.get('menu_name')}\n日時：{reservation.get('reservation_date')} {reservation.get('start_time')}"
+        done = f"予約が完了しました。\n\n担当者：{reservation.get('staff_name')}\nメニュー：{reservation.get('menu_name')}\n日時：{reservation.get('reservation_date')} {reservation.get('start_time')}"
         return send_line_payload(access_token, user_id, [{"type": "text", "text": done}])
 
     clear_line_booking_session(shop_id, user_id)
@@ -684,6 +684,43 @@ def send_line_quick_reply(access_token: str, user_id: str, text: str, items: lis
     if items:
         message["quickReply"] = {"items": items[:13]}
     return send_line_messages(access_token, user_id, [message])
+
+
+def send_line_selection_buttons(access_token: str, user_id: str, text: str, labels: list[str]) -> dict:
+    clean_labels = [str(label or "").strip() for label in labels if str(label or "").strip()]
+    if not clean_labels:
+        return send_line_message(access_token, user_id, text)
+
+    contents = []
+    for label in clean_labels[:13]:
+        contents.append({
+            "type": "button",
+            "style": "primary",
+            "height": "md",
+            "action": {
+                "type": "message",
+                "label": label[:40],
+                "text": label[:300],
+            },
+        })
+
+    messages = [
+        {"type": "text", "text": str(text or "")[:5000]},
+        {
+            "type": "flex",
+            "altText": "選択してください",
+            "contents": {
+                "type": "bubble",
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "spacing": "md",
+                    "contents": contents,
+                },
+            },
+        },
+    ]
+    return send_line_messages(access_token, user_id, messages)
 
 
 def ensure_line_reservation_session_schema() -> None:
@@ -1129,7 +1166,7 @@ def handle_line_complete_reservation_flow(shop_id: str, user_id: str, access_tok
         }
 
     def reply_options(message: str, labels: list[str]) -> dict:
-        return send_line_quick_reply(access_token, user_id, message, [qr(label) for label in labels if str(label or "").strip()])
+        return send_line_selection_buttons(access_token, user_id, message, labels)
 
     def find_by_text(options: list[dict], value: str) -> dict | None:
         raw = str(value or "").strip()
@@ -1433,7 +1470,7 @@ def handle_line_complete_reservation_flow(shop_id: str, user_id: str, access_tok
 
             reservation = create_reservation(shop_id=shop_id, customer_id=customer_id, customer_name=reservation_customer_name, customer_email="", receive_email=0, staff_id=int(session.get("staff_id") or 0), staff_name=str(session.get("staff_name") or ""), menu_id=int(session.get("menu_id") or 0), menu_name=str(session.get("menu_name") or ""), duration=duration_minutes, price=int(session.get("price") or 0), reservation_date=reservation_date, start_time=start_time, end_time=end_time, status="予約済み", source="line")
             clear_line_reservation_session(shop_id, user_id)
-            return send_line_message(access_token, user_id, f"予約が完了しました。\n予約番号：{reservation.get('id')}\nお名前：{reservation.get('customer_name')}\nご来店をお待ちしております。")
+            return send_line_message(access_token, user_id, f"予約が完了しました。\nお名前：{reservation.get('customer_name')}\nご来店をお待ちしております。")
         return reply_options("予約する場合は「はい」を選んでください。", ["はい", "いいえ"])
 
     return reply_options("予約を始める場合は「予約」と送信してください。", ["予約"])
