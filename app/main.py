@@ -209,6 +209,7 @@ def build_line_reservation_url(shop_id: str, line_user_id: str) -> str:
 
 
 
+
 def send_line_reservation_button(access_token: str, user_id: str, shop_id: str) -> dict:
     access_token = str(access_token or "").strip()
     user_id = str(user_id or "").strip()
@@ -413,11 +414,30 @@ def get_recent_line_webhook_users(shop_id: str, limit: int = 5) -> list[dict]:
 
 
 
+
+def ensure_customer_line_user_id_schema() -> None:
+    """customers テーブルに line_user_id カラムが無ければ自動追加します。"""
+    try:
+        with get_connection() as conn:
+            columns = [
+                str(row[1])
+                for row in conn.execute("PRAGMA table_info(customers)").fetchall()
+            ]
+            if "line_user_id" not in columns:
+                conn.execute("ALTER TABLE customers ADD COLUMN line_user_id TEXT")
+                conn.commit()
+                print("customers.line_user_id column added")
+    except Exception as exc:
+        print("ensure_customer_line_user_id_schema error:", repr(exc))
+
+
 def update_customer_line_user_id(shop_id: str, customer_id: int, line_user_id: str) -> None:
     """顧客にLINE user_idを紐づけます。"""
     line_user_id = str(line_user_id or "").strip()
     if not line_user_id:
         return
+
+    ensure_customer_line_user_id_schema()
 
     with get_connection() as conn:
         conn.execute(
@@ -4149,6 +4169,13 @@ async def save_line_settings(request: Request, shop_id: str):
 
 
 
+
+
+
+@app.on_event("startup")
+def _line_customer_schema_startup() -> None:
+    ensure_customer_line_user_id_schema()
+    ensure_line_webhook_test_schema()
 
 
 @app.post("/line/webhook/{shop_id}/")
