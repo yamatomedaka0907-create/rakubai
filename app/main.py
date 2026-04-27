@@ -941,20 +941,59 @@ def _line_slot_options(shop_id: str, staff_id: str, duration: int, days: int = 1
     return slots
 
 
+def _line_customer_from_member(shop_id: str, member: dict) -> dict | None:
+    """会員情報を優先した顧客dictを返します。
+
+    非会員時代の顧客名が残っていても、会員登録後は members の氏名・電話番号を
+    予約表示と保存に使います。
+    """
+    if not member:
+        return None
+    customer_id = int((member or {}).get("customer_id") or 0)
+    customer = get_customer_by_id(shop_id, customer_id) if customer_id else None
+    if not customer:
+        return None
+    result = dict(customer)
+    result["name"] = str((member or {}).get("name") or result.get("name") or "").strip()
+    result["phone"] = normalize_member_phone((member or {}).get("phone") or (member or {}).get("phone_normalized") or result.get("phone") or "")
+    result["email"] = str((member or {}).get("email") or result.get("email") or "").strip()
+    result["is_member"] = True
+    result["member_id"] = int((member or {}).get("id") or 0)
+    return result
+
+
 def get_customer_by_line_user_id(shop_id: str, line_user_id: str) -> dict | None:
-    """LINE user_idに紐づく顧客を返します。"""
+    """LINE user_idに紐づく顧客を返します。
+
+    同じLINE user_idが、過去の非会員顧客と会員顧客の両方に残っている場合は、
+    必ず会員顧客を優先します。
+    """
     ensure_customer_line_user_id_schema()
+    clean_shop_id = str(shop_id or "").strip()
+    clean_line_user_id = str(line_user_id or "").strip()
     with get_connection() as conn:
-        row = conn.execute(
+        rows = conn.execute(
             """
             SELECT id, shop_id, name, phone, email, created_at
             FROM customers
             WHERE shop_id = ? AND line_user_id = ?
-            LIMIT 1
+            ORDER BY id DESC
             """,
-            (str(shop_id or "").strip(), str(line_user_id or "").strip()),
-        ).fetchone()
-    return dict(row) if row else None
+            (clean_shop_id, clean_line_user_id),
+        ).fetchall()
+    customers = [dict(row) for row in rows]
+
+    # まず、LINEに紐づいている顧客の電話番号から会員情報を探し、会員顧客を優先する。
+    for customer in customers:
+        phone = normalize_member_phone(customer.get("phone") or "")
+        member = get_member_by_phone_normalized(clean_shop_id, phone) if phone else None
+        member_customer_id = int((member or {}).get("customer_id") or 0)
+        if member and member_customer_id:
+            preferred = _line_customer_from_member(clean_shop_id, member)
+            if preferred:
+                return preferred
+
+    return customers[0] if customers else None
 
 
 def is_real_line_customer(customer: dict | None) -> bool:
@@ -1113,13 +1152,62 @@ def handle_line_complete_reservation_flow(shop_id: str, user_id: str, access_tok
 
     # 「非会員で予約する」のような選択肢にも「予約」が含まれるため、
     # 部分一致ではなく開始キーワードの完全一致だけで予約フローを開始します。
+    # 予約開始時に、先に会員/非会員状態を判定します。
     start_words = {"予約", "予約する", "予約開始"}
     if normalized_text in start_words or data == "line_reserve:start":
+        linked_customer = get_customer_by_line_user_id(shop_id, user_id)
         staff_options = _line_staff_options(shop)
         if not staff_options:
             return send_line_message(access_token, user_id, "現在、選択できる担当者が登録されていません。")
-        upsert_line_reservation_session(shop_id, user_id, step="select_staff", staff_id="", staff_name="", menu_id="", menu_name="", duration=0, price=0, reservation_date="", start_time="", end_time="", customer_id=0, customer_name="", customer_phone="")
-        return reply_options("担当者を選んでください。", [s["name"] for s in staff_options])
+
+        base_values = dict(
+            staff_id="", staff_name="", menu_id="", menu_name="", duration=0, price=0,
+            reservation_date="", start_time="", end_time="", customer_id=0, customer_name="", customer_phone="",
+        )
+
+        if is_real_line_customer(linked_customer):
+            member_values = dict(base_values)
+            member_values.update(
+                customer_id=int(linked_customer.get("id") or 0),
+                customer_name=str(linked_customer.get("name") or ""),
+                customer_phone=str(linked_customer.get("phone") or ""),
+            )
+            upsert_line_reservation_session(shop_id, user_id, step="select_staff", **member_values)
+            return reply_options(
+                f"{linked_customer.get('name')}様の会員情報で予約を開始します。\n担当者を選んでください。",
+                [s["name"] for s in staff_options],
+            )
+
+        previous_name = str((linked_customer or {}).get("name") or "").strip()
+        previous_phone = normalize_member_phone((linked_customer or {}).get("phone") or "")
+        has_previous_guest_info = bool(linked_customer and previous_name and previous_phone and not previous_name.startswith("LINE予約"))
+        register_url = build_line_member_register_url(shop_id, user_id)
+        if has_previous_guest_info:
+            guest_values = dict(base_values)
+            guest_values.update(
+                customer_id=int((linked_customer or {}).get("id") or 0),
+                customer_name=previous_name,
+                customer_phone=previous_phone,
+            )
+            upsert_line_reservation_session(shop_id, user_id, step="select_customer_type", **guest_values)
+            return reply_options(
+                "前回は非会員としてこちらの情報で予約されています。\n\n"
+                f"お名前：{previous_name}\n"
+                f"電話番号：{previous_phone}\n\n"
+                "会員登録すると次回以降は会員情報を優先して予約できます。\n"
+                f"{register_url}\n\n"
+                "今回はどうしますか？",
+                ["この情報で予約する", "情報を変更する", "会員登録URLを表示"],
+            )
+
+        upsert_line_reservation_session(shop_id, user_id, step="select_customer_type", **base_values)
+        return reply_options(
+            "初回のため、お客様情報が必要です。\n\n"
+            "会員登録する場合はこちらから登録してください。\n"
+            f"{register_url}\n\n"
+            "非会員のまま予約する場合は「非会員で予約する」を選んでください。",
+            ["非会員で予約する", "会員登録URLを表示"],
+        )
 
     step = str(session.get("step") or "")
 
@@ -1223,6 +1311,14 @@ def handle_line_complete_reservation_flow(shop_id: str, user_id: str, access_tok
             customer_name = str(session.get("customer_name") or "").strip()
             customer_phone = str(session.get("customer_phone") or "").strip()
             if customer_id and customer_name:
+                # 予約開始直後に非会員情報を確認した場合は、ここから担当者選択へ進む。
+                if not str(session.get("staff_id") or "").strip():
+                    staff_options = _line_staff_options(shop)
+                    session = upsert_line_reservation_session(shop_id, user_id, step="select_staff") or {}
+                    return reply_options(
+                        f"{customer_name}様の情報で予約を進めます。\n担当者を選んでください。",
+                        [s["name"] for s in staff_options],
+                    )
                 session = upsert_line_reservation_session(shop_id, user_id, step="confirm") or {}
                 confirm_text = (
                     "この内容で予約しますか？\n\n"
@@ -1271,12 +1367,19 @@ def handle_line_complete_reservation_flow(shop_id: str, user_id: str, access_tok
             )
         input_name, input_phone = parsed
         customer = ensure_line_customer_for_reservation(shop_id, user_id, input_name, input_phone)
+        next_step = "confirm" if str(session.get("staff_id") or "").strip() else "select_staff"
         session = upsert_line_reservation_session(
-            shop_id, user_id, step="confirm",
+            shop_id, user_id, step=next_step,
             customer_id=int(customer.get("id") or 0),
             customer_name=str(customer.get("name") or input_name),
             customer_phone=str(customer.get("phone") or input_phone),
         ) or {}
+        if next_step == "select_staff":
+            staff_options = _line_staff_options(shop)
+            return reply_options(
+                "お客様情報を保存しました。\n担当者を選んでください。",
+                [s["name"] for s in staff_options],
+            )
         confirm_text = (
             "この内容で予約しますか？\n\n"
             + f"お名前：{session.get('customer_name')}（LINE予約）\n"
@@ -1354,7 +1457,12 @@ def ensure_customer_line_user_id_schema() -> None:
 
 
 def update_customer_line_user_id(shop_id: str, customer_id: int, line_user_id: str) -> None:
-    """顧客にLINE user_idを紐づけます。"""
+    """顧客にLINE user_idを紐づけます。
+
+    会員登録後も過去の非会員顧客に同じLINE user_idが残ると、
+    LINE予約時に非会員情報が優先表示されてしまうため、同一店舗内の
+    他顧客からは先にLINE user_idを外してから、対象顧客へ付け替えます。
+    """
     line_user_id = str(line_user_id or "").strip()
     if not line_user_id:
         return
@@ -1362,6 +1470,14 @@ def update_customer_line_user_id(shop_id: str, customer_id: int, line_user_id: s
     ensure_customer_line_user_id_schema()
 
     with get_connection() as conn:
+        conn.execute(
+            """
+            UPDATE customers
+            SET line_user_id = NULL
+            WHERE shop_id = ? AND line_user_id = ? AND id <> ?
+            """,
+            (str(shop_id or "").strip(), line_user_id, int(customer_id)),
+        )
         conn.execute(
             """
             UPDATE customers
