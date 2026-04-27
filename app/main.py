@@ -958,17 +958,34 @@ def get_customer_by_line_user_id(shop_id: str, line_user_id: str) -> dict | None
 
 
 def is_real_line_customer(customer: dict | None) -> bool:
-    """LINE自動作成の仮顧客ではなく、実名・電話番号が入っているか判定します。"""
+    """LINE予約で自動入力を省略してよい「会員顧客」か判定します。
+
+    非会員予約でも名前・電話番号・LINE user_id は顧客リストへ保存しますが、
+    次回も会員登録を案内したいので、電話番号に対応する会員データがある場合だけ
+    登録済み扱いにします。
+    """
     if not customer:
         return False
+
     name = str(customer.get("name") or "").strip()
     phone = normalize_member_phone(customer.get("phone") or "")
     if not name or name == "LINE予約" or name.startswith("LINE予約"):
         return False
     if "LINE予約" in name and name.endswith("）"):
         return False
-    return bool(phone)
+    if not phone:
+        return False
 
+    try:
+        member = get_member_by_phone_normalized(str(customer.get("shop_id") or ""), phone)
+        if not member:
+            return False
+        member_customer_id = int(member.get("customer_id") or 0)
+        customer_id = int(customer.get("id") or 0)
+        return bool(member_customer_id == customer_id or (not customer_id and member_customer_id))
+    except Exception as exc:
+        print("line real customer check error:", repr(exc))
+        return False
 
 def build_line_member_register_url(shop_id: str, line_user_id: str) -> str:
     """LINE予約から会員登録へ進むためのURLを作ります。"""
@@ -1186,7 +1203,7 @@ def handle_line_complete_reservation_flow(shop_id: str, user_id: str, access_tok
             return send_line_message(
                 access_token,
                 user_id,
-                "非会員予約として、お名前と電話番号を送信してください。\n\n例：山田太郎 09012345678\n\n入力内容は顧客リストに保存し、次回からこのLINEと紐づけます。"
+                "非会員予約として、お名前と電話番号を送信してください。\n\n例：山田太郎 09012345678\n\n入力内容は顧客リストに保存します。次回も会員登録の案内を表示します。"
             )
         if normalized_text in {"会員登録urlを表示", "会員登録URLを表示", "会員登録する", "会員登録"}:
             register_url = build_line_member_register_url(shop_id, user_id)
