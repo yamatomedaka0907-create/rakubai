@@ -1793,16 +1793,122 @@ def _send_reservation_reminder_mail(reminder: dict) -> bool:
         return False
 
 
+
+
+def _enrich_reminder_for_line(reminder: dict) -> dict:
+    """get_due_reservation_reminders の結果にLINE送信用情報を補完します。"""
+    data = dict(reminder or {})
+    shop_id = str(data.get("shop_id") or "").strip()
+    customer_id = data.get("customer_id")
+
+    try:
+        with get_connection() as conn:
+            if not str(data.get("line_user_id") or "").strip() and customer_id not in (None, ""):
+                row = conn.execute(
+                    "SELECT line_user_id FROM customers WHERE shop_id = ? AND id = ? LIMIT 1",
+                    (shop_id, int(customer_id)),
+                ).fetchone()
+                if row:
+                    data["line_user_id"] = row["line_user_id"] if hasattr(row, "keys") else row[0]
+
+            if not str(data.get("line_channel_access_token") or "").strip():
+                row = conn.execute(
+                    "SELECT line_channel_access_token FROM shops WHERE shop_id = ? LIMIT 1",
+                    (shop_id,),
+                ).fetchone()
+                if row:
+                    data["line_channel_access_token"] = row["line_channel_access_token"] if hasattr(row, "keys") else row[0]
+    except Exception as exc:
+        print("[_enrich_reminder_for_line] failed:", repr(exc))
+
+    return data
+
+
+
+def _send_reservation_reminder_line(reminder: dict) -> bool:
+    """既存のメールリマインド設定を使ってLINEリマインドを送信します。"""
+    ensure_customer_line_user_id_schema()
+
+    line_user_id = str(reminder.get("line_user_id") or "").strip()
+    access_token = str(reminder.get("line_channel_access_token") or "").strip()
+    if not line_user_id or not access_token:
+        return False
+
+    is_day_before = str(reminder.get("reminder_kind") or "") == "day_before"
+
+    default_body = (
+        """{{customer_name}}様
+
+いつも{{shop_name}}をご利用いただきありがとうございます。
+
+明日、以下の内容でご予約をいただいております。
+
+■日時
+{{reservation_date}} {{reservation_time}}
+
+ご来店を心よりお待ちしております。"""
+        if is_day_before else
+        """{{customer_name}}様
+
+{{shop_name}}でございます。
+
+本日、以下のお時間でご予約をいただいております。
+
+■日時
+{{reservation_date}} {{reservation_time}}
+
+ご来店の際はお気をつけてお越しください。"""
+    )
+
+    body_template_value = reminder.get("reminder_day_before_body") if is_day_before else reminder.get("reminder_same_day_body")
+    body_template = str(body_template_value or "").strip() or default_body
+    body = _render_reminder_template(body_template, reminder)
+
+    result = send_line_message(
+        access_token=access_token,
+        user_id=line_user_id,
+        message=body,
+    )
+    print("[_send_reservation_reminder_line] result:", result)
+    return bool(result.get("ok"))
+
+
+
 def _process_reservation_reminders() -> None:
     reminder_now = datetime.now(ZoneInfo('Asia/Tokyo')).replace(second=0, microsecond=0).replace(tzinfo=None)
-    for reminder in get_due_reservation_reminders(reminder_now):
-        if _send_reservation_reminder_mail(reminder):
+
+    ensure_customer_line_user_id_schema()
+
+    for reminder_raw in get_due_reservation_reminders(reminder_now):
+        reminder = _enrich_reminder_for_line(dict(reminder_raw))
+        mail_sent = False
+        line_sent = False
+
+        try:
+            mail_sent = _send_reservation_reminder_mail(reminder)
+        except Exception as exc:
+            print(f"[_process_reservation_reminders] mail failed: {exc}")
+
+        try:
+            line_sent = _send_reservation_reminder_line(reminder)
+        except Exception as exc:
+            print(f"[_process_reservation_reminders] line failed: {exc}")
+
+        if mail_sent or line_sent:
             mark_reservation_reminder_sent(
                 str(reminder.get('shop_id') or ''),
                 int(reminder.get('id') or 0),
                 str(reminder.get('reminder_kind') or ''),
                 reminder_now.isoformat(timespec='minutes'),
             )
+
+
+
+@app.get("/send-reminders")
+def send_all_reminders_endpoint():
+    _process_reservation_reminders()
+    return {"ok": True, "message": "メール・LINEリマインド処理を実行しました"}
+
 
 
 def _start_reservation_reminder_worker() -> None:
@@ -4171,167 +4277,15 @@ async def save_line_settings(request: Request, shop_id: str):
 
 
 
-def ensure_line_reminder_schema() -> None:
-    """LINEリマインド送信用の送信済みフラグを reservations に追加します。"""
-    try:
-        with get_connection() as conn:
-            reservation_columns = [
-                str(row[1])
-                for row in conn.execute("PRAGMA table_info(reservations)").fetchall()
-            ]
-            if "line_reminder_1d_sent_at" not in reservation_columns:
-                conn.execute("ALTER TABLE reservations ADD COLUMN line_reminder_1d_sent_at TEXT")
-            if "line_reminder_1h_sent_at" not in reservation_columns:
-                conn.execute("ALTER TABLE reservations ADD COLUMN line_reminder_1h_sent_at TEXT")
-            conn.commit()
-    except Exception as exc:
-        print("ensure_line_reminder_schema error:", repr(exc))
-
-
-def build_line_reminder_message(shop: dict, reservation: dict, reminder_type: str) -> str:
-    """LINEリマインド本文を作ります。"""
-    shop_name = str((shop or {}).get("shop_name") or "店舗")
-    customer_name = str((reservation or {}).get("customer_name") or "")
-    reservation_date = str((reservation or {}).get("reservation_date") or "")
-    start_time = str((reservation or {}).get("start_time") or "")
-    end_time = str((reservation or {}).get("end_time") or "")
-    staff_name = str((reservation or {}).get("staff_name") or "")
-    menu_name = str((reservation or {}).get("menu_name") or "")
-
-    lead_text = "明日のご予約のリマインドです。" if reminder_type == "1d" else "まもなくご予約のお時間です。"
-
-    return (
-        f"{customer_name}様\n"
-        f"{lead_text}\n\n"
-        f"■店舗\n{shop_name}\n\n"
-        f"■日時\n{reservation_date} {start_time}-{end_time}\n\n"
-        f"■メニュー\n{menu_name}\n\n"
-        f"■担当\n{staff_name}\n\n"
-        f"ご来店をお待ちしております。"
-    )
-
-
-def _parse_reservation_datetime_for_line(reservation: dict) -> datetime | None:
-    """予約日の reservation_date + start_time をJSTのdatetimeにします。"""
-    reservation_date = str((reservation or {}).get("reservation_date") or "").strip()
-    start_time = str((reservation or {}).get("start_time") or "").strip()[:5]
-    if not reservation_date or not start_time:
-        return None
-    try:
-        return datetime.strptime(f"{reservation_date} {start_time}", "%Y-%m-%d %H:%M").replace(tzinfo=JST)
-    except ValueError:
-        return None
-
-
-def _mark_line_reminder_sent(reservation_id: int, reminder_type: str) -> None:
-    """LINEリマインド送信済み時刻を保存します。"""
-    column = "line_reminder_1d_sent_at" if reminder_type == "1d" else "line_reminder_1h_sent_at"
-    now_text = datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
-    with get_connection() as conn:
-        conn.execute(
-            f"UPDATE reservations SET {column} = ? WHERE id = ?",
-            (now_text, int(reservation_id)),
-        )
-        conn.commit()
-
-
-def send_due_line_reminders() -> dict:
-    """送信対象のLINEリマインドを送ります。
-
-    前日リマインド: 予約の24時間前から23時間前まで
-    1時間前リマインド: 予約の60分前から0分前まで
-    """
-    ensure_customer_line_user_id_schema()
-    ensure_line_reminder_schema()
-
-    now = datetime.now(JST)
-    sent_count = 0
-    checked_count = 0
-    errors: list[str] = []
-
-    with get_connection() as conn:
-        rows = conn.execute(
-            """
-            SELECT
-                r.*,
-                c.name AS customer_name,
-                c.line_user_id AS line_user_id,
-                s.shop_name AS shop_name,
-                s.line_channel_access_token AS line_channel_access_token
-            FROM reservations r
-            LEFT JOIN customers c
-                ON c.id = r.customer_id
-                AND c.shop_id = r.shop_id
-            LEFT JOIN shops s
-                ON s.shop_id = r.shop_id
-            WHERE COALESCE(r.status, '') != 'キャンセル'
-            """
-        ).fetchall()
-
-    for row in rows:
-        reservation = dict(row)
-        checked_count += 1
-
-        reservation_at = _parse_reservation_datetime_for_line(reservation)
-        if reservation_at is None:
-            continue
-
-        line_user_id = str(reservation.get("line_user_id") or "").strip()
-        access_token = str(reservation.get("line_channel_access_token") or "").strip()
-        if not line_user_id or not access_token:
-            continue
-
-        minutes_until = (reservation_at - now).total_seconds() / 60
-
-        reminder_type = ""
-        sent_column = ""
-
-        if 23 * 60 <= minutes_until <= 24 * 60 and not str(reservation.get("line_reminder_1d_sent_at") or "").strip():
-            reminder_type = "1d"
-            sent_column = "line_reminder_1d_sent_at"
-        elif 0 <= minutes_until <= 60 and not str(reservation.get("line_reminder_1h_sent_at") or "").strip():
-            reminder_type = "1h"
-            sent_column = "line_reminder_1h_sent_at"
-
-        if not reminder_type:
-            continue
-
-        shop = {"shop_name": reservation.get("shop_name") or ""}
-        message = build_line_reminder_message(shop, reservation, reminder_type)
-
-        try:
-            result = send_line_message(
-                access_token=access_token,
-                user_id=line_user_id,
-                message=message,
-            )
-            if result.get("ok"):
-                _mark_line_reminder_sent(int(reservation.get("id") or 0), reminder_type)
-                sent_count += 1
-            else:
-                errors.append(f"reservation_id={reservation.get('id')} result={result}")
-        except Exception as exc:
-            errors.append(f"reservation_id={reservation.get('id')} error={repr(exc)}")
-
-    return {
-        "ok": True,
-        "checked_count": checked_count,
-        "sent_count": sent_count,
-        "errors": errors[:20],
-    }
-
-
-@app.get("/send-line-reminders")
-def send_line_reminders_endpoint():
-    return send_due_line_reminders()
-
-
-
 @app.on_event("startup")
-def _line_reminder_schema_startup() -> None:
+def _line_reminder_startup() -> None:
     ensure_customer_line_user_id_schema()
     ensure_line_webhook_test_schema()
-    ensure_line_reminder_schema()
+    try:
+        _start_reservation_reminder_worker()
+    except Exception as exc:
+        print("[startup] reminder worker start failed:", repr(exc))
+
 
 
 @app.post("/line/webhook/{shop_id}/")
