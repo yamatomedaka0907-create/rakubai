@@ -7704,6 +7704,7 @@ def site_page(request: Request, shop_id: str):
             "calendar_prev_month": f"{prev_year:04d}-{prev_month:02d}",
             "calendar_next_month": f"{next_year:04d}-{next_month:02d}",
             "calendar_base_path": request.url.path,
+            "line_official_url": (get_shop_line_settings(shop_id) or {}).get("line_official_url",""),
         },
     )
 
