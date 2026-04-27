@@ -135,7 +135,6 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 def init_db() -> None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             '''
             CREATE TABLE IF NOT EXISTS shops (
@@ -790,7 +789,6 @@ def _deserialize_shop_row(row: sqlite3.Row | None) -> dict[str, Any] | None:
 
 def get_shop(shop_id: str) -> dict[str, Any] | None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT
@@ -817,7 +815,6 @@ def get_shop_ui_mode(shop_id: str) -> str:
 
 def get_all_shops() -> list[dict[str, Any]]:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         rows = conn.execute(
             '''
             SELECT
@@ -844,14 +841,12 @@ def get_homepage_templates(active_only: bool = False) -> list[dict[str, Any]]:
         query += ' WHERE is_active = 1'
     query += ' ORDER BY id ASC'
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         rows = conn.execute(query, params).fetchall()
     return [_deserialize_theme_row(row) for row in rows]
 
 
 def get_homepage_template(template_id: int) -> dict[str, Any] | None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute('SELECT id, code, name, description, theme_json, is_active, created_at FROM homepage_templates WHERE id = ?', (template_id,)).fetchone()
     return _deserialize_theme_row(row)
 
@@ -865,7 +860,6 @@ def create_homepage_template(*, code: str, name: str, description: str = '', the
         raise ValueError('テンプレートコードは半角英小文字・数字・ハイフンのみで入力してください。')
     theme = theme or {}
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         cur = conn.execute(
             'INSERT INTO homepage_templates (code, name, description, theme_json, is_active) VALUES (?, ?, ?, ?, ?)',
             (normalized_code, name.strip(), description.strip(), json.dumps(theme, ensure_ascii=False), is_active),
@@ -880,7 +874,6 @@ def create_homepage_template(*, code: str, name: str, description: str = '', the
 
 def get_shop_homepage_settings(shop_id: str) -> dict[str, Any] | None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT
@@ -951,7 +944,6 @@ def upsert_shop_homepage_settings(
 ) -> None:
     public_path = (public_path or shop_id).strip().strip('/') or shop_id
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             '''
             INSERT INTO shop_homepage_settings (
@@ -1006,7 +998,6 @@ def upsert_shop_homepage_settings(
 def get_shop_homepage_by_public_path(public_path: str) -> dict[str, Any] | None:
     normalized = public_path.strip().strip('/')
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT
@@ -1048,7 +1039,6 @@ def get_shop_homepage_by_public_path(public_path: str) -> dict[str, Any] | None:
 
 def get_shop_homepage_sections(shop_id: str) -> list[dict[str, Any]]:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         rows = conn.execute(
             '''
             SELECT id, shop_id, section_type, title, subtitle, body_text, image_url, button_label, button_url, items_json, sort_order, is_visible, updated_at
@@ -1100,7 +1090,6 @@ def create_shop_homepage_section(
     is_visible: int = 1,
 ) -> None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             '''
             INSERT INTO shop_homepage_sections (
@@ -1132,7 +1121,6 @@ def update_shop_homepage_section(
     is_visible: int = 1,
 ) -> None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             '''
             UPDATE shop_homepage_sections
@@ -1216,7 +1204,6 @@ def patch_shop_homepage_section(shop_id: str, section_id: int, **fields) -> None
 
 def reorder_shop_homepage_sections(shop_id: str, ordered_ids: list[int]) -> None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         for idx, section_id in enumerate(ordered_ids, start=1):
             conn.execute(
                 "UPDATE shop_homepage_sections SET sort_order = ?, updated_at = CURRENT_TIMESTAMP WHERE shop_id = ? AND id = ?",
@@ -1226,13 +1213,11 @@ def reorder_shop_homepage_sections(shop_id: str, ordered_ids: list[int]) -> None
 
 def delete_shop_homepage_section(shop_id: str, section_id: int) -> None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute('DELETE FROM shop_homepage_sections WHERE shop_id = ? AND id = ?', (shop_id, section_id))
         conn.commit()
 
 def replace_shop_homepage_sections(shop_id: str, sections: list[dict[str, Any]]) -> None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute('DELETE FROM shop_homepage_sections WHERE shop_id = ?', (shop_id,))
         for section in sections:
             conn.execute(
@@ -1261,7 +1246,6 @@ def replace_shop_homepage_sections(shop_id: str, sections: list[dict[str, Any]])
 def get_shop_homepage_by_public_path(public_path: str) -> dict[str, Any] | None:
     normalized = public_path.strip().strip('/')
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT
@@ -1291,7 +1275,6 @@ def get_shop_homepage_by_public_path(public_path: str) -> dict[str, Any] | None:
     return _deserialize_homepage_row(row)
 def shop_exists(shop_id: str) -> bool:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute('SELECT 1 FROM shops WHERE shop_id = ? LIMIT 1', (shop_id,)).fetchone()
     return row is not None
 
@@ -1335,7 +1318,6 @@ def create_shop_with_owner(
     ]
 
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             '''
             INSERT INTO shops (
@@ -1379,7 +1361,6 @@ def create_shop_with_owner(
 
 def get_customers(shop_id: str) -> list[dict[str, Any]]:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         rows = conn.execute(
             '''
             SELECT id, shop_id, name, phone, email, created_at
@@ -1394,7 +1375,6 @@ def get_customers(shop_id: str) -> list[dict[str, Any]]:
 
 def get_member_customer_ids(shop_id: str) -> set[int]:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         rows = conn.execute(
             """
             SELECT customer_id
@@ -1408,7 +1388,6 @@ def get_member_customer_ids(shop_id: str) -> set[int]:
 
 def get_customer_by_id(shop_id: str, customer_id: int) -> dict[str, Any] | None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT id, shop_id, name, phone, email, created_at
@@ -1423,7 +1402,6 @@ def get_customer_by_id(shop_id: str, customer_id: int) -> dict[str, Any] | None:
 def find_customer(shop_id: str, customer_name: str, phone: str, email: str = '') -> dict[str, Any] | None:
     normalized_email = (email or '').strip().lower()
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         if normalized_email:
             row = conn.execute(
                 """
@@ -1468,7 +1446,6 @@ def find_customer(shop_id: str, customer_name: str, phone: str, email: str = '')
 def create_customer(shop_id: str, name: str, phone: str = '', email: str = '') -> dict[str, Any]:
     normalized_email = (email or '').strip().lower()
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         cursor = conn.execute(
             """
             INSERT INTO customers (shop_id, name, phone, email)
@@ -1488,7 +1465,6 @@ def create_customer(shop_id: str, name: str, phone: str = '', email: str = '') -
 def update_customer(shop_id: str, customer_id: int, name: str, phone: str = '', email: str = '') -> dict[str, Any] | None:
     normalized_email = (email or '').strip().lower()
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             """
             UPDATE customers
@@ -1513,7 +1489,6 @@ def update_customer_contact(shop_id: str, customer_id: int, name: str = '', phon
 
 def get_customer_notes(shop_id: str, customer_id: int) -> list[dict[str, Any]]:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         rows = conn.execute(
             '''
             SELECT id, shop_id, customer_id, title, content, created_at
@@ -1528,7 +1503,6 @@ def get_customer_notes(shop_id: str, customer_id: int) -> list[dict[str, Any]]:
 
 def add_customer_note(shop_id: str, customer_id: int, title: str, content: str) -> dict[str, Any]:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         cursor = conn.execute(
             '''
             INSERT INTO customer_notes (shop_id, customer_id, title, content)
@@ -1553,7 +1527,6 @@ def add_customer_note(shop_id: str, customer_id: int, title: str, content: str) 
 
 def delete_customer_note(shop_id: str, customer_id: int, note_id: int) -> dict[str, Any] | None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT id, shop_id, customer_id, title, content, created_at
@@ -1571,7 +1544,6 @@ def delete_customer_note(shop_id: str, customer_id: int, note_id: int) -> dict[s
 
 def get_customer_photos(shop_id: str, customer_id: int) -> list[dict[str, Any]]:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         rows = conn.execute(
             '''
             SELECT id, shop_id, customer_id, image_url, created_at
@@ -1586,7 +1558,6 @@ def get_customer_photos(shop_id: str, customer_id: int) -> list[dict[str, Any]]:
 
 def get_customer_photo_by_id(shop_id: str, customer_id: int, photo_id: int) -> dict[str, Any] | None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT id, shop_id, customer_id, image_url, created_at
@@ -1600,7 +1571,6 @@ def get_customer_photo_by_id(shop_id: str, customer_id: int, photo_id: int) -> d
 
 def add_customer_photo(shop_id: str, customer_id: int, image_url: str) -> dict[str, Any]:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         cursor = conn.execute(
             '''
             INSERT INTO customer_photos (shop_id, customer_id, image_url)
@@ -1621,7 +1591,6 @@ def delete_customer_photo(shop_id: str, customer_id: int, photo_id: int) -> dict
     if photo is None:
         return None
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute('DELETE FROM customer_photos WHERE id = ? AND shop_id = ? AND customer_id = ?', (photo_id, shop_id, customer_id))
         conn.commit()
     return photo
@@ -1632,7 +1601,6 @@ def delete_customer(shop_id: str, customer_id: int) -> dict[str, Any] | None:
     if customer is None:
         return None
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute('DELETE FROM customer_notes WHERE shop_id = ? AND customer_id = ?', (shop_id, customer_id))
         conn.execute('DELETE FROM customer_photos WHERE shop_id = ? AND customer_id = ?', (shop_id, customer_id))
         conn.execute('DELETE FROM reservations WHERE shop_id = ? AND customer_id = ?', (shop_id, customer_id))
@@ -1645,7 +1613,6 @@ def delete_customer(shop_id: str, customer_id: int) -> dict[str, Any] | None:
 
 def get_reservations(shop_id: str) -> list[dict[str, Any]]:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         rows = conn.execute(
             '''
             SELECT
@@ -1695,7 +1662,6 @@ def create_reservation(
     source: str = 'admin',
 ) -> dict[str, Any]:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         cursor = conn.execute(
             '''
             INSERT INTO reservations (
@@ -1741,7 +1707,6 @@ def create_reservation(
         conn.commit()
 
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT
@@ -1775,7 +1740,6 @@ def create_reservation(
 
 def update_reservation_status(shop_id: str, reservation_id: int, status: str) -> None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             '''
             UPDATE reservations
@@ -1790,7 +1754,6 @@ def update_reservation_status(shop_id: str, reservation_id: int, status: str) ->
 
 def get_child_shops(parent_shop_id: str) -> list[dict[str, Any]]:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         rows = conn.execute(
             '''
             SELECT
@@ -1815,7 +1778,6 @@ def get_child_shops(parent_shop_id: str) -> list[dict[str, Any]]:
 
 def get_parent_shop(shop_id: str) -> dict[str, Any] | None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT parent_shop_id
@@ -1858,7 +1820,6 @@ def create_child_shop_under_parent(
         raise ValueError('子店舗パスワードは4文字以上で入力してください。')
 
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             '''
             INSERT INTO shops (
@@ -1908,7 +1869,6 @@ def delete_shop_subscription(shop_id: str) -> None:
     if not normalized_shop_id:
         return
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute('DELETE FROM subscriptions WHERE shop_id = ?', (normalized_shop_id,))
         conn.commit()
 
@@ -1926,14 +1886,12 @@ def get_plans(active_only: bool = False) -> list[dict[str, Any]]:
         query += ' WHERE is_active = 1'
     query += ' ORDER BY sort_order ASC, id ASC'
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         rows = conn.execute(query).fetchall()
     return _rows_to_dicts(rows)
 
 
 def get_plan_by_code(code: str) -> dict[str, Any] | None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT
@@ -1951,7 +1909,6 @@ def get_plan_by_code(code: str) -> dict[str, Any] | None:
 def get_shop_subscription(shop_id: str) -> dict[str, Any] | None:
     target_shop_id = (shop_id or '').strip().lower()
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         shop_row = conn.execute(
             '''
             SELECT parent_shop_id, is_child_shop
@@ -2003,7 +1960,6 @@ def ensure_shop_subscription(shop_id: str, default_plan_code: str = 'free') -> d
         raise RuntimeError('初期プランが見つかりません。')
 
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             '''
             INSERT INTO subscriptions (shop_id, plan_id, status)
@@ -2023,7 +1979,6 @@ def ensure_shop_subscription(shop_id: str, default_plan_code: str = 'free') -> d
 
 def get_all_shops_for_platform() -> list[dict[str, Any]]:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         rows = conn.execute(
             '''
             SELECT
@@ -2059,7 +2014,6 @@ def get_all_shops_for_platform() -> list[dict[str, Any]]:
 
 def get_shop_management_data(shop_id: str) -> dict[str, Any] | None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT
@@ -2224,7 +2178,6 @@ def update_shop_basic_info(
 ) -> None:
     normalized_menus = _normalize_shop_menus(menus)
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             '''
             UPDATE shops
@@ -2286,7 +2239,6 @@ def update_shop_basic_info(
 def update_shop_staff_list(shop_id: str, staff_list: list[dict[str, Any]] | None = None) -> None:
     normalized_staff_list = _normalize_shop_staff_list(staff_list)
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             '''
             UPDATE shops
@@ -2300,7 +2252,6 @@ def update_shop_staff_list(shop_id: str, staff_list: list[dict[str, Any]] | None
 
 def update_shop_subscription(shop_id: str, plan_id: int, status: str = 'active') -> None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             '''
             INSERT INTO subscriptions (shop_id, plan_id, status)
@@ -2319,7 +2270,6 @@ def update_shop_subscription(shop_id: str, plan_id: int, status: str = 'active')
 
 def get_admin_users(shop_id: str) -> list[dict[str, Any]]:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         rows = conn.execute(
             '''
             SELECT id, shop_id, name, login_id, is_owner, is_active, created_at
@@ -2334,7 +2284,6 @@ def get_admin_users(shop_id: str) -> list[dict[str, Any]]:
 
 def get_admin_user_by_login_id(shop_id: str, login_id: str) -> dict[str, Any] | None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT id, shop_id, name, login_id, password_hash, is_owner, is_active, created_at
@@ -2358,7 +2307,6 @@ def authenticate_admin_user(shop_id: str, login_id: str, password: str) -> dict[
 
 def create_admin_user(shop_id: str, name: str, login_id: str, password: str, is_owner: int = 0) -> dict[str, Any]:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         existing = conn.execute(
             'SELECT id FROM admin_users WHERE shop_id = ? AND login_id = ? LIMIT 1',
             (shop_id, login_id),
@@ -2377,7 +2325,6 @@ def create_admin_user(shop_id: str, name: str, login_id: str, password: str, is_
         conn.commit()
 
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT id, shop_id, name, login_id, is_owner, is_active, created_at
@@ -2393,7 +2340,6 @@ def create_admin_user(shop_id: str, name: str, login_id: str, password: str, is_
 
 def get_owner_admin_user(shop_id: str) -> dict[str, Any] | None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             """
             SELECT id, shop_id, name, login_id, is_owner, is_active, created_at
@@ -2427,7 +2373,6 @@ def create_admin_password_reset_token(shop_id: str, login_id: str, expires_minut
     token = secrets.token_urlsafe(32)
     expires_at = (datetime.utcnow() + timedelta(minutes=expires_minutes)).isoformat(timespec='seconds')
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             'INSERT INTO admin_password_reset_tokens (token, shop_id, login_id, expires_at) VALUES (?, ?, ?, ?)',
             (token, shop_id, login_id, expires_at),
@@ -2438,7 +2383,6 @@ def create_admin_password_reset_token(shop_id: str, login_id: str, expires_minut
 
 def get_valid_admin_password_reset_token(token: str) -> dict[str, Any] | None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT id, token, shop_id, login_id, expires_at, used_at, created_at
@@ -2464,7 +2408,6 @@ def get_valid_admin_password_reset_token(token: str) -> dict[str, Any] | None:
 
 def mark_admin_password_reset_token_used(token: str) -> None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             'UPDATE admin_password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE token = ?',
             (token,),
@@ -2474,7 +2417,6 @@ def mark_admin_password_reset_token_used(token: str) -> None:
 
 def update_admin_user_password(shop_id: str, login_id: str, new_password: str) -> bool:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         cursor = conn.execute(
             'UPDATE admin_users SET password_hash = ? WHERE shop_id = ? AND login_id = ?',
             (hash_password(new_password), shop_id, login_id),
@@ -2488,7 +2430,6 @@ def get_due_reservation_reminders(now: datetime | None = None) -> list[dict[str,
     current_minute = now.replace(second=0, microsecond=0)
     items: list[dict[str, Any]] = []
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         rows = conn.execute(
             '''
             SELECT
@@ -2568,7 +2509,6 @@ def mark_reservation_reminder_sent(shop_id: str, reservation_id: int, reminder_k
     column = 'reminder_day_before_sent_at' if reminder_kind == 'day_before' else 'reminder_same_day_sent_at'
     timestamp = str(sent_at or datetime.now().replace(second=0, microsecond=0).isoformat(timespec='minutes'))
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             f'''UPDATE reservations SET {column} = ? WHERE shop_id = ? AND id = ?''',
             (timestamp, shop_id, reservation_id),
@@ -2580,14 +2520,12 @@ def mark_reservation_reminder_sent(shop_id: str, reservation_id: int, reminder_k
 
 def get_system_setting(setting_key: str, default: str = '') -> str:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute('SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1', (setting_key,)).fetchone()
     return str(row['setting_value']) if row and row['setting_value'] is not None else default
 
 
 def set_system_setting(setting_key: str, setting_value: str) -> None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             '''
             INSERT INTO system_settings (setting_key, setting_value)
@@ -2627,12 +2565,25 @@ def normalize_member_phone(phone: str) -> str:
     return value
 
 
+
+
+def delete_inactive_member_by_phone(shop_id: str, phone: str) -> None:
+    normalized_phone = normalize_member_phone(phone)
+    if not normalized_phone:
+        return
+    with get_connection() as conn:
+        conn.execute(
+            'DELETE FROM members WHERE shop_id = ? AND phone_normalized = ? AND is_active = 0',
+            (shop_id, normalized_phone),
+        )
+        conn.commit()
+
+
 def get_member_by_phone(shop_id: str, phone: str) -> dict[str, Any] | None:
     normalized_phone = normalize_member_phone(phone)
     if not normalized_phone:
         return None
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT id, shop_id, customer_id, name, phone, phone_normalized, email,
@@ -2648,7 +2599,6 @@ def get_member_by_phone(shop_id: str, phone: str) -> dict[str, Any] | None:
 
 def get_member_by_id(shop_id: str, member_id: int) -> dict[str, Any] | None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT id, shop_id, customer_id, name, phone, phone_normalized, email,
@@ -2672,18 +2622,14 @@ def create_member(shop_id: str, name: str, phone: str, password: str, email: str
     if len(password or '') < 4:
         raise ValueError('パスワードは4文字以上で入力してください。')
 
+    delete_inactive_member_by_phone(shop_id, normalized_phone)
     existing = get_member_by_phone(shop_id, normalized_phone)
     if existing is not None:
         raise ValueError('この電話番号はすでに会員登録されています。')
 
-    customer = find_customer(shop_id, name.strip(), normalized_phone, normalized_email)
-    if customer is None:
-        customer = create_customer(shop_id, name.strip(), normalized_phone, normalized_email)
-    else:
-        customer = update_customer_contact(shop_id, int(customer['id']), name.strip(), normalized_phone, normalized_email) or customer
+    customer = create_customer(shop_id, name.strip(), normalized_phone, normalized_email)
 
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         cursor = conn.execute(
             '''
             INSERT INTO members (
@@ -2740,6 +2686,7 @@ def create_member_registration_verification(
     if len(normalized_code) != 6:
         raise ValueError('確認コードの生成に失敗しました。')
 
+    delete_inactive_member_by_phone(shop_id, normalized_phone)
     existing = get_member_by_phone(shop_id, normalized_phone)
     if existing is not None:
         raise ValueError('この電話番号はすでに会員登録されています。')
@@ -2749,7 +2696,6 @@ def create_member_registration_verification(
     expires_at = (datetime.utcnow() + timedelta(minutes=10)).isoformat()
 
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             'DELETE FROM member_registration_verifications WHERE shop_id = ? AND (phone_normalized = ? OR email = ?)',
             (shop_id, normalized_phone, normalized_email),
@@ -2787,7 +2733,6 @@ def get_member_registration_verification(shop_id: str, token: str) -> dict[str, 
     if not normalized_token:
         return None
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT
@@ -2819,7 +2764,6 @@ def _get_member_registration_verification_including_verified(shop_id: str, token
     if not normalized_token:
         return None
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT
@@ -2842,7 +2786,6 @@ def verify_member_registration_code(shop_id: str, token: str, code: str) -> dict
     if str(verification.get('verification_code') or '') != normalized_code:
         return None
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             'UPDATE member_registration_verifications SET verified_at = CURRENT_TIMESTAMP WHERE shop_id = ? AND token = ?',
             (shop_id, token),
@@ -2866,20 +2809,16 @@ def consume_member_registration_verification(shop_id: str, token: str) -> dict[s
         raise ValueError('確認コードの有効期限が切れました。最初からやり直してください。')
 
     normalized_phone = str(verification.get('phone_normalized') or '').strip()
+    delete_inactive_member_by_phone(shop_id, normalized_phone)
     existing = get_member_by_phone(shop_id, normalized_phone)
     if existing is not None:
         raise ValueError('この電話番号はすでに会員登録されています。')
 
     normalized_name = str(verification.get('name') or '').strip()
     normalized_email = str(verification.get('email') or '').strip().lower()
-    customer = find_customer(shop_id, normalized_name, normalized_phone, normalized_email)
-    if customer is None:
-        customer = create_customer(shop_id, normalized_name, normalized_phone, normalized_email)
-    else:
-        customer = update_customer_contact(shop_id, int(customer['id']), normalized_name, normalized_phone, normalized_email) or customer
+    customer = create_customer(shop_id, normalized_name, normalized_phone, normalized_email)
 
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         cursor = conn.execute(
             '''
             INSERT INTO members (
@@ -2956,7 +2895,6 @@ def create_shop_registration_verification(
     expires_at = (datetime.utcnow() + timedelta(minutes=10)).isoformat()
 
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             'DELETE FROM shop_registration_verifications WHERE shop_id = ? OR email = ? OR login_id = ?',
             (normalized_login_id, normalized_email, normalized_login_id),
@@ -2995,7 +2933,6 @@ def get_shop_registration_verification(shop_id: str, token: str) -> dict[str, An
     if not normalized_shop_id or not normalized_token:
         return None
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT
@@ -3028,7 +2965,6 @@ def _get_shop_registration_verification_including_verified(shop_id: str, token: 
     if not normalized_shop_id or not normalized_token:
         return None
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT
@@ -3051,7 +2987,6 @@ def verify_shop_registration_code(shop_id: str, token: str, code: str) -> dict[s
     if str(verification.get('verification_code') or '') != normalized_code:
         return None
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             'UPDATE shop_registration_verifications SET verified_at = CURRENT_TIMESTAMP WHERE shop_id = ? AND token = ?',
             ((shop_id or '').strip().lower(), token),
@@ -3090,7 +3025,6 @@ def consume_shop_registration_verification(shop_id: str, token: str) -> dict[str
     )
 
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute('DELETE FROM shop_registration_verifications WHERE shop_id = ? AND token = ?', (normalized_shop_id, token))
         conn.commit()
 
@@ -3106,7 +3040,6 @@ def authenticate_member(shop_id: str, phone: str, password: str) -> dict[str, An
         if customer is None:
             customer = create_customer(shop_id, str(member.get('name') or ''), str(member.get('phone') or ''), str(member.get('email') or ''))
         with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
             conn.execute(
                 'UPDATE members SET customer_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND shop_id = ?',
                 (int(customer['id']), int(member['id']), shop_id),
@@ -3121,7 +3054,6 @@ def get_member_reservations(shop_id: str, member_id: int) -> list[dict[str, Any]
     if member is None or not member.get('customer_id'):
         return []
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         rows = conn.execute(
             '''
             SELECT
@@ -3159,7 +3091,6 @@ def get_member_all_reservations(phone_or_normalized: str) -> list[dict[str, Any]
     if not normalized_phone:
         return []
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         rows = conn.execute(
             '''
             SELECT
@@ -3197,7 +3128,6 @@ def get_member_all_reservations(phone_or_normalized: str) -> list[dict[str, Any]
 
 def get_member_by_customer_id(shop_id: str, customer_id: int) -> dict[str, Any] | None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT id, shop_id, customer_id, name, phone, phone_normalized, email,
@@ -3217,7 +3147,6 @@ def get_member_by_phone_normalized(shop_id: str, phone_normalized: str) -> dict[
     if not normalized_phone:
         return None
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT id, shop_id, customer_id, name, phone, phone_normalized, email,
@@ -3237,7 +3166,6 @@ def get_member_linked_shops(phone_or_normalized: str) -> list[dict[str, Any]]:
     if not normalized_phone:
         return []
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         rows = conn.execute(
             '''
             SELECT m.id AS member_id, m.shop_id, m.customer_id, m.name AS member_name, m.phone,
@@ -3256,7 +3184,6 @@ def get_member_linked_shops(phone_or_normalized: str) -> list[dict[str, Any]]:
 
 def deactivate_member(shop_id: str, member_id: int) -> bool:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         cursor = conn.execute(
             '''
             UPDATE members
@@ -3274,7 +3201,6 @@ def deactivate_members_by_phone(phone_or_normalized: str) -> int:
     if not normalized_phone:
         return 0
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         cursor = conn.execute(
             '''
             UPDATE members
@@ -3296,7 +3222,6 @@ def list_chat_messages(shop_id: str, customer_id: int, limit: int = 200, member_
         params.append(int(member_id))
     params.append(limit)
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         rows = conn.execute(
             f"""
             SELECT id, shop_id, customer_id, member_id, sender_type, body, is_read, created_at
@@ -3312,7 +3237,6 @@ def list_chat_messages(shop_id: str, customer_id: int, limit: int = 200, member_
 
 def get_latest_chat_member_id(shop_id: str, customer_id: int) -> int | None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             """
             SELECT member_id
@@ -3339,7 +3263,6 @@ def create_chat_message(shop_id: str, customer_id: int, member_id: int | None, s
     if sender not in {'member', 'staff'}:
         raise ValueError('送信種別が不正です。')
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         cursor = conn.execute(
             '''
             INSERT INTO chat_messages (shop_id, customer_id, member_id, sender_type, body, is_read)
@@ -3367,7 +3290,6 @@ def create_chat_message(shop_id: str, customer_id: int, member_id: int | None, s
 def purge_old_audit_logs(retention_days: int = 90) -> int:
     cutoff = (datetime.utcnow() - timedelta(days=max(int(retention_days or 90), 1))).strftime('%Y-%m-%d %H:%M:%S')
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         cursor = conn.execute('DELETE FROM audit_logs WHERE occurred_at < ?', (cutoff,))
         return int(cursor.rowcount or 0)
 
@@ -3392,7 +3314,6 @@ def create_audit_log(
 ) -> dict[str, Any]:
     detail_json = json.dumps(detail or {}, ensure_ascii=False)
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         cursor = conn.execute(
             '''
             INSERT INTO audit_logs (
@@ -3434,7 +3355,6 @@ def list_members_for_audit_api(shop_id: str) -> list[dict[str, Any]]:
     if not normalized_shop_id:
         return []
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         rows = conn.execute(
             '''
             SELECT id, shop_id, customer_id, name, phone, email, is_active, created_at, updated_at
@@ -3479,7 +3399,6 @@ def list_audit_logs_for_api(
     safe_limit = max(1, min(int(limit or 500), 1000))
     safe_offset = max(0, int(offset or 0))
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         rows = conn.execute(
             f'''
             SELECT
@@ -3523,7 +3442,6 @@ def get_shop_detail_for_audit_api(shop_id: str) -> dict[str, Any] | None:
         return None
     subscription = get_shop_subscription(normalized_shop_id) or {}
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             """
             SELECT
@@ -3556,7 +3474,6 @@ def get_member_detail_for_audit_api(shop_id: str, member_id: int) -> dict[str, A
     detail['customer'] = customer
     reservation_customer_id = int(customer_id) if customer_id else -1
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         counts = conn.execute(
             """
             SELECT
@@ -3621,7 +3538,6 @@ def update_member_for_audit_api(
     if not normalized_phone:
         raise ValueError('電話番号を入力してください。')
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         existing = conn.execute(
             """
             SELECT id FROM members
@@ -3670,7 +3586,6 @@ def update_member_for_audit_api(
 def force_cancel_member_for_audit_api(shop_id: str, member_id: int) -> dict[str, Any]:
     normalized_shop_id = (shop_id or '').strip().lower()
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             """
             UPDATE members
@@ -3686,7 +3601,6 @@ def force_cancel_member_for_audit_api(shop_id: str, member_id: int) -> dict[str,
 def force_cancel_shop_for_audit_api(shop_id: str) -> dict[str, Any]:
     normalized_shop_id = (shop_id or '').strip().lower()
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             """
             INSERT INTO subscriptions (shop_id, plan_id, status)
@@ -3705,7 +3619,6 @@ def force_cancel_shop_for_audit_api(shop_id: str) -> dict[str, Any]:
 def restore_member_for_audit_api(shop_id: str, member_id: int) -> dict[str, Any]:
     normalized_shop_id = (shop_id or '').strip().lower()
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             """
             UPDATE members
@@ -3721,7 +3634,6 @@ def restore_member_for_audit_api(shop_id: str, member_id: int) -> dict[str, Any]
 def restore_shop_for_audit_api(shop_id: str) -> dict[str, Any]:
     normalized_shop_id = (shop_id or '').strip().lower()
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             """
             INSERT INTO subscriptions (shop_id, plan_id, status)
@@ -3738,7 +3650,6 @@ def restore_shop_for_audit_api(shop_id: str) -> dict[str, Any]:
 
 def mark_chat_messages_read_for_admin(shop_id: str, customer_id: int) -> None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             '''
             UPDATE chat_messages
@@ -3757,7 +3668,6 @@ def mark_chat_messages_read_for_member(shop_id: str, customer_id: int, member_id
         member_clause = ' AND member_id = ?'
         params.append(int(member_id))
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         conn.execute(
             f'''
             UPDATE chat_messages
@@ -3773,7 +3683,6 @@ def count_member_chat_messages_in_month(shop_id: str, customer_id: int, year_mon
     target = (year_month or datetime.now().strftime('%Y-%m')).strip()
     like_value = f'{target}-%'
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT COUNT(*) AS count_value
@@ -3789,7 +3698,6 @@ def count_shop_chat_messages_in_month(shop_id: str, year_month: str | None = Non
     target = (year_month or datetime.now().strftime('%Y-%m')).strip()
     like_value = f'{target}-%'
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         row = conn.execute(
             '''
             SELECT COUNT(*) AS count_value
@@ -3803,7 +3711,6 @@ def count_shop_chat_messages_in_month(shop_id: str, year_month: str | None = Non
 
 def get_admin_unread_chat_summary(shop_id: str) -> list[dict[str, Any]]:
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         rows = conn.execute(
             '''
             SELECT
@@ -3836,7 +3743,6 @@ def get_member_unread_chat_summary(phone_or_normalized: str) -> list[dict[str, A
     if not normalized_phone:
         return []
     with get_connection() as conn:
-        conn.execute("DELETE FROM members WHERE phone_normalized = ? AND shop_id = ? AND is_active = 0", (normalized_phone, shop_id))
         rows = conn.execute(
             '''
             SELECT
