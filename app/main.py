@@ -957,6 +957,19 @@ def get_customer_by_line_user_id(shop_id: str, line_user_id: str) -> dict | None
     return dict(row) if row else None
 
 
+def is_real_line_customer(customer: dict | None) -> bool:
+    """LINE自動作成の仮顧客ではなく、実名・電話番号が入っているか判定します。"""
+    if not customer:
+        return False
+    name = str(customer.get("name") or "").strip()
+    phone = normalize_member_phone(customer.get("phone") or "")
+    if not name or name == "LINE予約" or name.startswith("LINE予約"):
+        return False
+    if "LINE予約" in name and name.endswith("）"):
+        return False
+    return bool(phone)
+
+
 def build_line_member_register_url(shop_id: str, line_user_id: str) -> str:
     """LINE予約から会員登録へ進むためのURLを作ります。"""
     from urllib.parse import quote
@@ -999,26 +1012,36 @@ def ensure_line_customer_for_reservation(shop_id: str, line_user_id: str, name: 
     clean_phone = normalize_member_phone(phone)
     customer = None
 
-    member = get_member_by_phone_normalized(shop_id, clean_phone) if clean_phone else None
-    if member:
-        clean_name = str(member.get("name") or clean_name).strip()
-        customer_id = int(member.get("customer_id") or 0)
-        if customer_id:
-            customer = get_customer_by_id(shop_id, customer_id)
+    linked_customer = get_customer_by_line_user_id(shop_id, line_user_id)
+    if linked_customer:
+        customer = update_customer_contact(
+            shop_id,
+            int(linked_customer.get("id") or 0),
+            clean_name,
+            clean_phone,
+            str(linked_customer.get("email") or ""),
+        ) or linked_customer
+
+    if not customer and clean_phone:
+        member = get_member_by_phone_normalized(shop_id, clean_phone)
+        if member:
+            clean_name = str(member.get("name") or clean_name).strip()
+            customer_id = int(member.get("customer_id") or 0)
+            if customer_id:
+                customer = get_customer_by_id(shop_id, customer_id)
 
     if not customer:
         customer = find_customer(shop_id, clean_name, clean_phone, "")
     if not customer:
         customer = create_customer(shop_id, clean_name, clean_phone, "")
     else:
-        customer = update_customer_contact(shop_id, int(customer.get("id") or 0), clean_name, clean_phone, "") or customer
+        customer = update_customer_contact(shop_id, int(customer.get("id") or 0), clean_name, clean_phone, str(customer.get("email") or "")) or customer
 
     try:
         update_customer_line_user_id(shop_id, int(customer.get("id") or 0), line_user_id)
     except Exception as exc:
         print("line customer link error:", repr(exc))
     return customer
-
 
 def handle_line_complete_reservation_flow(shop_id: str, user_id: str, access_token: str, message_text: str = "", postback_data: str = "") -> dict:
     """LINE完結予約フロー。
@@ -1122,7 +1145,7 @@ def handle_line_complete_reservation_flow(shop_id: str, user_id: str, access_tok
             slots = _line_slot_options(shop_id, session.get("staff_id"), int(session.get("duration") or 60))
             return reply_options("日時を選んでください。", [slot["label"] for slot in slots])
         linked_customer = get_customer_by_line_user_id(shop_id, user_id)
-        if linked_customer:
+        if is_real_line_customer(linked_customer):
             session = upsert_line_reservation_session(
                 shop_id, user_id, step="confirm",
                 reservation_date=selected.get("date") or "", start_time=selected.get("start") or "", end_time=selected.get("end") or "",
@@ -1210,7 +1233,7 @@ def handle_line_complete_reservation_flow(shop_id: str, user_id: str, access_tok
             customer_phone = str(session.get("customer_phone") or "").strip()
             if not customer_id or not customer_name:
                 linked_customer = get_customer_by_line_user_id(shop_id, user_id)
-                if linked_customer:
+                if is_real_line_customer(linked_customer):
                     customer_id = int(linked_customer.get("id") or 0)
                     customer_name = str(linked_customer.get("name") or "").strip()
                     customer_phone = str(linked_customer.get("phone") or "").strip()
@@ -6964,6 +6987,23 @@ def member_register_verify_submit(
                 status_code=303,
             )
         member = consume_member_registration_verification(shop_id, token)
+        line_user_id = extract_line_user_id_from_next_url(str(verification.get('next_url') or target_url))
+        if line_user_id:
+            try:
+                member_customer_id = int(member.get('customer_id') or 0)
+                if member_customer_id:
+                    update_customer_line_user_id(shop_id, member_customer_id, line_user_id)
+                else:
+                    linked_customer = ensure_line_customer_for_reservation(
+                        shop_id,
+                        line_user_id,
+                        str(member.get('name') or ''),
+                        str(member.get('phone') or ''),
+                    )
+                    member_customer_id = int(linked_customer.get('id') or 0)
+                print('LINE user linked after member registration:', line_user_id, member_customer_id)
+            except Exception as exc:
+                print('member registration LINE link error:', repr(exc))
     except ValueError as exc:
         return RedirectResponse(
             url=f"/member/{shop_id}/register/verify?token={quote(token, safe='')}&next={verify_target}&error={quote(str(exc), safe='')}",
