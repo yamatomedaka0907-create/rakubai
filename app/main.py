@@ -1090,7 +1090,10 @@ def handle_line_complete_reservation_flow(shop_id: str, user_id: str, access_tok
 
     session = get_line_reservation_session(shop_id, user_id) or {}
 
-    if "予約" in normalized_text or data == "line_reserve:start":
+    # 「非会員で予約する」のような選択肢にも「予約」が含まれるため、
+    # 部分一致ではなく開始キーワードの完全一致だけで予約フローを開始します。
+    start_words = {"予約", "予約する", "予約開始"}
+    if normalized_text in start_words or data == "line_reserve:start":
         staff_options = _line_staff_options(shop)
         if not staff_options:
             return send_line_message(access_token, user_id, "現在、選択できる担当者が登録されていません。")
@@ -5192,8 +5195,9 @@ async def line_webhook_receive(shop_id: str, request: Request):
         normalized_text = message_text.replace(" ", "").replace("　", "").strip()
         active_session = get_line_reservation_session(shop_id, user_id)
         is_cancel_action = normalized_text in {"キャンセル", "中止", "やめる", "取消", "取り消し", "いいえ"}
+        start_words = {"予約", "予約する", "予約開始"}
         is_reservation_action = (
-            "予約" in normalized_text
+            normalized_text in start_words
             or postback_data.startswith("line_reserve:")
             or active_session is not None
             or is_cancel_action
@@ -5202,7 +5206,7 @@ async def line_webhook_receive(shop_id: str, request: Request):
         send_result = {"ok": True, "reason": "no auto reply"}
         if line_mode == "liff" and is_reservation_action:
             send_result = handle_line_complete_reservation_flow(shop_id=shop_id, user_id=user_id, access_token=access_token, message_text=message_text, postback_data=postback_data)
-        elif "予約" in normalized_text:
+        elif normalized_text in {"予約", "予約する", "予約開始"}:
             send_result = send_line_reservation_button(access_token=access_token, user_id=user_id, shop_id=shop_id)
         else:
             # 予約キーワード以外には自動返信しない。通常のLINEチャットとしてそのまま使えるようにする。
