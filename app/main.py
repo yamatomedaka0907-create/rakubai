@@ -744,6 +744,7 @@ def ensure_line_reservation_session_schema() -> None:
             "customer_id": "INTEGER DEFAULT 0",
             "customer_name": "TEXT DEFAULT ''",
             "customer_phone": "TEXT DEFAULT ''",
+            "slot_page": "INTEGER DEFAULT 0",
         }.items():
             if column_name not in columns:
                 conn.execute(f"ALTER TABLE line_reservation_sessions ADD COLUMN {column_name} {column_type}")
@@ -775,17 +776,19 @@ def upsert_line_reservation_session(shop_id: str, line_user_id: str, **values) -
         "customer_id": int(current.get("customer_id") or 0),
         "customer_name": current.get("customer_name") or "",
         "customer_phone": current.get("customer_phone") or "",
+        "slot_page": int(current.get("slot_page") or 0),
     }
     data.update(values)
     with get_connection() as conn:
         conn.execute("""
-            INSERT INTO line_reservation_sessions (shop_id,line_user_id,step,staff_id,staff_name,menu_id,menu_name,duration,price,reservation_date,start_time,end_time,customer_id,customer_name,customer_phone,created_at,updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO line_reservation_sessions (shop_id,line_user_id,step,staff_id,staff_name,menu_id,menu_name,duration,price,reservation_date,start_time,end_time,customer_id,customer_name,customer_phone,slot_page,created_at,updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(shop_id,line_user_id) DO UPDATE SET
                 step=excluded.step, staff_id=excluded.staff_id, staff_name=excluded.staff_name,
                 menu_id=excluded.menu_id, menu_name=excluded.menu_name, duration=excluded.duration, price=excluded.price,
                 reservation_date=excluded.reservation_date, start_time=excluded.start_time, end_time=excluded.end_time,
                 customer_id=excluded.customer_id, customer_name=excluded.customer_name, customer_phone=excluded.customer_phone,
+                slot_page=excluded.slot_page,
                 updated_at=excluded.updated_at
         """, (
             str(shop_id or "").strip(), str(line_user_id or "").strip(), str(data.get("step") or ""),
@@ -793,7 +796,7 @@ def upsert_line_reservation_session(shop_id: str, line_user_id: str, **values) -
             str(data.get("menu_name") or ""), int(data.get("duration") or 0), int(data.get("price") or 0),
             str(data.get("reservation_date") or ""), str(data.get("start_time") or ""), str(data.get("end_time") or ""),
             int(data.get("customer_id") or 0), str(data.get("customer_name") or ""), str(data.get("customer_phone") or ""),
-            now_text, now_text,
+            int(data.get("slot_page") or 0), now_text, now_text,
         ))
         conn.commit()
     return get_line_reservation_session(shop_id, line_user_id)
@@ -890,7 +893,7 @@ def _line_has_reservation_conflict(shop_id: str, staff_id: str, date_text: str, 
     return False
 
 
-def _line_slot_options(shop_id: str, staff_id: str, duration: int, days: int = 14) -> list[dict]:
+def _line_slot_options(shop_id: str, staff_id: str, duration: int, days: int = 30, limit: int = 13, offset: int = 0) -> list[dict]:
     """LINE完結予約で表示する日時候補を作ります。
 
     Web予約のカレンダーと同じ考え方に合わせて、
@@ -918,6 +921,9 @@ def _line_slot_options(shop_id: str, staff_id: str, duration: int, days: int = 1
     now_dt = datetime.now(JST)
     today = now_dt.date()
     slots: list[dict] = []
+    safe_offset = max(0, int(offset or 0))
+    safe_limit = max(1, int(limit or 13))
+    target_count = safe_offset + safe_limit
 
     for i in range(days):
         day = today + timedelta(days=i)
@@ -972,10 +978,30 @@ def _line_slot_options(shop_id: str, staff_id: str, duration: int, days: int = 1
                 "end": end_text,
                 "label": f"{day.month}/{day.day} {start_dt.strftime('%H:%M')}",
             })
-            if len(slots) >= 13:
-                return slots
+            if len(slots) >= target_count:
+                return slots[safe_offset:target_count]
 
-    return slots
+
+def _line_datetime_page_labels(shop_id: str, staff_id: str, duration: int, page: int = 0) -> tuple[list[str], bool]:
+    page_size = 12
+    safe_page = max(0, int(page or 0))
+    offset = safe_page * page_size
+    slots = _line_slot_options(shop_id, staff_id, duration, limit=page_size + 1, offset=offset)
+    visible_slots = slots[:page_size]
+    labels = [str(slot.get("label") or "") for slot in visible_slots if str(slot.get("label") or "").strip()]
+    has_next = len(slots) > page_size
+    if has_next:
+        labels.append("次へ")
+    return labels, has_next
+
+
+def _line_datetime_page_message(page: int = 0) -> str:
+    safe_page = max(0, int(page or 0))
+    if safe_page <= 0:
+        return "日時を選んでください。"
+    return f"日時を選んでください。（{safe_page + 1}ページ目）"
+
+    return slots[safe_offset:target_count]
 
 
 def _line_customer_from_member(shop_id: str, member: dict) -> dict | None:
@@ -1267,15 +1293,24 @@ def handle_line_complete_reservation_flow(shop_id: str, user_id: str, access_tok
         menu = _line_find(menu_options, menu_id_from_postback) if menu_id_from_postback else find_by_text(menu_options, text)
         if not menu:
             return reply_options("メニューを選んでください。", [m["name"] for m in menu_options])
-        slots = _line_slot_options(shop_id, session.get("staff_id"), menu.get("duration") or 60)
-        if not slots:
+        labels, _has_next = _line_datetime_page_labels(shop_id, session.get("staff_id"), menu.get("duration") or 60, page=0)
+        if not labels:
             clear_line_reservation_session(shop_id, user_id)
             return send_line_message(access_token, user_id, "選択できる日時がありませんでした。別の担当者でお試しください。")
-        upsert_line_reservation_session(shop_id, user_id, step="select_datetime", menu_id=menu["id"], menu_name=menu["name"], duration=menu["duration"], price=menu["price"])
-        return reply_options(f"{menu['name']}を選択しました。\n日時を選んでください。", [slot["label"] for slot in slots])
+        upsert_line_reservation_session(shop_id, user_id, step="select_datetime", menu_id=menu["id"], menu_name=menu["name"], duration=menu["duration"], price=menu["price"], slot_page=0)
+        return reply_options(f"{menu['name']}を選択しました。\n日時を選んでください。", labels)
 
     if step == "select_datetime":
         selected = None
+        current_page = max(0, int(session.get("slot_page") or 0))
+        if normalized_text in {"次へ", "次の日時", "もっと見る"}:
+            next_page = current_page + 1
+            labels, _has_next = _line_datetime_page_labels(shop_id, session.get("staff_id"), int(session.get("duration") or 60), page=next_page)
+            if not labels:
+                labels, _has_next = _line_datetime_page_labels(shop_id, session.get("staff_id"), int(session.get("duration") or 60), page=current_page)
+                return reply_options("これ以上表示できる日時はありません。\n日時を選んでください。", labels)
+            upsert_line_reservation_session(shop_id, user_id, slot_page=next_page)
+            return reply_options(_line_datetime_page_message(next_page), labels)
         if data.startswith("line_reserve:slot:"):
             # 互換用。data は line_reserve:slot:YYYY-MM-DD:HH:MM:HH:MM 形式。
             payload = data.replace("line_reserve:slot:", "", 1)
@@ -1288,11 +1323,11 @@ def handle_line_complete_reservation_flow(shop_id: str, user_id: str, access_tok
                     "label": f"{slot_match.group(1)} {slot_match.group(2)}",
                 }
         else:
-            slots = _line_slot_options(shop_id, session.get("staff_id"), int(session.get("duration") or 60))
+            slots = _line_slot_options(shop_id, session.get("staff_id"), int(session.get("duration") or 60), limit=500, offset=0)
             selected = next((slot for slot in slots if str(slot.get("label") or "") == text), None)
         if not selected:
-            slots = _line_slot_options(shop_id, session.get("staff_id"), int(session.get("duration") or 60))
-            return reply_options("日時を選んでください。", [slot["label"] for slot in slots])
+            labels, _has_next = _line_datetime_page_labels(shop_id, session.get("staff_id"), int(session.get("duration") or 60), page=current_page)
+            return reply_options(_line_datetime_page_message(current_page), labels)
         linked_customer = get_customer_by_line_user_id(shop_id, user_id)
         if is_real_line_customer(linked_customer):
             session = upsert_line_reservation_session(
@@ -1461,10 +1496,10 @@ def handle_line_complete_reservation_flow(shop_id: str, user_id: str, access_tok
                 end_time = _format_minutes_hhmm(start_minutes + max(30, duration_minutes))
 
             if _line_has_reservation_conflict(shop_id, str(session.get("staff_id") or ""), reservation_date, start_time, end_time, duration_minutes):
-                slots = _line_slot_options(shop_id, session.get("staff_id"), duration_minutes)
-                upsert_line_reservation_session(shop_id, user_id, step="select_datetime", reservation_date="", start_time="", end_time="")
-                if slots:
-                    return reply_options("申し訳ありません。その日時は先に予約が入りました。別の日時を選んでください。", [slot["label"] for slot in slots])
+                labels, _has_next = _line_datetime_page_labels(shop_id, session.get("staff_id"), duration_minutes, page=0)
+                upsert_line_reservation_session(shop_id, user_id, step="select_datetime", reservation_date="", start_time="", end_time="", slot_page=0)
+                if labels:
+                    return reply_options("申し訳ありません。その日時は先に予約が入りました。別の日時を選んでください。", labels)
                 clear_line_reservation_session(shop_id, user_id)
                 return send_line_message(access_token, user_id, "申し訳ありません。その日時は先に予約が入りました。現在選択できる日時がありません。")
 
