@@ -702,6 +702,14 @@ def ensure_line_reservation_session_schema() -> None:
             )
         """)
         conn.execute("""CREATE UNIQUE INDEX IF NOT EXISTS idx_line_reservation_sessions_shop_user ON line_reservation_sessions(shop_id, line_user_id)""")
+        columns = {str(row[1]) for row in conn.execute("PRAGMA table_info(line_reservation_sessions)").fetchall()}
+        for column_name, column_type in {
+            "customer_id": "INTEGER DEFAULT 0",
+            "customer_name": "TEXT DEFAULT ''",
+            "customer_phone": "TEXT DEFAULT ''",
+        }.items():
+            if column_name not in columns:
+                conn.execute(f"ALTER TABLE line_reservation_sessions ADD COLUMN {column_name} {column_type}")
         conn.commit()
 
 
@@ -716,14 +724,40 @@ def upsert_line_reservation_session(shop_id: str, line_user_id: str, **values) -
     ensure_line_reservation_session_schema()
     now_text = datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
     current = get_line_reservation_session(shop_id, line_user_id) or {}
-    data = {"step": current.get("step") or "", "staff_id": current.get("staff_id") or "", "staff_name": current.get("staff_name") or "", "menu_id": current.get("menu_id") or "", "menu_name": current.get("menu_name") or "", "duration": int(current.get("duration") or 0), "price": int(current.get("price") or 0), "reservation_date": current.get("reservation_date") or "", "start_time": current.get("start_time") or "", "end_time": current.get("end_time") or ""}
+    data = {
+        "step": current.get("step") or "",
+        "staff_id": current.get("staff_id") or "",
+        "staff_name": current.get("staff_name") or "",
+        "menu_id": current.get("menu_id") or "",
+        "menu_name": current.get("menu_name") or "",
+        "duration": int(current.get("duration") or 0),
+        "price": int(current.get("price") or 0),
+        "reservation_date": current.get("reservation_date") or "",
+        "start_time": current.get("start_time") or "",
+        "end_time": current.get("end_time") or "",
+        "customer_id": int(current.get("customer_id") or 0),
+        "customer_name": current.get("customer_name") or "",
+        "customer_phone": current.get("customer_phone") or "",
+    }
     data.update(values)
     with get_connection() as conn:
         conn.execute("""
-            INSERT INTO line_reservation_sessions (shop_id,line_user_id,step,staff_id,staff_name,menu_id,menu_name,duration,price,reservation_date,start_time,end_time,created_at,updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-            ON CONFLICT(shop_id,line_user_id) DO UPDATE SET step=excluded.step, staff_id=excluded.staff_id, staff_name=excluded.staff_name, menu_id=excluded.menu_id, menu_name=excluded.menu_name, duration=excluded.duration, price=excluded.price, reservation_date=excluded.reservation_date, start_time=excluded.start_time, end_time=excluded.end_time, updated_at=excluded.updated_at
-        """, (str(shop_id or "").strip(), str(line_user_id or "").strip(), str(data.get("step") or ""), str(data.get("staff_id") or ""), str(data.get("staff_name") or ""), str(data.get("menu_id") or ""), str(data.get("menu_name") or ""), int(data.get("duration") or 0), int(data.get("price") or 0), str(data.get("reservation_date") or ""), str(data.get("start_time") or ""), str(data.get("end_time") or ""), now_text, now_text))
+            INSERT INTO line_reservation_sessions (shop_id,line_user_id,step,staff_id,staff_name,menu_id,menu_name,duration,price,reservation_date,start_time,end_time,customer_id,customer_name,customer_phone,created_at,updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(shop_id,line_user_id) DO UPDATE SET
+                step=excluded.step, staff_id=excluded.staff_id, staff_name=excluded.staff_name,
+                menu_id=excluded.menu_id, menu_name=excluded.menu_name, duration=excluded.duration, price=excluded.price,
+                reservation_date=excluded.reservation_date, start_time=excluded.start_time, end_time=excluded.end_time,
+                customer_id=excluded.customer_id, customer_name=excluded.customer_name, customer_phone=excluded.customer_phone,
+                updated_at=excluded.updated_at
+        """, (
+            str(shop_id or "").strip(), str(line_user_id or "").strip(), str(data.get("step") or ""),
+            str(data.get("staff_id") or ""), str(data.get("staff_name") or ""), str(data.get("menu_id") or ""),
+            str(data.get("menu_name") or ""), int(data.get("duration") or 0), int(data.get("price") or 0),
+            str(data.get("reservation_date") or ""), str(data.get("start_time") or ""), str(data.get("end_time") or ""),
+            int(data.get("customer_id") or 0), str(data.get("customer_name") or ""), str(data.get("customer_phone") or ""),
+            now_text, now_text,
+        ))
         conn.commit()
     return get_line_reservation_session(shop_id, line_user_id)
 
@@ -762,26 +796,206 @@ def _line_find(options: list[dict], option_id: str) -> dict | None:
     return None
 
 
+def _line_reservation_overlaps(
+    reservation: dict,
+    *,
+    staff_id: str,
+    date_text: str,
+    start_text: str,
+    end_text: str,
+    default_duration: int = 60,
+) -> bool:
+    """既存予約と候補枠が時間重複しているか判定します。"""
+    if str(reservation.get("status") or "") == "キャンセル":
+        return False
+    if str(reservation.get("staff_id") or "").strip() != str(staff_id or "").strip():
+        return False
+    if str(reservation.get("reservation_date") or "").strip() != str(date_text or "").strip():
+        return False
+
+    candidate_start = _parse_hhmm_to_minutes(str(start_text or "")[:5])
+    candidate_end = _parse_hhmm_to_minutes(str(end_text or "")[:5])
+    reserved_start = _parse_hhmm_to_minutes(str(reservation.get("start_time") or "")[:5])
+    reserved_end = _parse_hhmm_to_minutes(str(reservation.get("end_time") or "")[:5])
+
+    if candidate_start is None or candidate_end is None or reserved_start is None:
+        return False
+
+    if candidate_end <= candidate_start:
+        try:
+            candidate_end = candidate_start + max(30, int(default_duration or 60))
+        except (TypeError, ValueError):
+            candidate_end = candidate_start + 60
+
+    if reserved_end is None or reserved_end <= reserved_start:
+        try:
+            existing_duration = int(reservation.get("duration") or default_duration or 60)
+        except (TypeError, ValueError):
+            existing_duration = int(default_duration or 60)
+        reserved_end = reserved_start + max(30, existing_duration)
+
+    # 半開区間 [start, end) で判定。10:00-10:30 と 10:30-11:00 は重複しない。
+    return candidate_start < reserved_end and candidate_end > reserved_start
+
+
+def _line_has_reservation_conflict(shop_id: str, staff_id: str, date_text: str, start_text: str, end_text: str, default_duration: int = 60) -> bool:
+    """LINE予約確定直前にも使う最終重複チェック。"""
+    for reservation in get_reservations(shop_id):
+        if _line_reservation_overlaps(
+            reservation,
+            staff_id=str(staff_id or ""),
+            date_text=str(date_text or ""),
+            start_text=str(start_text or ""),
+            end_text=str(end_text or ""),
+            default_duration=int(default_duration or 60),
+        ):
+            return True
+    return False
+
+
 def _line_slot_options(shop_id: str, staff_id: str, duration: int, days: int = 14) -> list[dict]:
+    """LINE完結予約で表示する日時候補を作ります。
+
+    Web予約のカレンダーと同じ考え方に合わせて、
+    - 店舗の営業時間（business_hours）
+    - 店舗の定休日
+    - 担当者の休み
+    - 既存予約との時間重複（開始時刻だけでなく終了時刻まで）
+    を見て、30分刻みで候補を返します。
+    """
+    shop = get_shop(shop_id) or {}
+    selected_staff = next(
+        (item for item in (shop.get("staff_list") or []) if str(item.get("id") or item.get("staff_id") or "") == str(staff_id)),
+        None,
+    )
+
+    try:
+        duration_minutes = max(30, int(duration or 60))
+    except (TypeError, ValueError):
+        duration_minutes = 60
+
     reservations = [r for r in get_reservations(shop_id) if str(r.get("status") or "") != "キャンセル"]
-    busy = {(str(r.get("reservation_date") or ""), str(r.get("start_time") or "")[:5]) for r in reservations if str(r.get("staff_id") or "") == str(staff_id)}
-    slots = []
-    today = datetime.now(JST).date()
+    staff_reservations = [r for r in reservations if str(r.get("staff_id") or "").strip() == str(staff_id or "").strip()]
+
+    time_slots = _build_half_hour_slots(shop.get("business_hours"))
     now_dt = datetime.now(JST)
+    today = now_dt.date()
+    slots: list[dict] = []
+
     for i in range(days):
         day = today + timedelta(days=i)
-        for hour in range(10, 18):
-            start_dt = datetime.combine(day, datetime_time(hour=hour, minute=0), tzinfo=JST)
+        if _is_shop_holiday(shop, day) or _is_staff_holiday(selected_staff, day):
+            continue
+
+        date_text = day.isoformat()
+        day_reservations = [r for r in staff_reservations if str(r.get("reservation_date") or "") == date_text]
+
+        for start_text in time_slots:
+            try:
+                start_time_obj = datetime.strptime(start_text, "%H:%M").time()
+            except ValueError:
+                continue
+
+            start_dt = datetime.combine(day, start_time_obj, tzinfo=JST)
+            end_dt = start_dt + timedelta(minutes=duration_minutes)
+            end_text = end_dt.strftime("%H:%M")
+
+            # 直近すぎる枠・過去枠は出さない
             if start_dt <= now_dt + timedelta(hours=1):
                 continue
-            date_text = day.isoformat(); start_text = f"{hour:02d}:00"
-            if (date_text, start_text) in busy:
+
+            # 営業時間の最後を超える枠は出さない
+            if time_slots:
+                business_end_text = _parse_business_hours_range(shop.get("business_hours"))[1]
+                try:
+                    business_end_time = datetime.strptime(business_end_text, "%H:%M").time()
+                    business_end_dt = datetime.combine(day, business_end_time, tzinfo=JST)
+                    if end_dt > business_end_dt:
+                        continue
+                except ValueError:
+                    pass
+
+            # 既存予約と時間が1分でも重なる枠は出さない。
+            if any(
+                _line_reservation_overlaps(
+                    reservation,
+                    staff_id=str(staff_id or ""),
+                    date_text=date_text,
+                    start_text=start_dt.strftime("%H:%M"),
+                    end_text=end_text,
+                    default_duration=duration_minutes,
+                )
+                for reservation in day_reservations
+            ):
                 continue
-            end_text = (start_dt + timedelta(minutes=int(duration or 60))).strftime("%H:%M")
-            slots.append({"date": date_text, "start": start_text, "end": end_text, "label": f"{day.month}/{day.day} {start_text}"})
+
+            slots.append({
+                "date": date_text,
+                "start": start_dt.strftime("%H:%M"),
+                "end": end_text,
+                "label": f"{day.month}/{day.day} {start_dt.strftime('%H:%M')}",
+            })
             if len(slots) >= 13:
                 return slots
+
     return slots
+
+
+def get_customer_by_line_user_id(shop_id: str, line_user_id: str) -> dict | None:
+    """LINE user_idに紐づく顧客を返します。"""
+    ensure_customer_line_user_id_schema()
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT id, shop_id, name, phone, email, created_at
+            FROM customers
+            WHERE shop_id = ? AND line_user_id = ?
+            LIMIT 1
+            """,
+            (str(shop_id or "").strip(), str(line_user_id or "").strip()),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def parse_line_customer_info(text: str) -> tuple[str, str] | None:
+    """「山田太郎 09012345678」のような入力から名前と電話番号を取り出します。"""
+    raw = str(text or "").strip()
+    phone_match = re.search(r"0\d[\d\-\s]{8,}\d", raw)
+    if not phone_match:
+        return None
+    phone_raw = phone_match.group(0)
+    phone = normalize_member_phone(phone_raw)
+    name = (raw[:phone_match.start()] + raw[phone_match.end():]).strip(" 　,，、:：\n\t")
+    if not name or not phone:
+        return None
+    return name, phone
+
+
+def ensure_line_customer_for_reservation(shop_id: str, line_user_id: str, name: str, phone: str) -> dict:
+    """入力された名前・電話番号から顧客を作成または更新し、LINE user_idを紐づけます。"""
+    clean_name = str(name or "").strip()
+    clean_phone = normalize_member_phone(phone)
+    customer = None
+
+    member = get_member_by_phone_normalized(shop_id, clean_phone) if clean_phone else None
+    if member:
+        clean_name = str(member.get("name") or clean_name).strip()
+        customer_id = int(member.get("customer_id") or 0)
+        if customer_id:
+            customer = get_customer_by_id(shop_id, customer_id)
+
+    if not customer:
+        customer = find_customer(shop_id, clean_name, clean_phone, "")
+    if not customer:
+        customer = create_customer(shop_id, clean_name, clean_phone, "")
+    else:
+        customer = update_customer_contact(shop_id, int(customer.get("id") or 0), clean_name, clean_phone, "") or customer
+
+    try:
+        update_customer_line_user_id(shop_id, int(customer.get("id") or 0), line_user_id)
+    except Exception as exc:
+        print("line customer link error:", repr(exc))
+    return customer
 
 
 def handle_line_complete_reservation_flow(shop_id: str, user_id: str, access_token: str, message_text: str = "", postback_data: str = "") -> dict:
@@ -835,7 +1049,7 @@ def handle_line_complete_reservation_flow(shop_id: str, user_id: str, access_tok
         staff_options = _line_staff_options(shop)
         if not staff_options:
             return send_line_message(access_token, user_id, "現在、選択できる担当者が登録されていません。")
-        upsert_line_reservation_session(shop_id, user_id, step="select_staff", staff_id="", staff_name="", menu_id="", menu_name="", duration=0, price=0, reservation_date="", start_time="", end_time="")
+        upsert_line_reservation_session(shop_id, user_id, step="select_staff", staff_id="", staff_name="", menu_id="", menu_name="", duration=0, price=0, reservation_date="", start_time="", end_time="", customer_id=0, customer_name="", customer_phone="")
         return reply_options("担当者を選んでください。", [s["name"] for s in staff_options])
 
     step = str(session.get("step") or "")
@@ -869,32 +1083,115 @@ def handle_line_complete_reservation_flow(shop_id: str, user_id: str, access_tok
     if step == "select_datetime":
         selected = None
         if data.startswith("line_reserve:slot:"):
-            parts = data.split(":")
-            if len(parts) >= 5:
-                selected = {"date": parts[2], "start": parts[3], "end": parts[4], "label": f"{parts[2]} {parts[3]}"}
+            # 互換用。data は line_reserve:slot:YYYY-MM-DD:HH:MM:HH:MM 形式。
+            payload = data.replace("line_reserve:slot:", "", 1)
+            slot_match = re.match(r"^(\d{4}-\d{2}-\d{2}):(\d{1,2}:\d{2}):(\d{1,2}:\d{2})$", payload)
+            if slot_match:
+                selected = {
+                    "date": slot_match.group(1),
+                    "start": slot_match.group(2),
+                    "end": slot_match.group(3),
+                    "label": f"{slot_match.group(1)} {slot_match.group(2)}",
+                }
         else:
             slots = _line_slot_options(shop_id, session.get("staff_id"), int(session.get("duration") or 60))
             selected = next((slot for slot in slots if str(slot.get("label") or "") == text), None)
         if not selected:
             slots = _line_slot_options(shop_id, session.get("staff_id"), int(session.get("duration") or 60))
             return reply_options("日時を選んでください。", [slot["label"] for slot in slots])
-        session = upsert_line_reservation_session(shop_id, user_id, step="confirm", reservation_date=selected.get("date") or "", start_time=selected.get("start") or "", end_time=selected.get("end") or "") or {}
-        confirm_text = "この内容で予約しますか？\n\n" + f"担当者：{session.get('staff_name')}\n" + f"メニュー：{session.get('menu_name')}\n" + f"日時：{session.get('reservation_date')} {session.get('start_time')}"
+        linked_customer = get_customer_by_line_user_id(shop_id, user_id)
+        if linked_customer:
+            session = upsert_line_reservation_session(
+                shop_id, user_id, step="confirm",
+                reservation_date=selected.get("date") or "", start_time=selected.get("start") or "", end_time=selected.get("end") or "",
+                customer_id=int(linked_customer.get("id") or 0),
+                customer_name=str(linked_customer.get("name") or ""),
+                customer_phone=str(linked_customer.get("phone") or ""),
+            ) or {}
+            confirm_text = (
+                "この内容で予約しますか？\n\n"
+                + f"お名前：{session.get('customer_name')}（LINE予約）\n"
+                + f"電話番号：{session.get('customer_phone') or '登録なし'}\n"
+                + f"担当者：{session.get('staff_name')}\n"
+                + f"メニュー：{session.get('menu_name')}\n"
+                + f"日時：{session.get('reservation_date')} {session.get('start_time')}"
+            )
+            return reply_options(confirm_text, ["はい", "いいえ"])
+
+        upsert_line_reservation_session(
+            shop_id, user_id, step="input_customer_info",
+            reservation_date=selected.get("date") or "", start_time=selected.get("start") or "", end_time=selected.get("end") or "",
+            customer_id=0, customer_name="", customer_phone="",
+        )
+        return send_line_message(
+            access_token,
+            user_id,
+            "初回のため、お名前と電話番号を送信してください。\n\n例：山田太郎 09012345678\n\n会員登録済みの場合も、登録した電話番号を入力してください。"
+        )
+
+    if step == "input_customer_info":
+        parsed = parse_line_customer_info(text)
+        if not parsed:
+            return send_line_message(
+                access_token,
+                user_id,
+                "お名前と電話番号を送信してください。\n例：山田太郎 09012345678"
+            )
+        input_name, input_phone = parsed
+        customer = ensure_line_customer_for_reservation(shop_id, user_id, input_name, input_phone)
+        session = upsert_line_reservation_session(
+            shop_id, user_id, step="confirm",
+            customer_id=int(customer.get("id") or 0),
+            customer_name=str(customer.get("name") or input_name),
+            customer_phone=str(customer.get("phone") or input_phone),
+        ) or {}
+        confirm_text = (
+            "この内容で予約しますか？\n\n"
+            + f"お名前：{session.get('customer_name')}（LINE予約）\n"
+            + f"電話番号：{session.get('customer_phone')}\n"
+            + f"担当者：{session.get('staff_name')}\n"
+            + f"メニュー：{session.get('menu_name')}\n"
+            + f"日時：{session.get('reservation_date')} {session.get('start_time')}"
+        )
         return reply_options(confirm_text, ["はい", "いいえ"])
 
     if step == "confirm":
         yes_values = {"はい", "予約する", "確定", "お願いします", "yes", "YES"}
         if data == "line_reserve:confirm:yes" or normalized_text in yes_values:
             session = get_line_reservation_session(shop_id, user_id) or {}
-            customer_name = f"LINE予約（{user_id[-6:]}）"
-            customer = find_customer(shop_id, customer_name, "", "") or create_customer(shop_id, customer_name, "", "")
-            try:
-                update_customer_line_user_id(shop_id, int(customer.get("id")), user_id)
-            except Exception as exc:
-                print("line customer link error:", repr(exc))
-            reservation = create_reservation(shop_id=shop_id, customer_id=int(customer.get("id")), customer_name=customer_name, customer_email="", receive_email=0, staff_id=int(session.get("staff_id") or 0), staff_name=str(session.get("staff_name") or ""), menu_id=int(session.get("menu_id") or 0), menu_name=str(session.get("menu_name") or ""), duration=int(session.get("duration") or 60), price=int(session.get("price") or 0), reservation_date=str(session.get("reservation_date") or ""), start_time=str(session.get("start_time") or ""), end_time=str(session.get("end_time") or ""), status="予約済み", source="line")
+            customer_id = int(session.get("customer_id") or 0)
+            customer_name = str(session.get("customer_name") or "").strip()
+            customer_phone = str(session.get("customer_phone") or "").strip()
+            if not customer_id or not customer_name:
+                linked_customer = get_customer_by_line_user_id(shop_id, user_id)
+                if linked_customer:
+                    customer_id = int(linked_customer.get("id") or 0)
+                    customer_name = str(linked_customer.get("name") or "").strip()
+                    customer_phone = str(linked_customer.get("phone") or "").strip()
+            if not customer_id or not customer_name:
+                upsert_line_reservation_session(shop_id, user_id, step="input_customer_info")
+                return send_line_message(access_token, user_id, "初回のため、お名前と電話番号を送信してください。\n例：山田太郎 09012345678")
+            reservation_customer_name = f"{customer_name}（LINE予約）"
+            duration_minutes = int(session.get("duration") or 60)
+            reservation_date = str(session.get("reservation_date") or "")
+            start_time = str(session.get("start_time") or "")[:5]
+            end_time = str(session.get("end_time") or "")[:5]
+            start_minutes = _parse_hhmm_to_minutes(start_time)
+            end_minutes = _parse_hhmm_to_minutes(end_time)
+            if start_minutes is not None and (end_minutes is None or end_minutes <= start_minutes):
+                end_time = _format_minutes_hhmm(start_minutes + max(30, duration_minutes))
+
+            if _line_has_reservation_conflict(shop_id, str(session.get("staff_id") or ""), reservation_date, start_time, end_time, duration_minutes):
+                slots = _line_slot_options(shop_id, session.get("staff_id"), duration_minutes)
+                upsert_line_reservation_session(shop_id, user_id, step="select_datetime", reservation_date="", start_time="", end_time="")
+                if slots:
+                    return reply_options("申し訳ありません。その日時は先に予約が入りました。別の日時を選んでください。", [slot["label"] for slot in slots])
+                clear_line_reservation_session(shop_id, user_id)
+                return send_line_message(access_token, user_id, "申し訳ありません。その日時は先に予約が入りました。現在選択できる日時がありません。")
+
+            reservation = create_reservation(shop_id=shop_id, customer_id=customer_id, customer_name=reservation_customer_name, customer_email="", receive_email=0, staff_id=int(session.get("staff_id") or 0), staff_name=str(session.get("staff_name") or ""), menu_id=int(session.get("menu_id") or 0), menu_name=str(session.get("menu_name") or ""), duration=duration_minutes, price=int(session.get("price") or 0), reservation_date=reservation_date, start_time=start_time, end_time=end_time, status="予約済み", source="line")
             clear_line_reservation_session(shop_id, user_id)
-            return send_line_message(access_token, user_id, f"予約が完了しました。\n予約番号：{reservation.get('id')}\nご来店をお待ちしております。")
+            return send_line_message(access_token, user_id, f"予約が完了しました。\n予約番号：{reservation.get('id')}\nお名前：{reservation.get('customer_name')}\nご来店をお待ちしております。")
         return reply_options("予約する場合は「はい」を選んでください。", ["はい", "いいえ"])
 
     return reply_options("予約を始める場合は「予約」と送信してください。", ["予約"])
