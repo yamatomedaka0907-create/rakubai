@@ -4259,7 +4259,7 @@ def admin_page(request: Request, shop_id: str, error_message: str = ""):
 
 
 
-def _build_admin_analysis_context(reservations: list[dict], customers: list[dict]) -> dict:
+def _build_admin_analysis_context(reservations: list[dict], customers: list[dict], period: str = "month") -> dict:
     active_reservations = [r for r in reservations if str(r.get("status") or "") != "キャンセル"]
     completed_reservations = [r for r in active_reservations if str(r.get("status") or "") == "来店済み"]
     total_sales = sum(int(r.get("price") or 0) for r in completed_reservations)
@@ -4301,17 +4301,45 @@ def _build_admin_analysis_context(reservations: list[dict], customers: list[dict
     for item in source_summary:
         item["percent"] = round((item["count"] / active_count * 100), 1) if active_count else 0
 
-    month_summary_map: dict[str, dict] = {}
+    def _period_key(reservation_date: str, selected_period: str) -> str:
+        try:
+            parsed = datetime.strptime(reservation_date, "%Y-%m-%d").date()
+        except ValueError:
+            return "未設定"
+        if selected_period == "day":
+            return parsed.strftime("%Y-%m-%d")
+        if selected_period == "week":
+            week_start = parsed - timedelta(days=parsed.weekday())
+            return week_start.strftime("%Y-%m-%d")
+        return parsed.strftime("%Y-%m")
+
+    if period not in {"day", "week", "month"}:
+        period = "month"
+
+    period_summary_map: dict[str, dict] = {}
     for r in active_reservations:
         reservation_date = str(r.get("reservation_date") or "")
-        month_key = reservation_date[:7] if len(reservation_date) >= 7 else "未設定"
-        if month_key not in month_summary_map:
-            month_summary_map[month_key] = {"month": month_key, "count": 0, "sales": 0}
-        month_summary_map[month_key]["count"] += 1
+        key = _period_key(reservation_date, period)
+        if key not in period_summary_map:
+            period_summary_map[key] = {"label": key, "count": 0, "sales": 0, "height": 0}
+        period_summary_map[key]["count"] += 1
         if str(r.get("status") or "") == "来店済み":
-            month_summary_map[month_key]["sales"] += int(r.get("price") or 0)
+            period_summary_map[key]["sales"] += int(r.get("price") or 0)
 
-    monthly_summary = sorted(month_summary_map.values(), key=lambda item: item["month"], reverse=True)[:6]
+    period_limit = 14 if period == "day" else 12 if period == "week" else 12
+    period_summary = sorted(period_summary_map.values(), key=lambda item: item["label"], reverse=True)[:period_limit]
+    period_summary = list(reversed(period_summary))
+    max_count = max([int(item["count"] or 0) for item in period_summary], default=0)
+    max_sales = max([int(item["sales"] or 0) for item in period_summary], default=0)
+    for item in period_summary:
+        item["count_height"] = round((int(item["count"] or 0) / max_count * 100), 1) if max_count else 0
+        item["sales_height"] = round((int(item["sales"] or 0) / max_sales * 100), 1) if max_sales else 0
+
+    period_labels = {
+        "day": "日別",
+        "week": "週別",
+        "month": "月別",
+    }
 
     return {
         "analysis_summary": {
@@ -4323,12 +4351,13 @@ def _build_admin_analysis_context(reservations: list[dict], customers: list[dict
             "customer_count": len(customers),
         },
         "source_summary": source_summary,
-        "monthly_summary": monthly_summary,
+        "period_summary": period_summary,
+        "selected_period": period,
+        "selected_period_label": period_labels.get(period, "月別"),
     }
 
-
 @app.get("/admin/{shop_id}/analysis", response_class=HTMLResponse)
-def admin_analysis_page(request: Request, shop_id: str):
+def admin_analysis_page(request: Request, shop_id: str, period: str = "month"):
     redirect = require_store_login(request, shop_id)
     if redirect:
         return redirect
@@ -4351,7 +4380,7 @@ def admin_analysis_page(request: Request, shop_id: str):
             "current_admin_name": current_admin_name,
             "today": date.today().isoformat(),
             "active_page": "analysis",
-            **_build_admin_analysis_context(reservations, customers),
+            **_build_admin_analysis_context(reservations, customers, period),
         },
     )
 
