@@ -988,12 +988,16 @@ def is_real_line_customer(customer: dict | None) -> bool:
         return False
 
 def build_line_member_register_url(shop_id: str, line_user_id: str) -> str:
-    """LINE予約から会員登録へ進むためのURLを作ります。"""
+    """LINE予約から会員登録へ進むためのURLを作ります。
+
+    登録完了後に会員ページへ飛ばすだけだとLINEに戻りにくいため、
+    LINE連携完了ページを next に入れます。
+    """
     from urllib.parse import quote
 
     clean_shop_id = str(shop_id or "").strip()
     clean_line_user_id = str(line_user_id or "").strip()
-    next_url = f"/member/{clean_shop_id}/mypage?line_user_id={quote(clean_line_user_id, safe='')}"
+    next_url = f"/member/{clean_shop_id}/line-register-complete?line_user_id={quote(clean_line_user_id, safe='')}"
     return f"https://www.rakubai.net/member/{clean_shop_id}/register?next={quote(next_url, safe='')}"
 
 
@@ -6891,16 +6895,12 @@ def member_login_submit(request: Request, shop_id: str, phone: str = Form(...), 
         )
         target = quote(_member_redirect_target(shop_id, next_url), safe='')
         return RedirectResponse(url=f"/member/{shop_id}/login?next={target}&error=電話番号またはパスワードが違います", status_code=303)
-    line_user_id_for_link = extract_line_user_id_from_next_url(str(verification.get('next_url') or target_url))
-    if line_user_id_for_link:
-        try:
-            customer_id_for_link = int(member.get('customer_id') or 0)
-            if customer_id_for_link:
-                update_customer_line_user_id(shop_id, customer_id_for_link, line_user_id_for_link)
-        except Exception as exc:
-            print("member line link error:", repr(exc))
+    target_url = _member_redirect_target(shop_id, next_url)
+    line_user_id_for_link = extract_line_user_id_from_next_url(str(target_url or next_url or ""))
 
     _login_member_session(request, shop_id, member)
+    if line_user_id_for_link:
+        complete_line_member_link_after_registration(shop_id, member, line_user_id_for_link)
     _record_audit_log(
         request,
         actor_type="member",
@@ -6914,6 +6914,90 @@ def member_login_submit(request: Request, shop_id: str, phone: str = Form(...), 
     )
     return RedirectResponse(url=_member_redirect_target(shop_id, next_url or f"/member/{shop_id}/mypage"), status_code=303)
 
+
+
+def complete_line_member_link_after_registration(shop_id: str, member: dict, line_user_id: str) -> None:
+    """会員登録/ログイン後に、顧客とLINE user_idを確実に紐づけます。"""
+    clean_line_user_id = str(line_user_id or "").strip()
+    if not clean_line_user_id:
+        return
+    try:
+        ensure_customer_line_user_id_schema()
+        member_customer_id = int((member or {}).get("customer_id") or 0)
+        if member_customer_id:
+            update_customer_line_user_id(shop_id, member_customer_id, clean_line_user_id)
+        else:
+            linked_customer = ensure_line_customer_for_reservation(
+                shop_id,
+                clean_line_user_id,
+                str((member or {}).get("name") or ""),
+                str((member or {}).get("phone") or (member or {}).get("phone_normalized") or ""),
+            )
+            member_customer_id = int(linked_customer.get("id") or 0)
+            try:
+                with get_connection() as conn:
+                    conn.execute(
+                        "UPDATE members SET customer_id = ? WHERE shop_id = ? AND id = ?",
+                        (member_customer_id, str(shop_id or "").strip(), int((member or {}).get("id") or 0)),
+                    )
+                    conn.commit()
+            except Exception as exc:
+                print("member customer_id backfill error:", repr(exc))
+
+        settings = get_shop_line_settings(shop_id)
+        token = str(settings.get("line_channel_access_token") or "").strip()
+        if token:
+            send_line_message(
+                token,
+                clean_line_user_id,
+                "会員登録が完了し、このLINEと会員情報を紐づけました。\n予約を続ける場合は「予約」と送信してください。",
+            )
+        print("LINE member linked:", shop_id, clean_line_user_id, member_customer_id)
+    except Exception as exc:
+        print("complete line member link error:", repr(exc))
+
+
+@app.get("/member/{shop_id}/line-register-complete", response_class=HTMLResponse)
+def member_line_register_complete_page(request: Request, shop_id: str, line_user_id: str = ""):
+    shop = get_shop(shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+
+    member = _get_member_for_shop_session(request, shop_id)
+    if member is not None and str(line_user_id or "").strip():
+        complete_line_member_link_after_registration(shop_id, member, line_user_id)
+
+    settings = get_shop_line_settings(shop_id)
+    line_official_url = str(settings.get("line_official_url") or "").strip()
+    shop_name = str((shop or {}).get("shop_name") or "店舗")
+    line_button = f'<a class="btn" href="{line_official_url}">LINEに戻る</a>' if line_official_url else '<p class="sub">この画面を閉じてLINEアプリに戻ってください。</p>'
+    html = f"""
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LINE連携完了</title>
+  <style>
+    body {{ font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:#f6f7f9; margin:0; padding:24px; color:#111827; }}
+    .card {{ max-width:520px; margin:32px auto; background:white; border-radius:18px; padding:24px; box-shadow:0 10px 30px rgba(15,23,42,.08); }}
+    h1 {{ font-size:22px; margin:0 0 12px; }}
+    p {{ line-height:1.8; }}
+    .btn {{ display:block; text-align:center; background:#06c755; color:white; text-decoration:none; border-radius:12px; padding:14px 16px; font-weight:700; margin-top:16px; }}
+    .sub {{ color:#6b7280; font-size:14px; }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>LINE連携が完了しました</h1>
+    <p>{shop_name}の会員情報とLINEを紐づけました。</p>
+    <p>予約を続ける場合は、LINEに戻って <strong>「予約」</strong> と送信してください。</p>
+    {line_button}
+  </div>
+</body>
+</html>
+"""
+    return HTMLResponse(html)
 
 @app.get("/member/{shop_id}/register", response_class=HTMLResponse)
 def member_register_page(request: Request, shop_id: str, next: str | None = None, error: str | None = None):
@@ -7049,21 +7133,7 @@ def member_register_verify_submit(
         member = consume_member_registration_verification(shop_id, token)
         line_user_id = extract_line_user_id_from_next_url(str(verification.get('next_url') or target_url))
         if line_user_id:
-            try:
-                member_customer_id = int(member.get('customer_id') or 0)
-                if member_customer_id:
-                    update_customer_line_user_id(shop_id, member_customer_id, line_user_id)
-                else:
-                    linked_customer = ensure_line_customer_for_reservation(
-                        shop_id,
-                        line_user_id,
-                        str(member.get('name') or ''),
-                        str(member.get('phone') or ''),
-                    )
-                    member_customer_id = int(linked_customer.get('id') or 0)
-                print('LINE user linked after member registration:', line_user_id, member_customer_id)
-            except Exception as exc:
-                print('member registration LINE link error:', repr(exc))
+            complete_line_member_link_after_registration(shop_id, member, line_user_id)
     except ValueError as exc:
         return RedirectResponse(
             url=f"/member/{shop_id}/register/verify?token={quote(token, safe='')}&next={verify_target}&error={quote(str(exc), safe='')}",
