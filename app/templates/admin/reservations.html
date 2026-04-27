@@ -346,8 +346,10 @@
           <div class="price">¥{{ reservation.price }}</div>
           <div class="reservation-actions">
             {% if reservation.status == "予約済み" %}
-            <form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/done" class="stay-form"><input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button type="submit">来店済</button></form>
-            <form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/cancel" class="stay-form"><input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button type="submit" class="cancel-button">キャンセル</button></form>
+            <form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/done" class="stay-form"><input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button type="submit">来店済</button><label>流入経路<select name="source"><option value="WEB" selected>WEB</option><option value="LINE">LINE</option><option value="GOOGLE">Google検索</option><option value="PHONE">電話</option><option value="STORE">店頭</option></select></label>
+</form>
+            <form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/cancel" class="stay-form"><input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button type="submit" class="cancel-button">キャンセル</button><label>流入経路<select name="source"><option value="WEB" selected>WEB</option><option value="LINE">LINE</option><option value="GOOGLE">Google検索</option><option value="PHONE">電話</option><option value="STORE">店頭</option></select></label>
+</form>
             {% else %}
             <span>{{ reservation.status }}</span><span>-</span>
             {% endif %}
@@ -387,8 +389,10 @@
 
           <div class="today-mobile-actions">
             {% if reservation.status == "予約済み" %}
-            <form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/done" class="stay-form"><input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button type="submit">来店済</button></form>
-            <form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/cancel" class="stay-form"><input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button type="submit" class="cancel-button">キャンセル</button></form>
+            <form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/done" class="stay-form"><input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button type="submit">来店済</button><label>流入経路<select name="source"><option value="WEB" selected>WEB</option><option value="LINE">LINE</option><option value="GOOGLE">Google検索</option><option value="PHONE">電話</option><option value="STORE">店頭</option></select></label>
+</form>
+            <form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/cancel" class="stay-form"><input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button type="submit" class="cancel-button">キャンセル</button><label>流入経路<select name="source"><option value="WEB" selected>WEB</option><option value="LINE">LINE</option><option value="GOOGLE">Google検索</option><option value="PHONE">電話</option><option value="STORE">店頭</option></select></label>
+</form>
             {% else %}
             <button type="button" disabled>{{ reservation.status }}</button>
             <button type="button" disabled>-</button>
@@ -436,7 +440,8 @@
     <label>日付<input type="date" name="reservation_date" value="{{ today }}" required></label>
     <label>開始時間<input type="time" name="start_time" required></label>
     <button type="submit">予約を登録する</button>
-  </form>
+  <label>流入経路<select name="source"><option value="WEB" selected>WEB</option><option value="LINE">LINE</option><option value="GOOGLE">Google検索</option><option value="PHONE">電話</option><option value="STORE">店頭</option></select></label>
+</form>
 </div>
   </div>
 </div>

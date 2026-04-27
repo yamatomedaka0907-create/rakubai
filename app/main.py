@@ -415,7 +415,7 @@ def handle_line_complete_booking_message(shop_id: str, user_id: str, message_tex
             int(session.get("staff_id") or 0), str(session.get("staff_name") or ""),
             int(session.get("menu_id") or 0), str(session.get("menu_name") or ""),
             0, 0, str(session.get("reservation_date") or ""), str(session.get("start_time") or ""),
-            str(session.get("end_time") or ""), "予約済み", "line"
+            str(session.get("end_time") or ""), "予約済み", source
         )
         clear_line_booking_session(shop_id, user_id)
         done = f"予約が完了しました。\n\n担当者：{reservation.get('staff_name')}\nメニュー：{reservation.get('menu_name')}\n日時：{reservation.get('reservation_date')} {reservation.get('start_time')}"
@@ -5472,6 +5472,7 @@ def admin_line_settings_test_send(
     request: Request,
     shop_id: str,
     test_line_user_id: str = Form(""),
+    source: str = Form("WEB"),
 ):
     login_redirect = require_store_login(request, shop_id)
     if login_redirect:
@@ -6081,6 +6082,7 @@ def admin_create_reservation(
     reservation_date: str = Form(...),
     start_time: str = Form(...),
     line_user_id: str = Form(""),
+    source: str = Form("WEB"),
 ):
     redirect = require_store_login(request, shop_id)
     if redirect:
@@ -6505,6 +6507,7 @@ def shop_reserve(
     reservation_date: str = Form(...),
     start_time: str = Form(...),
     line_user_id: str = Form(""),
+    source: str = Form("WEB"),
 ):
     shop = get_shop(shop_id)
     if not shop:

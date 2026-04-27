@@ -74,7 +74,9 @@
             <td><div style="display:flex; align-items:center; gap:8px;"><img src="{{ reservation.staff_avatar_url }}" alt="{{ reservation.staff_name }}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid rgba(148,163,184,.28);background:#fff;"><a class="tool-text-link" href="/admin/{{ shop_id }}/staff/{{ reservation.staff_id }}?date={{ reservation.reservation_date }}&week_start={{ week_start }}">{{ reservation.staff_name }}</a></div></td>
             <td>{{ reservation.menu_name }}</td>
             <td><span class="tool-status {% if reservation.status == '来店済み' %}is-done{% elif reservation.status == 'キャンセル' %}is-cancelled{% else %}is-reserved{% endif %}">{{ reservation.status }}</span></td>
-            <td><div class="tool-actions">{% if reservation.status == "予約済み" %}<form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/done"><button class="tool-btn" type="submit">来店済み</button></form><form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/cancel"><button class="tool-btn is-danger" type="submit">キャンセル</button></form>{% else %}<span>-</span>{% endif %}</div></td>
+            <td><div class="tool-actions">{% if reservation.status == "予約済み" %}<form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/done"><button class="tool-btn" type="submit">来店済み</button><label>流入経路<select name="source"><option value="WEB" selected>WEB</option><option value="LINE">LINE</option><option value="GOOGLE">Google検索</option><option value="PHONE">電話</option><option value="STORE">店頭</option></select></label>
+</form><form method="post" action="/admin/{{ shop_id }}/reservations/{{ reservation.id }}/cancel"><button class="tool-btn is-danger" type="submit">キャンセル</button><label>流入経路<select name="source"><option value="WEB" selected>WEB</option><option value="LINE">LINE</option><option value="GOOGLE">Google検索</option><option value="PHONE">電話</option><option value="STORE">店頭</option></select></label>
+</form>{% else %}<span>-</span>{% endif %}</div></td>
           </tr>
           {% endfor %}
         </tbody>
@@ -105,7 +107,8 @@
         <div class="tool-field"><label class="tool-label">開始時間</label><input class="tool-input" type="time" name="start_time" required></div>
       </div>
       <div class="tool-actions with-top-gap"><button class="tool-btn is-primary" type="submit">予約を登録する</button></div>
-    </form>
+    <label>流入経路<select name="source"><option value="WEB" selected>WEB</option><option value="LINE">LINE</option><option value="GOOGLE">Google検索</option><option value="PHONE">電話</option><option value="STORE">店頭</option></select></label>
+</form>
   </div>
 </section>
 
