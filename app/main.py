@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 import calendar
 import json
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone, time as datetime_time
 import os
 import smtplib
 import threading
@@ -181,6 +181,254 @@ def send_line_message(access_token: str, user_id: str, message: str) -> dict:
         return {"ok": False, "reason": str(exc)}
 
 
+def send_line_payload(access_token: str, user_id: str, messages: list[dict]) -> dict:
+    access_token = str(access_token or "").strip()
+    user_id = str(user_id or "").strip()
+    if not access_token:
+        return {"ok": False, "reason": "no access token"}
+    if not user_id:
+        return {"ok": False, "reason": "no user_id"}
+    if not messages:
+        return {"ok": False, "reason": "no messages"}
+    try:
+        response = requests.post(
+            "https://api.line.me/v2/bot/message/push",
+            headers={"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"},
+            json={"to": user_id, "messages": messages[:5]},
+            timeout=10,
+        )
+        print("LINE payload send result:", response.status_code, response.text)
+        return {"ok": 200 <= response.status_code < 300, "status_code": response.status_code, "response": response.text}
+    except Exception as exc:
+        print("LINE payload send error:", repr(exc))
+        return {"ok": False, "reason": str(exc)}
+
+
+def build_line_quick_reply_text(text: str, labels: list[str]) -> dict:
+    items = []
+    for label in labels[:13]:
+        clean = str(label or "").strip()
+        if clean:
+            items.append({"type": "action", "action": {"type": "message", "label": clean[:20], "text": clean}})
+    msg = {"type": "text", "text": str(text or "")}
+    if items:
+        msg["quickReply"] = {"items": items}
+    return msg
+
+
+def ensure_line_booking_session_schema() -> None:
+    with get_connection() as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS line_booking_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                shop_id TEXT NOT NULL,
+                line_user_id TEXT NOT NULL,
+                step TEXT NOT NULL DEFAULT '',
+                staff_id INTEGER,
+                staff_name TEXT DEFAULT '',
+                menu_id INTEGER,
+                menu_name TEXT DEFAULT '',
+                reservation_date TEXT DEFAULT '',
+                start_time TEXT DEFAULT '',
+                end_time TEXT DEFAULT '',
+                data_json TEXT DEFAULT '{}',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_line_booking_sessions_shop_user
+            ON line_booking_sessions(shop_id, line_user_id)
+        """)
+        conn.commit()
+
+
+def get_line_booking_session(shop_id: str, line_user_id: str) -> dict | None:
+    ensure_line_booking_session_schema()
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM line_booking_sessions WHERE shop_id = ? AND line_user_id = ? LIMIT 1",
+            (str(shop_id or "").strip(), str(line_user_id or "").strip()),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def save_line_booking_session(shop_id: str, line_user_id: str, **values) -> None:
+    ensure_line_booking_session_schema()
+    now_text = datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
+    current = get_line_booking_session(shop_id, line_user_id) or {}
+    fields = {
+        "step": current.get("step") or "",
+        "staff_id": current.get("staff_id"),
+        "staff_name": current.get("staff_name") or "",
+        "menu_id": current.get("menu_id"),
+        "menu_name": current.get("menu_name") or "",
+        "reservation_date": current.get("reservation_date") or "",
+        "start_time": current.get("start_time") or "",
+        "end_time": current.get("end_time") or "",
+        "data_json": current.get("data_json") or "{}",
+    }
+    fields.update(values)
+    with get_connection() as conn:
+        conn.execute("""
+            INSERT INTO line_booking_sessions (
+                shop_id, line_user_id, step, staff_id, staff_name, menu_id, menu_name,
+                reservation_date, start_time, end_time, data_json, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(shop_id, line_user_id) DO UPDATE SET
+                step = excluded.step,
+                staff_id = excluded.staff_id,
+                staff_name = excluded.staff_name,
+                menu_id = excluded.menu_id,
+                menu_name = excluded.menu_name,
+                reservation_date = excluded.reservation_date,
+                start_time = excluded.start_time,
+                end_time = excluded.end_time,
+                data_json = excluded.data_json,
+                updated_at = excluded.updated_at
+        """, (
+            shop_id, line_user_id, fields["step"], fields["staff_id"], fields["staff_name"],
+            fields["menu_id"], fields["menu_name"], fields["reservation_date"], fields["start_time"],
+            fields["end_time"], fields["data_json"], now_text, now_text,
+        ))
+        conn.commit()
+
+
+def clear_line_booking_session(shop_id: str, line_user_id: str) -> None:
+    ensure_line_booking_session_schema()
+    with get_connection() as conn:
+        conn.execute("DELETE FROM line_booking_sessions WHERE shop_id = ? AND line_user_id = ?", (shop_id, line_user_id))
+        conn.commit()
+
+
+def _line_find_item_by_reply(items: list[dict], reply_text: str) -> dict | None:
+    text = str(reply_text or "").strip()
+    for item in items:
+        item_id = str((item or {}).get("id") or "").strip()
+        name = str((item or {}).get("name") or "").strip()
+        if text in {name, item_id, f"{item_id}. {name}", f"{item_id} {name}"}:
+            return item
+    return None
+
+
+def _line_selectable_menus(shop: dict, staff: dict | None = None) -> list[dict]:
+    menus = list((shop or {}).get("menus") or [])
+    ids = (staff or {}).get("menu_ids") or []
+    try:
+        ids = [int(x) for x in ids]
+    except Exception:
+        ids = []
+    return [m for m in menus if not ids or int(m.get("id") or 0) in ids]
+
+
+def build_line_datetime_options(shop_id: str, staff_id: int, duration: int, days: int = 7) -> list[dict]:
+    duration = max(15, int(duration or 60))
+    occupied = {
+        (str(r.get("reservation_date") or ""), str(r.get("start_time") or "")[:5])
+        for r in get_reservations(shop_id)
+        if str(r.get("status") or "") == "予約済み" and int(r.get("staff_id") or 0) == int(staff_id or 0)
+    }
+    options = []
+    now = datetime.now(JST)
+    for day_offset in range(days):
+        target = (now + timedelta(days=day_offset)).date()
+        for hour in range(10, 19):
+            for minute in (0, 30):
+                start_dt = datetime.combine(target, datetime.min.time(), tzinfo=JST).replace(hour=hour, minute=minute)
+                if start_dt <= now + timedelta(minutes=30):
+                    continue
+                end_dt = start_dt + timedelta(minutes=duration)
+                if end_dt.hour > 19 or (end_dt.hour == 19 and end_dt.minute > 0):
+                    continue
+                date_text = target.isoformat()
+                start_text = start_dt.strftime("%H:%M")
+                if (date_text, start_text) in occupied:
+                    continue
+                options.append({"label": start_dt.strftime("%m/%d %H:%M"), "reservation_date": date_text, "start_time": start_text, "end_time": end_dt.strftime("%H:%M")})
+                if len(options) >= 13:
+                    return options
+    return options
+
+
+def handle_line_complete_booking_message(shop_id: str, user_id: str, message_text: str, access_token: str) -> dict:
+    shop = get_shop(shop_id) or {}
+    staff_list = list(shop.get("staff_list") or [])
+    text = str(message_text or "").strip()
+    normalized = text.replace(" ", "").replace("　", "").strip()
+
+    if normalized in {"キャンセル", "取消", "中止", "やめる", "いいえ"}:
+        clear_line_booking_session(shop_id, user_id)
+        return send_line_payload(access_token, user_id, [{"type": "text", "text": "予約手続きをキャンセルしました。\nもう一度始める場合は「予約」と送信してください。"}])
+
+    session = get_line_booking_session(shop_id, user_id)
+    if "予約" in normalized or not session:
+        if not staff_list:
+            return send_line_payload(access_token, user_id, [{"type": "text", "text": "現在、選択できる担当者が登録されていません。"}])
+        save_line_booking_session(shop_id, user_id, step="select_staff", staff_id=None, staff_name="", menu_id=None, menu_name="", reservation_date="", start_time="", end_time="")
+        return send_line_payload(access_token, user_id, [build_line_quick_reply_text("担当者を選んでください。", [f"{st.get('id')}. {st.get('name')}" for st in staff_list if st.get("name")])])
+
+    step = str(session.get("step") or "")
+    if step == "select_staff":
+        staff = _line_find_item_by_reply(staff_list, text)
+        if not staff:
+            return send_line_payload(access_token, user_id, [build_line_quick_reply_text("担当者を選んでください。", [f"{st.get('id')}. {st.get('name')}" for st in staff_list if st.get("name")])])
+        menus = _line_selectable_menus(shop, staff)
+        if not menus:
+            clear_line_booking_session(shop_id, user_id)
+            return send_line_payload(access_token, user_id, [{"type": "text", "text": "この担当者で選択できるメニューがありません。"}])
+        save_line_booking_session(shop_id, user_id, step="select_menu", staff_id=int(staff.get("id") or 0), staff_name=str(staff.get("name") or ""))
+        return send_line_payload(access_token, user_id, [build_line_quick_reply_text("メニューを選んでください。", [f"{m.get('id')}. {m.get('name')}" for m in menus if m.get("name")])])
+
+    if step == "select_menu":
+        staff = next((st for st in staff_list if int(st.get("id") or 0) == int(session.get("staff_id") or 0)), None)
+        menus = _line_selectable_menus(shop, staff)
+        menu = _line_find_item_by_reply(menus, text)
+        if not menu:
+            return send_line_payload(access_token, user_id, [build_line_quick_reply_text("メニューを選んでください。", [f"{m.get('id')}. {m.get('name')}" for m in menus if m.get("name")])])
+        options = build_line_datetime_options(shop_id, int(session.get("staff_id") or 0), int(menu.get("duration") or 60))
+        if not options:
+            clear_line_booking_session(shop_id, user_id)
+            return send_line_payload(access_token, user_id, [{"type": "text", "text": "現在、選択できる日時がありません。店舗へ直接お問い合わせください。"}])
+        save_line_booking_session(shop_id, user_id, step="select_datetime", menu_id=int(menu.get("id") or 0), menu_name=str(menu.get("name") or ""), data_json=json.dumps({"datetime_options": options}, ensure_ascii=False))
+        return send_line_payload(access_token, user_id, [build_line_quick_reply_text("日時を選んでください。", [opt["label"] for opt in options])])
+
+    if step == "select_datetime":
+        try:
+            options = list(json.loads(session.get("data_json") or "{}").get("datetime_options") or [])
+        except Exception:
+            options = []
+        selected = next((opt for opt in options if str(opt.get("label") or "") == text), None)
+        if not selected:
+            return send_line_payload(access_token, user_id, [build_line_quick_reply_text("日時を選んでください。", [str(opt.get("label") or "") for opt in options])])
+        save_line_booking_session(shop_id, user_id, step="confirm", reservation_date=selected.get("reservation_date") or "", start_time=selected.get("start_time") or "", end_time=selected.get("end_time") or "")
+        confirm = f"この内容で予約しますか？\n\n担当者：{session.get('staff_name')}\nメニュー：{session.get('menu_name')}\n日時：{selected.get('reservation_date')} {selected.get('start_time')}\n\n「はい」を選ぶと予約を確定します。"
+        return send_line_payload(access_token, user_id, [build_line_quick_reply_text(confirm, ["はい", "いいえ"])])
+
+    if step == "confirm":
+        if normalized not in {"はい", "予約する", "確定", "お願いします"}:
+            return send_line_payload(access_token, user_id, [build_line_quick_reply_text("予約する場合は「はい」を選んでください。", ["はい", "いいえ"])])
+        customer_name = f"LINE予約 {user_id[-6:]}"
+        customer = find_customer(shop_id, customer_name, "", "") or create_customer(shop_id, customer_name, "", "")
+        reservation = create_reservation(
+            shop_id, int(customer.get("id") or 0), customer_name, "", 0,
+            int(session.get("staff_id") or 0), str(session.get("staff_name") or ""),
+            int(session.get("menu_id") or 0), str(session.get("menu_name") or ""),
+            0, 0, str(session.get("reservation_date") or ""), str(session.get("start_time") or ""),
+            str(session.get("end_time") or ""), "予約済み", "line"
+        )
+        clear_line_booking_session(shop_id, user_id)
+        done = f"予約が完了しました。\n\n担当者：{reservation.get('staff_name')}\nメニュー：{reservation.get('menu_name')}\n日時：{reservation.get('reservation_date')} {reservation.get('start_time')}"
+        return send_line_payload(access_token, user_id, [{"type": "text", "text": done}])
+
+    clear_line_booking_session(shop_id, user_id)
+    return send_line_payload(access_token, user_id, [{"type": "text", "text": "もう一度「予約」と送信してください。"}])
+
+
+@app.get("/features", response_class=HTMLResponse)
+def features_page(request: Request):
+    return templates.TemplateResponse("features.html", {"request": request})
+
 @app.get("/line-test")
 def line_test(shop_id: str = "yamato", user_id: str = ""):
     settings = get_shop_line_settings(shop_id)
@@ -205,7 +453,8 @@ def line_test(shop_id: str = "yamato", user_id: str = ""):
 def build_line_reservation_url(shop_id: str, line_user_id: str) -> str:
     shop_id = str(shop_id or "").strip()
     line_user_id = str(line_user_id or "").strip()
-    return f"https://www.rakubai.net/{shop_id}/reserve?line_user_id={line_user_id}"
+    return f"https://www.rakubai.net/shop/{shop_id}?line_user_id={line_user_id}#reserve-form"
+
 
 
 def send_line_reservation_button(access_token: str, user_id: str, shop_id: str) -> dict:
@@ -412,13 +661,900 @@ def get_recent_line_webhook_users(shop_id: str, limit: int = 5) -> list[dict]:
 
 
 
+
+def send_line_messages(access_token: str, user_id: str, messages: list[dict]) -> dict:
+    access_token = str(access_token or "").strip()
+    user_id = str(user_id or "").strip()
+    if not access_token:
+        return {"ok": False, "reason": "no access token"}
+    if not user_id:
+        return {"ok": False, "reason": "no user_id"}
+    url = "https://api.line.me/v2/bot/message/push"
+    headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+    try:
+        response = requests.post(url, headers=headers, json={"to": user_id, "messages": messages[:5]}, timeout=10)
+        print("LINE messages result:", response.status_code, response.text)
+        return {"ok": 200 <= response.status_code < 300, "status_code": response.status_code, "response": response.text}
+    except Exception as exc:
+        print("LINE messages error:", repr(exc))
+        return {"ok": False, "reason": str(exc)}
+
+
+def _line_qr(label: str, data: str, display_text: str | None = None) -> dict:
+    return {"type": "action", "action": {"type": "postback", "label": str(label)[:20], "data": str(data)[:300], "displayText": str(display_text or label)[:300]}}
+
+
+def send_line_quick_reply(access_token: str, user_id: str, text: str, items: list[dict]) -> dict:
+    message = {"type": "text", "text": str(text or "")[:5000]}
+    if items:
+        message["quickReply"] = {"items": items[:13]}
+    return send_line_messages(access_token, user_id, [message])
+
+
+def send_line_selection_buttons(access_token: str, user_id: str, text: str, labels: list[str]) -> dict:
+    clean_labels = [str(label or "").strip() for label in labels if str(label or "").strip()]
+    if not clean_labels:
+        return send_line_message(access_token, user_id, text)
+
+    contents = []
+    for label in clean_labels[:13]:
+        contents.append({
+            "type": "button",
+            "style": "primary",
+            "height": "md",
+            "action": {
+                "type": "message",
+                "label": label[:40],
+                "text": label[:300],
+            },
+        })
+
+    messages = [
+        {"type": "text", "text": str(text or "")[:5000]},
+        {
+            "type": "flex",
+            "altText": "選択してください",
+            "contents": {
+                "type": "bubble",
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "spacing": "md",
+                    "contents": contents,
+                },
+            },
+        },
+    ]
+    return send_line_messages(access_token, user_id, messages)
+
+
+def ensure_line_reservation_session_schema() -> None:
+    with get_connection() as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS line_reservation_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                shop_id TEXT NOT NULL,
+                line_user_id TEXT NOT NULL,
+                step TEXT NOT NULL DEFAULT '',
+                staff_id TEXT DEFAULT '', staff_name TEXT DEFAULT '',
+                menu_id TEXT DEFAULT '', menu_name TEXT DEFAULT '',
+                duration INTEGER DEFAULT 0, price INTEGER DEFAULT 0,
+                reservation_date TEXT DEFAULT '', start_time TEXT DEFAULT '', end_time TEXT DEFAULT '',
+                created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+            )
+        """)
+        conn.execute("""CREATE UNIQUE INDEX IF NOT EXISTS idx_line_reservation_sessions_shop_user ON line_reservation_sessions(shop_id, line_user_id)""")
+        columns = {str(row[1]) for row in conn.execute("PRAGMA table_info(line_reservation_sessions)").fetchall()}
+        for column_name, column_type in {
+            "customer_id": "INTEGER DEFAULT 0",
+            "customer_name": "TEXT DEFAULT ''",
+            "customer_phone": "TEXT DEFAULT ''",
+            "slot_page": "INTEGER DEFAULT 0",
+        }.items():
+            if column_name not in columns:
+                conn.execute(f"ALTER TABLE line_reservation_sessions ADD COLUMN {column_name} {column_type}")
+        conn.commit()
+
+
+def get_line_reservation_session(shop_id: str, line_user_id: str) -> dict | None:
+    ensure_line_reservation_session_schema()
+    with get_connection() as conn:
+        row = conn.execute("SELECT * FROM line_reservation_sessions WHERE shop_id = ? AND line_user_id = ? LIMIT 1", (str(shop_id or "").strip(), str(line_user_id or "").strip())).fetchone()
+    return dict(row) if row else None
+
+
+def upsert_line_reservation_session(shop_id: str, line_user_id: str, **values) -> dict | None:
+    ensure_line_reservation_session_schema()
+    now_text = datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
+    current = get_line_reservation_session(shop_id, line_user_id) or {}
+    data = {
+        "step": current.get("step") or "",
+        "staff_id": current.get("staff_id") or "",
+        "staff_name": current.get("staff_name") or "",
+        "menu_id": current.get("menu_id") or "",
+        "menu_name": current.get("menu_name") or "",
+        "duration": int(current.get("duration") or 0),
+        "price": int(current.get("price") or 0),
+        "reservation_date": current.get("reservation_date") or "",
+        "start_time": current.get("start_time") or "",
+        "end_time": current.get("end_time") or "",
+        "customer_id": int(current.get("customer_id") or 0),
+        "customer_name": current.get("customer_name") or "",
+        "customer_phone": current.get("customer_phone") or "",
+        "slot_page": int(current.get("slot_page") or 0),
+    }
+    data.update(values)
+    with get_connection() as conn:
+        conn.execute("""
+            INSERT INTO line_reservation_sessions (shop_id,line_user_id,step,staff_id,staff_name,menu_id,menu_name,duration,price,reservation_date,start_time,end_time,customer_id,customer_name,customer_phone,slot_page,created_at,updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(shop_id,line_user_id) DO UPDATE SET
+                step=excluded.step, staff_id=excluded.staff_id, staff_name=excluded.staff_name,
+                menu_id=excluded.menu_id, menu_name=excluded.menu_name, duration=excluded.duration, price=excluded.price,
+                reservation_date=excluded.reservation_date, start_time=excluded.start_time, end_time=excluded.end_time,
+                customer_id=excluded.customer_id, customer_name=excluded.customer_name, customer_phone=excluded.customer_phone,
+                slot_page=excluded.slot_page,
+                updated_at=excluded.updated_at
+        """, (
+            str(shop_id or "").strip(), str(line_user_id or "").strip(), str(data.get("step") or ""),
+            str(data.get("staff_id") or ""), str(data.get("staff_name") or ""), str(data.get("menu_id") or ""),
+            str(data.get("menu_name") or ""), int(data.get("duration") or 0), int(data.get("price") or 0),
+            str(data.get("reservation_date") or ""), str(data.get("start_time") or ""), str(data.get("end_time") or ""),
+            int(data.get("customer_id") or 0), str(data.get("customer_name") or ""), str(data.get("customer_phone") or ""),
+            int(data.get("slot_page") or 0), now_text, now_text,
+        ))
+        conn.commit()
+    return get_line_reservation_session(shop_id, line_user_id)
+
+
+def clear_line_reservation_session(shop_id: str, line_user_id: str) -> None:
+    ensure_line_reservation_session_schema()
+    with get_connection() as conn:
+        conn.execute("DELETE FROM line_reservation_sessions WHERE shop_id = ? AND line_user_id = ?", (str(shop_id or "").strip(), str(line_user_id or "").strip()))
+        conn.commit()
+
+
+def _line_staff_options(shop: dict) -> list[dict]:
+    result = []
+    for index, staff in enumerate((shop or {}).get("staff_list") or [], start=1):
+        if isinstance(staff, dict):
+            name = str(staff.get("name") or staff.get("staff_name") or "").strip()
+            if name:
+                result.append({"id": str(staff.get("id") or staff.get("staff_id") or index), "name": name})
+    return result
+
+
+def _line_menu_options(shop: dict) -> list[dict]:
+    result = []
+    for index, menu in enumerate((shop or {}).get("menus") or [], start=1):
+        if isinstance(menu, dict):
+            name = str(menu.get("name") or menu.get("menu_name") or "").strip()
+            if name:
+                result.append({"id": str(menu.get("id") or menu.get("menu_id") or index), "name": name, "duration": int(menu.get("duration") or menu.get("duration_minutes") or 60), "price": int(menu.get("price") or 0)})
+    return result
+
+
+def _line_find(options: list[dict], option_id: str) -> dict | None:
+    for item in options:
+        if str(item.get("id") or "") == str(option_id or ""):
+            return item
+    return None
+
+
+def _line_reservation_overlaps(
+    reservation: dict,
+    *,
+    staff_id: str,
+    date_text: str,
+    start_text: str,
+    end_text: str,
+    default_duration: int = 60,
+) -> bool:
+    """既存予約と候補枠が時間重複しているか判定します。"""
+    if str(reservation.get("status") or "") == "キャンセル":
+        return False
+    if str(reservation.get("staff_id") or "").strip() != str(staff_id or "").strip():
+        return False
+    if str(reservation.get("reservation_date") or "").strip() != str(date_text or "").strip():
+        return False
+
+    candidate_start = _parse_hhmm_to_minutes(str(start_text or "")[:5])
+    candidate_end = _parse_hhmm_to_minutes(str(end_text or "")[:5])
+    reserved_start = _parse_hhmm_to_minutes(str(reservation.get("start_time") or "")[:5])
+    reserved_end = _parse_hhmm_to_minutes(str(reservation.get("end_time") or "")[:5])
+
+    if candidate_start is None or candidate_end is None or reserved_start is None:
+        return False
+
+    if candidate_end <= candidate_start:
+        try:
+            candidate_end = candidate_start + max(30, int(default_duration or 60))
+        except (TypeError, ValueError):
+            candidate_end = candidate_start + 60
+
+    if reserved_end is None or reserved_end <= reserved_start:
+        try:
+            existing_duration = int(reservation.get("duration") or default_duration or 60)
+        except (TypeError, ValueError):
+            existing_duration = int(default_duration or 60)
+        reserved_end = reserved_start + max(30, existing_duration)
+
+    # 半開区間 [start, end) で判定。10:00-10:30 と 10:30-11:00 は重複しない。
+    return candidate_start < reserved_end and candidate_end > reserved_start
+
+
+def _line_has_reservation_conflict(shop_id: str, staff_id: str, date_text: str, start_text: str, end_text: str, default_duration: int = 60) -> bool:
+    """LINE予約確定直前にも使う最終重複チェック。"""
+    for reservation in get_reservations(shop_id):
+        if _line_reservation_overlaps(
+            reservation,
+            staff_id=str(staff_id or ""),
+            date_text=str(date_text or ""),
+            start_text=str(start_text or ""),
+            end_text=str(end_text or ""),
+            default_duration=int(default_duration or 60),
+        ):
+            return True
+    return False
+
+
+def _line_slot_options(shop_id: str, staff_id: str, duration: int, days: int = 30, limit: int = 13, offset: int = 0) -> list[dict]:
+    """LINE完結予約で表示する日時候補を作ります。
+
+    Web予約のカレンダーと同じ考え方に合わせて、
+    - 店舗の営業時間（business_hours）
+    - 店舗の定休日
+    - 担当者の休み
+    - 既存予約との時間重複（開始時刻だけでなく終了時刻まで）
+    を見て、30分刻みで候補を返します。
+    """
+    shop = get_shop(shop_id) or {}
+    selected_staff = next(
+        (item for item in (shop.get("staff_list") or []) if str(item.get("id") or item.get("staff_id") or "") == str(staff_id)),
+        None,
+    )
+
+    try:
+        duration_minutes = max(30, int(duration or 60))
+    except (TypeError, ValueError):
+        duration_minutes = 60
+
+    reservations = [r for r in get_reservations(shop_id) if str(r.get("status") or "") != "キャンセル"]
+    staff_reservations = [r for r in reservations if str(r.get("staff_id") or "").strip() == str(staff_id or "").strip()]
+
+    time_slots = _build_half_hour_slots(shop.get("business_hours"))
+    now_dt = datetime.now(JST)
+    today = now_dt.date()
+    slots: list[dict] = []
+    safe_offset = max(0, int(offset or 0))
+    safe_limit = max(1, int(limit or 13))
+    target_count = safe_offset + safe_limit
+
+    for i in range(days):
+        day = today + timedelta(days=i)
+        if _is_shop_holiday(shop, day) or _is_staff_holiday(selected_staff, day):
+            continue
+
+        date_text = day.isoformat()
+        day_reservations = [r for r in staff_reservations if str(r.get("reservation_date") or "") == date_text]
+
+        for start_text in time_slots:
+            try:
+                start_time_obj = datetime.strptime(start_text, "%H:%M").time()
+            except ValueError:
+                continue
+
+            start_dt = datetime.combine(day, start_time_obj, tzinfo=JST)
+            end_dt = start_dt + timedelta(minutes=duration_minutes)
+            end_text = end_dt.strftime("%H:%M")
+
+            # 直近すぎる枠・過去枠は出さない
+            if start_dt <= now_dt + timedelta(hours=1):
+                continue
+
+            # 営業時間の最後を超える枠は出さない
+            if time_slots:
+                business_end_text = _parse_business_hours_range(shop.get("business_hours"))[1]
+                try:
+                    business_end_time = datetime.strptime(business_end_text, "%H:%M").time()
+                    business_end_dt = datetime.combine(day, business_end_time, tzinfo=JST)
+                    if end_dt > business_end_dt:
+                        continue
+                except ValueError:
+                    pass
+
+            # 既存予約と時間が1分でも重なる枠は出さない。
+            if any(
+                _line_reservation_overlaps(
+                    reservation,
+                    staff_id=str(staff_id or ""),
+                    date_text=date_text,
+                    start_text=start_dt.strftime("%H:%M"),
+                    end_text=end_text,
+                    default_duration=duration_minutes,
+                )
+                for reservation in day_reservations
+            ):
+                continue
+
+            slots.append({
+                "date": date_text,
+                "start": start_dt.strftime("%H:%M"),
+                "end": end_text,
+                "label": f"{day.month}/{day.day} {start_dt.strftime('%H:%M')}",
+            })
+            if len(slots) >= target_count:
+                return slots[safe_offset:target_count]
+
+    return slots[safe_offset:target_count]
+
+
+def _line_datetime_page_labels(shop_id: str, staff_id: str, duration: int, page: int = 0) -> tuple[list[str], bool]:
+    page_size = 12
+    safe_page = max(0, int(page or 0))
+    offset = safe_page * page_size
+    slots = _line_slot_options(shop_id, staff_id, duration, limit=page_size + 1, offset=offset) or []
+    visible_slots = slots[:page_size]
+    labels = [str(slot.get("label") or "") for slot in visible_slots if str(slot.get("label") or "").strip()]
+    has_next = len(slots) > page_size
+    if has_next:
+        labels.append("次へ")
+    return labels, has_next
+
+
+def _line_datetime_page_message(page: int = 0) -> str:
+    safe_page = max(0, int(page or 0))
+    if safe_page <= 0:
+        return "日時を選んでください。"
+    return f"日時を選んでください。（{safe_page + 1}ページ目）"
+
+
+def _line_customer_from_member(shop_id: str, member: dict) -> dict | None:
+    """会員情報を優先した顧客dictを返します。
+
+    非会員時代の顧客名が残っていても、会員登録後は members の氏名・電話番号を
+    予約表示と保存に使います。
+    """
+    if not member:
+        return None
+    customer_id = int((member or {}).get("customer_id") or 0)
+    customer = get_customer_by_id(shop_id, customer_id) if customer_id else None
+    if not customer:
+        return None
+    result = dict(customer)
+    result["name"] = str((member or {}).get("name") or result.get("name") or "").strip()
+    result["phone"] = normalize_member_phone((member or {}).get("phone") or (member or {}).get("phone_normalized") or result.get("phone") or "")
+    result["email"] = str((member or {}).get("email") or result.get("email") or "").strip()
+    result["is_member"] = True
+    result["member_id"] = int((member or {}).get("id") or 0)
+    return result
+
+
+def get_customer_by_line_user_id(shop_id: str, line_user_id: str) -> dict | None:
+    """LINE user_idに紐づく顧客を返します。
+
+    同じLINE user_idが、過去の非会員顧客と会員顧客の両方に残っている場合は、
+    必ず会員顧客を優先します。
+    """
+    ensure_customer_line_user_id_schema()
+    clean_shop_id = str(shop_id or "").strip()
+    clean_line_user_id = str(line_user_id or "").strip()
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, shop_id, name, phone, email, created_at
+            FROM customers
+            WHERE shop_id = ? AND line_user_id = ?
+            ORDER BY id DESC
+            """,
+            (clean_shop_id, clean_line_user_id),
+        ).fetchall()
+    customers = [dict(row) for row in rows]
+
+    # まず、LINEに紐づいている顧客の電話番号から会員情報を探し、会員顧客を優先する。
+    for customer in customers:
+        phone = normalize_member_phone(customer.get("phone") or "")
+        member = get_member_by_phone_normalized(clean_shop_id, phone) if phone else None
+        member_customer_id = int((member or {}).get("customer_id") or 0)
+        if member and member_customer_id:
+            preferred = _line_customer_from_member(clean_shop_id, member)
+            if preferred:
+                return preferred
+
+    return customers[0] if customers else None
+
+
+def is_real_line_customer(customer: dict | None) -> bool:
+    """LINE予約で自動入力を省略してよい「会員顧客」か判定します。
+
+    非会員予約でも名前・電話番号・LINE user_id は顧客リストへ保存しますが、
+    次回も会員登録を案内したいので、電話番号に対応する会員データがある場合だけ
+    登録済み扱いにします。
+    """
+    if not customer:
+        return False
+
+    name = str(customer.get("name") or "").strip()
+    phone = normalize_member_phone(customer.get("phone") or "")
+    if not name or name == "LINE予約" or name.startswith("LINE予約"):
+        return False
+    if "LINE予約" in name and name.endswith("）"):
+        return False
+    if not phone:
+        return False
+
+    try:
+        member = get_member_by_phone_normalized(str(customer.get("shop_id") or ""), phone)
+        if not member:
+            return False
+        member_customer_id = int(member.get("customer_id") or 0)
+        customer_id = int(customer.get("id") or 0)
+        return bool(member_customer_id == customer_id or (not customer_id and member_customer_id))
+    except Exception as exc:
+        print("line real customer check error:", repr(exc))
+        return False
+
+def build_line_member_register_url(shop_id: str, line_user_id: str) -> str:
+    """LINE予約から会員登録へ進むためのURLを作ります。
+
+    登録完了後に会員ページへ飛ばすだけだとLINEに戻りにくいため、
+    LINE連携完了ページを next に入れます。
+    """
+    from urllib.parse import quote
+
+    clean_shop_id = str(shop_id or "").strip()
+    clean_line_user_id = str(line_user_id or "").strip()
+    next_url = f"/member/{clean_shop_id}/line-register-complete?line_user_id={quote(clean_line_user_id, safe='')}"
+    return f"https://www.rakubai.net/member/{clean_shop_id}/register?next={quote(next_url, safe='')}"
+
+
+def extract_line_user_id_from_next_url(next_url: str) -> str:
+    """会員登録のnext_urlに含めたline_user_idを取り出します。"""
+    from urllib.parse import parse_qs, urlparse
+
+    try:
+        parsed = urlparse(str(next_url or ""))
+        values = parse_qs(parsed.query).get("line_user_id") or []
+        return str(values[0] or "").strip() if values else ""
+    except Exception:
+        return ""
+
+
+def parse_line_customer_info(text: str) -> tuple[str, str] | None:
+    """「山田太郎 09012345678」のような入力から名前と電話番号を取り出します。"""
+    raw = str(text or "").strip()
+    phone_match = re.search(r"0\d[\d\-\s]{8,}\d", raw)
+    if not phone_match:
+        return None
+    phone_raw = phone_match.group(0)
+    phone = normalize_member_phone(phone_raw)
+    name = (raw[:phone_match.start()] + raw[phone_match.end():]).strip(" 　,，、:：\n\t")
+    if not name or not phone:
+        return None
+    return name, phone
+
+
+def ensure_line_customer_for_reservation(shop_id: str, line_user_id: str, name: str, phone: str) -> dict:
+    """入力された名前・電話番号から顧客を作成または更新し、LINE user_idを紐づけます。"""
+    clean_name = str(name or "").strip()
+    clean_phone = normalize_member_phone(phone)
+    customer = None
+
+    linked_customer = get_customer_by_line_user_id(shop_id, line_user_id)
+    if linked_customer:
+        customer = update_customer_contact(
+            shop_id,
+            int(linked_customer.get("id") or 0),
+            clean_name,
+            clean_phone,
+            str(linked_customer.get("email") or ""),
+        ) or linked_customer
+
+    if not customer and clean_phone:
+        member = get_member_by_phone_normalized(shop_id, clean_phone)
+        if member:
+            clean_name = str(member.get("name") or clean_name).strip()
+            customer_id = int(member.get("customer_id") or 0)
+            if customer_id:
+                customer = get_customer_by_id(shop_id, customer_id)
+
+    if not customer:
+        customer = find_customer(shop_id, clean_name, clean_phone, "")
+    if not customer:
+        customer = create_customer(shop_id, clean_name, clean_phone, "")
+    else:
+        customer = update_customer_contact(shop_id, int(customer.get("id") or 0), clean_name, clean_phone, str(customer.get("email") or "")) or customer
+
+    try:
+        update_customer_line_user_id(shop_id, int(customer.get("id") or 0), line_user_id)
+    except Exception as exc:
+        print("line customer link error:", repr(exc))
+    return customer
+
+def handle_line_complete_reservation_flow(shop_id: str, user_id: str, access_token: str, message_text: str = "", postback_data: str = "") -> dict:
+    """LINE完結予約フロー。
+
+    Quick Reply は MessageAction（押すと通常のテキストが送られる）で統一します。
+    postback_data が来た場合も互換のため処理できます。
+    """
+    shop = get_shop(shop_id)
+    if not shop:
+        return send_line_message(access_token, user_id, "店舗情報が見つかりませんでした。")
+
+    text = str(message_text or "").strip()
+    data = str(postback_data or "").strip()
+    normalized_text = text.replace(" ", "").replace("　", "").strip()
+
+    def qr(label: str, send_text: str | None = None) -> dict:
+        label_text = str(label or "").strip()[:20]
+        return {
+            "type": "action",
+            "action": {
+                "type": "message",
+                "label": label_text,
+                "text": str(send_text or label or "").strip()[:300],
+            },
+        }
+
+    def reply_options(message: str, labels: list[str]) -> dict:
+        return send_line_selection_buttons(access_token, user_id, message, labels)
+
+    def find_by_text(options: list[dict], value: str) -> dict | None:
+        raw = str(value or "").strip()
+        compact = raw.replace(" ", "").replace("　", "")
+        for item in options:
+            item_id = str(item.get("id") or "").strip()
+            name = str(item.get("name") or "").strip()
+            candidates = {item_id, name, f"{item_id}. {name}", f"{item_id} {name}"}
+            candidates_compact = {c.replace(" ", "").replace("　", "") for c in candidates}
+            if raw in candidates or compact in candidates_compact:
+                return item
+        return None
+
+    cancel_words = {"キャンセル", "中止", "やめる", "取消", "取り消し", "いいえ"}
+    if normalized_text in cancel_words or data in {"line_reserve:confirm:no", "line_reserve:cancel"}:
+        clear_line_reservation_session(shop_id, user_id)
+        return send_line_message(access_token, user_id, "予約操作をキャンセルしました。")
+
+    session = get_line_reservation_session(shop_id, user_id) or {}
+
+    # 「非会員で予約する」のような選択肢にも「予約」が含まれるため、
+    # 部分一致ではなく開始キーワードの完全一致だけで予約フローを開始します。
+    # 予約開始時に、先に会員/非会員状態を判定します。
+    start_words = {"予約", "予約する", "予約開始"}
+    if normalized_text in start_words or data == "line_reserve:start":
+        linked_customer = get_customer_by_line_user_id(shop_id, user_id)
+        staff_options = _line_staff_options(shop)
+        if not staff_options:
+            return send_line_message(access_token, user_id, "現在、選択できる担当者が登録されていません。")
+
+        base_values = dict(
+            staff_id="", staff_name="", menu_id="", menu_name="", duration=0, price=0,
+            reservation_date="", start_time="", end_time="", customer_id=0, customer_name="", customer_phone="",
+        )
+
+        if is_real_line_customer(linked_customer):
+            member_values = dict(base_values)
+            member_values.update(
+                customer_id=int(linked_customer.get("id") or 0),
+                customer_name=str(linked_customer.get("name") or ""),
+                customer_phone=str(linked_customer.get("phone") or ""),
+            )
+            upsert_line_reservation_session(shop_id, user_id, step="select_staff", **member_values)
+            return reply_options(
+                f"{linked_customer.get('name')}様の会員情報で予約を開始します。\n担当者を選んでください。",
+                [s["name"] for s in staff_options],
+            )
+
+        previous_name = str((linked_customer or {}).get("name") or "").strip()
+        previous_phone = normalize_member_phone((linked_customer or {}).get("phone") or "")
+        has_previous_guest_info = bool(linked_customer and previous_name and previous_phone and not previous_name.startswith("LINE予約"))
+        register_url = build_line_member_register_url(shop_id, user_id)
+        if has_previous_guest_info:
+            guest_values = dict(base_values)
+            guest_values.update(
+                customer_id=int((linked_customer or {}).get("id") or 0),
+                customer_name=previous_name,
+                customer_phone=previous_phone,
+            )
+            upsert_line_reservation_session(shop_id, user_id, step="select_customer_type", **guest_values)
+            return reply_options(
+                "前回は非会員としてこちらの情報で予約されています。\n\n"
+                f"お名前：{previous_name}\n"
+                f"電話番号：{previous_phone}\n\n"
+                "会員登録すると次回以降は会員情報を優先して予約できます。\n"
+                f"{register_url}\n\n"
+                "今回はどうしますか？",
+                ["この情報で予約する", "情報を変更する", "会員登録URLを表示"],
+            )
+
+        upsert_line_reservation_session(shop_id, user_id, step="select_customer_type", **base_values)
+        return reply_options(
+            "初回のため、お客様情報が必要です。\n\n"
+            "会員登録する場合はこちらから登録してください。\n"
+            f"{register_url}\n\n"
+            "非会員のまま予約する場合は「非会員で予約する」を選んでください。",
+            ["非会員で予約する", "会員登録URLを表示"],
+        )
+
+    step = str(session.get("step") or "")
+
+    if step == "select_staff":
+        staff_options = _line_staff_options(shop)
+        staff_id_from_postback = data.split(":", 2)[2] if data.startswith("line_reserve:staff:") else ""
+        staff = _line_find(staff_options, staff_id_from_postback) if staff_id_from_postback else find_by_text(staff_options, text)
+        if not staff:
+            return reply_options("担当者を選んでください。", [s["name"] for s in staff_options])
+        menus = _line_menu_options(shop)
+        if not menus:
+            clear_line_reservation_session(shop_id, user_id)
+            return send_line_message(access_token, user_id, "現在、選択できるメニューが登録されていません。")
+        upsert_line_reservation_session(shop_id, user_id, step="select_menu", staff_id=staff["id"], staff_name=staff["name"])
+        return reply_options(f"{staff['name']}を選択しました。\nメニューを選んでください。", [m["name"] for m in menus])
+
+    if step == "select_menu":
+        menu_options = _line_menu_options(shop)
+        menu_id_from_postback = data.split(":", 2)[2] if data.startswith("line_reserve:menu:") else ""
+        menu = _line_find(menu_options, menu_id_from_postback) if menu_id_from_postback else find_by_text(menu_options, text)
+        if not menu:
+            return reply_options("メニューを選んでください。", [m["name"] for m in menu_options])
+        labels, _has_next = _line_datetime_page_labels(shop_id, session.get("staff_id"), menu.get("duration") or 60, page=0)
+        if not labels:
+            clear_line_reservation_session(shop_id, user_id)
+            return send_line_message(access_token, user_id, "選択できる日時がありませんでした。別の担当者でお試しください。")
+        upsert_line_reservation_session(shop_id, user_id, step="select_datetime", menu_id=menu["id"], menu_name=menu["name"], duration=menu["duration"], price=menu["price"], slot_page=0)
+        return reply_options(f"{menu['name']}を選択しました。\n日時を選んでください。", labels)
+
+    if step == "select_datetime":
+        selected = None
+        current_page = max(0, int(session.get("slot_page") or 0))
+        if normalized_text in {"次へ", "次の日時", "もっと見る"}:
+            next_page = current_page + 1
+            labels, _has_next = _line_datetime_page_labels(shop_id, session.get("staff_id"), int(session.get("duration") or 60), page=next_page)
+            if not labels:
+                labels, _has_next = _line_datetime_page_labels(shop_id, session.get("staff_id"), int(session.get("duration") or 60), page=current_page)
+                return reply_options("これ以上表示できる日時はありません。\n日時を選んでください。", labels)
+            upsert_line_reservation_session(shop_id, user_id, slot_page=next_page)
+            return reply_options(_line_datetime_page_message(next_page), labels)
+        if data.startswith("line_reserve:slot:"):
+            # 互換用。data は line_reserve:slot:YYYY-MM-DD:HH:MM:HH:MM 形式。
+            payload = data.replace("line_reserve:slot:", "", 1)
+            slot_match = re.match(r"^(\d{4}-\d{2}-\d{2}):(\d{1,2}:\d{2}):(\d{1,2}:\d{2})$", payload)
+            if slot_match:
+                selected = {
+                    "date": slot_match.group(1),
+                    "start": slot_match.group(2),
+                    "end": slot_match.group(3),
+                    "label": f"{slot_match.group(1)} {slot_match.group(2)}",
+                }
+        else:
+            slots = _line_slot_options(shop_id, session.get("staff_id"), int(session.get("duration") or 60), limit=500, offset=0) or []
+            selected = next((slot for slot in slots if str(slot.get("label") or "") == text), None)
+        if not selected:
+            labels, _has_next = _line_datetime_page_labels(shop_id, session.get("staff_id"), int(session.get("duration") or 60), page=current_page)
+            return reply_options(_line_datetime_page_message(current_page), labels)
+        linked_customer = get_customer_by_line_user_id(shop_id, user_id)
+        if is_real_line_customer(linked_customer):
+            session = upsert_line_reservation_session(
+                shop_id, user_id, step="confirm",
+                reservation_date=selected.get("date") or "", start_time=selected.get("start") or "", end_time=selected.get("end") or "",
+                customer_id=int(linked_customer.get("id") or 0),
+                customer_name=str(linked_customer.get("name") or ""),
+                customer_phone=str(linked_customer.get("phone") or ""),
+            ) or {}
+            confirm_text = (
+                "この内容で予約しますか？\n\n"
+                + f"お名前：{session.get('customer_name')}（LINE予約）\n"
+                + f"電話番号：{session.get('customer_phone') or '登録なし'}\n"
+                + f"担当者：{session.get('staff_name')}\n"
+                + f"メニュー：{session.get('menu_name')}\n"
+                + f"日時：{session.get('reservation_date')} {session.get('start_time')}"
+            )
+            return reply_options(confirm_text, ["はい", "いいえ"])
+
+        previous_name = str((linked_customer or {}).get("name") or "").strip()
+        previous_phone = normalize_member_phone((linked_customer or {}).get("phone") or "")
+        has_previous_guest_info = bool(linked_customer and previous_name and previous_phone and not previous_name.startswith("LINE予約"))
+        upsert_line_reservation_session(
+            shop_id, user_id, step="select_customer_type",
+            reservation_date=selected.get("date") or "", start_time=selected.get("start") or "", end_time=selected.get("end") or "",
+            customer_id=int((linked_customer or {}).get("id") or 0) if has_previous_guest_info else 0,
+            customer_name=previous_name if has_previous_guest_info else "",
+            customer_phone=previous_phone if has_previous_guest_info else "",
+        )
+        register_url = build_line_member_register_url(shop_id, user_id)
+        if has_previous_guest_info:
+            return reply_options(
+                "前回は非会員としてこちらの情報で予約されています。\n\n"
+                f"お名前：{previous_name}\n"
+                f"電話番号：{previous_phone}\n\n"
+                "会員登録すると次回以降の予約確認がスムーズになります。\n"
+                f"{register_url}\n\n"
+                "今回はどうしますか？",
+                ["この情報で予約する", "情報を変更する", "会員登録URLを表示"]
+            )
+
+        return reply_options(
+            "初回のため、お客様情報が必要です。\n\n"
+            "会員登録する場合はこちらから登録してください。\n"
+            f"{register_url}\n\n"
+            "非会員のまま予約する場合は「非会員で予約する」を選んでください。",
+            ["非会員で予約する", "会員登録URLを表示"]
+        )
+
+    if step == "select_customer_type":
+        if normalized_text in {"この情報で予約する", "前回の情報で予約する", "この情報で進む"}:
+            customer_id = int(session.get("customer_id") or 0)
+            customer_name = str(session.get("customer_name") or "").strip()
+            customer_phone = str(session.get("customer_phone") or "").strip()
+            if customer_id and customer_name:
+                # 予約開始直後に非会員情報を確認した場合は、ここから担当者選択へ進む。
+                if not str(session.get("staff_id") or "").strip():
+                    staff_options = _line_staff_options(shop)
+                    session = upsert_line_reservation_session(shop_id, user_id, step="select_staff") or {}
+                    return reply_options(
+                        f"{customer_name}様の情報で予約を進めます。\n担当者を選んでください。",
+                        [s["name"] for s in staff_options],
+                    )
+                session = upsert_line_reservation_session(shop_id, user_id, step="confirm") or {}
+                confirm_text = (
+                    "この内容で予約しますか？\n\n"
+                    + f"お名前：{session.get('customer_name')}（LINE予約）\n"
+                    + f"電話番号：{session.get('customer_phone')}\n"
+                    + f"担当者：{session.get('staff_name')}\n"
+                    + f"メニュー：{session.get('menu_name')}\n"
+                    + f"日時：{session.get('reservation_date')} {session.get('start_time')}"
+                )
+                return reply_options(confirm_text, ["はい", "いいえ"])
+            upsert_line_reservation_session(shop_id, user_id, step="input_customer_info")
+            return send_line_message(access_token, user_id, "お名前と電話番号を送信してください。\n例：山田太郎 09012345678")
+
+        if normalized_text in {"情報を変更する", "変更する", "非会員で予約する", "非会員", "会員登録しない"}:
+            upsert_line_reservation_session(shop_id, user_id, step="input_customer_info")
+            return send_line_message(
+                access_token,
+                user_id,
+                "非会員予約として、お名前と電話番号を送信してください。\n\n例：山田太郎 09012345678\n\n入力内容は顧客リストに保存します。次回は前回情報を確認して会員登録をご案内します。"
+            )
+        if normalized_text in {"会員登録urlを表示", "会員登録URLを表示", "会員登録する", "会員登録"}:
+            register_url = build_line_member_register_url(shop_id, user_id)
+            return reply_options(
+                "会員登録はこちらから行ってください。\n"
+                f"{register_url}\n\n"
+                "登録完了後、このLINEと顧客情報が紐づきます。\n"
+                "非会員で進める場合は「非会員で予約する」を選んでください。",
+                ["非会員で予約する"]
+            )
+        if str(session.get("customer_name") or "").strip() and str(session.get("customer_phone") or "").strip():
+            return reply_options(
+                "前回の情報で予約するか、情報を変更するか、会員登録するかを選んでください。",
+                ["この情報で予約する", "情報を変更する", "会員登録URLを表示"]
+            )
+        return reply_options(
+            "会員登録するか、非会員で予約するかを選んでください。",
+            ["非会員で予約する", "会員登録URLを表示"]
+        )
+    if step == "input_customer_info":
+        parsed = parse_line_customer_info(text)
+        if not parsed:
+            return send_line_message(
+                access_token,
+                user_id,
+                "お名前と電話番号を送信してください。\n例：山田太郎 09012345678"
+            )
+        input_name, input_phone = parsed
+        customer = ensure_line_customer_for_reservation(shop_id, user_id, input_name, input_phone)
+        next_step = "confirm" if str(session.get("staff_id") or "").strip() else "select_staff"
+        session = upsert_line_reservation_session(
+            shop_id, user_id, step=next_step,
+            customer_id=int(customer.get("id") or 0),
+            customer_name=str(customer.get("name") or input_name),
+            customer_phone=str(customer.get("phone") or input_phone),
+        ) or {}
+        if next_step == "select_staff":
+            staff_options = _line_staff_options(shop)
+            return reply_options(
+                "お客様情報を保存しました。\n担当者を選んでください。",
+                [s["name"] for s in staff_options],
+            )
+        confirm_text = (
+            "この内容で予約しますか？\n\n"
+            + f"お名前：{session.get('customer_name')}（LINE予約）\n"
+            + f"電話番号：{session.get('customer_phone')}\n"
+            + f"担当者：{session.get('staff_name')}\n"
+            + f"メニュー：{session.get('menu_name')}\n"
+            + f"日時：{session.get('reservation_date')} {session.get('start_time')}"
+        )
+        return reply_options(confirm_text, ["はい", "いいえ"])
+
+    if step == "confirm":
+        yes_values = {"はい", "予約する", "確定", "お願いします", "yes", "YES"}
+        if data == "line_reserve:confirm:yes" or normalized_text in yes_values:
+            session = get_line_reservation_session(shop_id, user_id) or {}
+            customer_id = int(session.get("customer_id") or 0)
+            customer_name = str(session.get("customer_name") or "").strip()
+            customer_phone = str(session.get("customer_phone") or "").strip()
+            if not customer_id or not customer_name:
+                linked_customer = get_customer_by_line_user_id(shop_id, user_id)
+                if is_real_line_customer(linked_customer):
+                    customer_id = int(linked_customer.get("id") or 0)
+                    customer_name = str(linked_customer.get("name") or "").strip()
+                    customer_phone = str(linked_customer.get("phone") or "").strip()
+            if not customer_id or not customer_name:
+                upsert_line_reservation_session(shop_id, user_id, step="select_customer_type")
+                register_url = build_line_member_register_url(shop_id, user_id)
+                return reply_options(
+                    "初回のため、お客様情報が必要です。\n\n"
+                    "会員登録する場合はこちらから登録してください。\n"
+                    f"{register_url}\n\n"
+                    "非会員のまま予約する場合は「非会員で予約する」を選んでください。",
+                    ["非会員で予約する", "会員登録URLを表示"]
+                )
+            reservation_customer_name = f"{customer_name}（LINE予約）"
+            duration_minutes = int(session.get("duration") or 60)
+            reservation_date = str(session.get("reservation_date") or "")
+            start_time = str(session.get("start_time") or "")[:5]
+            end_time = str(session.get("end_time") or "")[:5]
+            start_minutes = _parse_hhmm_to_minutes(start_time)
+            end_minutes = _parse_hhmm_to_minutes(end_time)
+            if start_minutes is not None and (end_minutes is None or end_minutes <= start_minutes):
+                end_time = _format_minutes_hhmm(start_minutes + max(30, duration_minutes))
+
+            if _line_has_reservation_conflict(shop_id, str(session.get("staff_id") or ""), reservation_date, start_time, end_time, duration_minutes):
+                labels, _has_next = _line_datetime_page_labels(shop_id, session.get("staff_id"), duration_minutes, page=0)
+                upsert_line_reservation_session(shop_id, user_id, step="select_datetime", reservation_date="", start_time="", end_time="", slot_page=0)
+                if labels:
+                    return reply_options("申し訳ありません。その日時は先に予約が入りました。別の日時を選んでください。", labels)
+                clear_line_reservation_session(shop_id, user_id)
+                return send_line_message(access_token, user_id, "申し訳ありません。その日時は先に予約が入りました。現在選択できる日時がありません。")
+
+            reservation = create_reservation(shop_id=shop_id, customer_id=customer_id, customer_name=reservation_customer_name, customer_email="", receive_email=0, staff_id=int(session.get("staff_id") or 0), staff_name=str(session.get("staff_name") or ""), menu_id=int(session.get("menu_id") or 0), menu_name=str(session.get("menu_name") or ""), duration=duration_minutes, price=int(session.get("price") or 0), reservation_date=reservation_date, start_time=start_time, end_time=end_time, status="予約済み", source="line")
+            clear_line_reservation_session(shop_id, user_id)
+            return send_line_message(access_token, user_id, f"予約が完了しました。\nお名前：{reservation.get('customer_name')}\nご来店をお待ちしております。")
+        return reply_options("予約する場合は「はい」を選んでください。", ["はい", "いいえ"])
+
+    return reply_options("予約を始める場合は「予約」と送信してください。", ["予約"])
+
+
+
+def ensure_customer_line_user_id_schema() -> None:
+    """customers テーブルに line_user_id カラムが無ければ自動追加します。"""
+    try:
+        with get_connection() as conn:
+            columns = [
+                str(row[1])
+                for row in conn.execute("PRAGMA table_info(customers)").fetchall()
+            ]
+            if "line_user_id" not in columns:
+                conn.execute("ALTER TABLE customers ADD COLUMN line_user_id TEXT")
+                conn.commit()
+                print("customers.line_user_id column added")
+    except Exception as exc:
+        print("ensure_customer_line_user_id_schema error:", repr(exc))
+
+
 def update_customer_line_user_id(shop_id: str, customer_id: int, line_user_id: str) -> None:
-    """顧客にLINE user_idを紐づけます。"""
+    """顧客にLINE user_idを紐づけます。
+
+    会員登録後も過去の非会員顧客に同じLINE user_idが残ると、
+    LINE予約時に非会員情報が優先表示されてしまうため、同一店舗内の
+    他顧客からは先にLINE user_idを外してから、対象顧客へ付け替えます。
+    """
     line_user_id = str(line_user_id or "").strip()
     if not line_user_id:
         return
 
+    ensure_customer_line_user_id_schema()
+
     with get_connection() as conn:
+        conn.execute(
+            """
+            UPDATE customers
+            SET line_user_id = NULL
+            WHERE shop_id = ? AND line_user_id = ? AND id <> ?
+            """,
+            (str(shop_id or "").strip(), line_user_id, int(customer_id)),
+        )
         conn.execute(
             """
             UPDATE customers
@@ -1773,16 +2909,122 @@ def _send_reservation_reminder_mail(reminder: dict) -> bool:
         return False
 
 
+
+
+def _enrich_reminder_for_line(reminder: dict) -> dict:
+    """get_due_reservation_reminders の結果にLINE送信用情報を補完します。"""
+    data = dict(reminder or {})
+    shop_id = str(data.get("shop_id") or "").strip()
+    customer_id = data.get("customer_id")
+
+    try:
+        with get_connection() as conn:
+            if not str(data.get("line_user_id") or "").strip() and customer_id not in (None, ""):
+                row = conn.execute(
+                    "SELECT line_user_id FROM customers WHERE shop_id = ? AND id = ? LIMIT 1",
+                    (shop_id, int(customer_id)),
+                ).fetchone()
+                if row:
+                    data["line_user_id"] = row["line_user_id"] if hasattr(row, "keys") else row[0]
+
+            if not str(data.get("line_channel_access_token") or "").strip():
+                row = conn.execute(
+                    "SELECT line_channel_access_token FROM shops WHERE shop_id = ? LIMIT 1",
+                    (shop_id,),
+                ).fetchone()
+                if row:
+                    data["line_channel_access_token"] = row["line_channel_access_token"] if hasattr(row, "keys") else row[0]
+    except Exception as exc:
+        print("[_enrich_reminder_for_line] failed:", repr(exc))
+
+    return data
+
+
+
+def _send_reservation_reminder_line(reminder: dict) -> bool:
+    """既存のメールリマインド設定を使ってLINEリマインドを送信します。"""
+    ensure_customer_line_user_id_schema()
+
+    line_user_id = str(reminder.get("line_user_id") or "").strip()
+    access_token = str(reminder.get("line_channel_access_token") or "").strip()
+    if not line_user_id or not access_token:
+        return False
+
+    is_day_before = str(reminder.get("reminder_kind") or "") == "day_before"
+
+    default_body = (
+        """{{customer_name}}様
+
+いつも{{shop_name}}をご利用いただきありがとうございます。
+
+明日、以下の内容でご予約をいただいております。
+
+■日時
+{{reservation_date}} {{reservation_time}}
+
+ご来店を心よりお待ちしております。"""
+        if is_day_before else
+        """{{customer_name}}様
+
+{{shop_name}}でございます。
+
+本日、以下のお時間でご予約をいただいております。
+
+■日時
+{{reservation_date}} {{reservation_time}}
+
+ご来店の際はお気をつけてお越しください。"""
+    )
+
+    body_template_value = reminder.get("reminder_day_before_body") if is_day_before else reminder.get("reminder_same_day_body")
+    body_template = str(body_template_value or "").strip() or default_body
+    body = _render_reminder_template(body_template, reminder)
+
+    result = send_line_message(
+        access_token=access_token,
+        user_id=line_user_id,
+        message=body,
+    )
+    print("[_send_reservation_reminder_line] result:", result)
+    return bool(result.get("ok"))
+
+
+
 def _process_reservation_reminders() -> None:
     reminder_now = datetime.now(ZoneInfo('Asia/Tokyo')).replace(second=0, microsecond=0).replace(tzinfo=None)
-    for reminder in get_due_reservation_reminders(reminder_now):
-        if _send_reservation_reminder_mail(reminder):
+
+    ensure_customer_line_user_id_schema()
+
+    for reminder_raw in get_due_reservation_reminders(reminder_now):
+        reminder = _enrich_reminder_for_line(dict(reminder_raw))
+        mail_sent = False
+        line_sent = False
+
+        try:
+            mail_sent = _send_reservation_reminder_mail(reminder)
+        except Exception as exc:
+            print(f"[_process_reservation_reminders] mail failed: {exc}")
+
+        try:
+            line_sent = _send_reservation_reminder_line(reminder)
+        except Exception as exc:
+            print(f"[_process_reservation_reminders] line failed: {exc}")
+
+        if mail_sent or line_sent:
             mark_reservation_reminder_sent(
                 str(reminder.get('shop_id') or ''),
                 int(reminder.get('id') or 0),
                 str(reminder.get('reminder_kind') or ''),
                 reminder_now.isoformat(timespec='minutes'),
             )
+
+
+
+@app.get("/send-reminders")
+def send_all_reminders_endpoint():
+    _process_reservation_reminders()
+    return {"ok": True, "message": "メール・LINEリマインド処理を実行しました"}
+
 
 
 def _start_reservation_reminder_worker() -> None:
@@ -1996,6 +3238,7 @@ def build_shop_booking_context(shop_id: str, request: Request, error_message: st
         'line_user_id': str(request.session.get('line_user_id') or ''),
         'line_display_name': str(request.session.get('line_display_name') or ''),
         'line_booking_entry_url': f"/shop/{shop_id}/line-reserve",
+        'line_official_url': str((get_shop_line_settings(shop_id) or {}).get("line_official_url") or "").strip(),
         'error_message': error_message,
     }
 
@@ -4149,6 +5392,19 @@ async def save_line_settings(request: Request, shop_id: str):
 
 
 
+
+
+@app.on_event("startup")
+def _line_reminder_startup() -> None:
+    ensure_customer_line_user_id_schema()
+    ensure_line_webhook_test_schema()
+    try:
+        _start_reservation_reminder_worker()
+    except Exception as exc:
+        print("[startup] reminder worker start failed:", repr(exc))
+
+
+
 @app.post("/line/webhook/{shop_id}/")
 @app.post("/line/webhook/{shop_id}")
 async def line_webhook_receive(shop_id: str, request: Request):
@@ -4165,9 +5421,9 @@ async def line_webhook_receive(shop_id: str, request: Request):
 
     saved_count = 0
     sent_count = 0
-
     settings = get_shop_line_settings(shop_id)
     access_token = str(settings.get("line_channel_access_token") or "").strip()
+    line_mode = normalize_line_mode(settings.get("line_mode"))
 
     events = payload.get("events", []) if isinstance(payload, dict) else []
     if not isinstance(events, list):
@@ -4176,177 +5432,45 @@ async def line_webhook_receive(shop_id: str, request: Request):
     for event in events:
         if not isinstance(event, dict):
             continue
-
         source = event.get("source") or {}
         if not isinstance(source, dict):
             source = {}
-
         user_id = str(source.get("userId") or "").strip()
         if not user_id:
             continue
-
         message = event.get("message") or {}
-        message_text = ""
-        if isinstance(message, dict):
-            message_text = str(message.get("text") or "").strip()
-
-        save_line_webhook_user(
-            shop_id,
-            user_id,
-            event_type=str(event.get("type") or ""),
-            message_text=message_text,
-        )
+        message_text = str(message.get("text") or "").strip() if isinstance(message, dict) else ""
+        postback = event.get("postback") or {}
+        postback_data = str(postback.get("data") or "").strip() if isinstance(postback, dict) else ""
+        save_line_webhook_user(shop_id, user_id, event_type=str(event.get("type") or ""), message_text=message_text or postback_data)
         saved_count += 1
-        print("LINE user_id saved:", shop_id, user_id)
-
-        if str(event.get("type") or "") == "message" and message_text:
-            normalized_text = message_text.replace(" ", "").replace("　", "").strip()
-
-            if "予約" in normalized_text:
-                send_result = send_line_reservation_button(
-                    access_token=access_token,
-                    user_id=user_id,
-                    shop_id=shop_id,
-                )
-            else:
-                reserve_url = build_line_reservation_url(shop_id, user_id)
-                send_result = send_line_message(
-                    access_token=access_token,
-                    user_id=user_id,
-                    message=(
-                        "LINE連携は正常に動いています。\n"
-                        "予約する場合は「予約」と送信してください。\n\n"
-                        f"予約ページ：{reserve_url}"
-                    ),
-                )
-
-            if send_result.get("ok"):
-                sent_count += 1
-            print("LINE reply result:", send_result)
-
-    return JSONResponse(
-        {"ok": True, "saved_count": saved_count, "sent_count": sent_count},
-        status_code=200,
-    )
-
-
-@app.post("/line/webhook/{shop_id}")
-async def line_webhook_receive(shop_id: str, request: Request):
-    try:
-        payload = await request.json()
-    except Exception as exc:
-        print("LINE webhook json error:", repr(exc))
-        payload = {}
-
-    print("===== LINE WEBHOOK DEBUG =====")
-    print("shop_id:", shop_id)
-    print("body:", payload)
-    print("==============================")
-
-    saved_count = 0
-    sent_count = 0
-
-    settings = get_shop_line_settings(shop_id)
-    access_token = str(settings.get("line_channel_access_token") or "").strip()
-
-    events = payload.get("events", []) if isinstance(payload, dict) else []
-    if not isinstance(events, list):
-        events = []
-
-    for event in events:
-        if not isinstance(event, dict):
+        if str(event.get("type") or "") not in {"message", "postback"}:
             continue
-
-        source = event.get("source") or {}
-        if not isinstance(source, dict):
-            source = {}
-
-        user_id = str(source.get("userId") or "").strip()
-        if not user_id:
-            continue
-
-        message = event.get("message") or {}
-        message_text = ""
-        if isinstance(message, dict):
-            message_text = str(message.get("text") or "").strip()
-
-        save_line_webhook_user(
-            shop_id,
-            user_id,
-            event_type=str(event.get("type") or ""),
-            message_text=message_text,
+        normalized_text = message_text.replace(" ", "").replace("　", "").strip()
+        active_session = get_line_reservation_session(shop_id, user_id)
+        is_cancel_action = normalized_text in {"キャンセル", "中止", "やめる", "取消", "取り消し", "いいえ"}
+        start_words = {"予約", "予約する", "予約開始"}
+        is_reservation_action = (
+            normalized_text in start_words
+            or postback_data.startswith("line_reserve:")
+            or active_session is not None
+            or is_cancel_action
         )
-        saved_count += 1
-        print("LINE user_id saved:", shop_id, user_id)
 
-        # テキストメッセージを受けたら確認返信する
-        if str(event.get("type") or "") == "message" and message_text:
-            send_result = send_line_message(
-                access_token=access_token,
-                user_id=user_id,
-                message="テスト送信OKです。LINE連携は正常に動いています。",
-            )
-            if send_result.get("ok"):
-                sent_count += 1
-            print("LINE auto reply result:", send_result)
+        send_result = {"ok": True, "reason": "no auto reply"}
+        if line_mode == "liff" and is_reservation_action:
+            send_result = handle_line_complete_reservation_flow(shop_id=shop_id, user_id=user_id, access_token=access_token, message_text=message_text, postback_data=postback_data)
+        elif normalized_text in {"予約", "予約する", "予約開始"}:
+            send_result = send_line_reservation_button(access_token=access_token, user_id=user_id, shop_id=shop_id)
+        else:
+            # 予約キーワード以外には自動返信しない。通常のLINEチャットとしてそのまま使えるようにする。
+            print("LINE auto reply skipped: normal chat message")
+        if send_result.get("ok") and send_result.get("reason") != "no auto reply":
+            sent_count += 1
+        print("LINE reply result:", send_result)
 
-    return JSONResponse(
-        {"ok": True, "saved_count": saved_count, "sent_count": sent_count},
-        status_code=200,
-    )
+    return JSONResponse({"ok": True, "saved_count": saved_count, "sent_count": sent_count}, status_code=200)
 
-
-@app.post("/line/webhook/{shop_id}")
-async def line_webhook(shop_id: str, request: Request):
-    """LINEからのWebhookを受け取り、送信者のLINE user_idを保存します。"""
-    try:
-        body = await request.json()
-    except Exception as exc:
-        print("LINE Webhook JSON parse error:", repr(exc))
-        body = {}
-
-    print("====== LINE WEBHOOK DEBUG ======")
-    print("shop_id:", shop_id)
-    print("body:", body)
-    print("================================")
-
-    saved_count = 0
-    events = body.get("events", []) if isinstance(body, dict) else []
-    if not isinstance(events, list):
-        events = []
-
-    for event in events:
-        if not isinstance(event, dict):
-            continue
-
-        print("LINE Webhook event:", event)
-
-        source = event.get("source") or {}
-        if not isinstance(source, dict):
-            source = {}
-
-        user_id = str(source.get("userId") or "").strip()
-        print("LINE Webhook source:", source)
-        print("LINE Webhook user_id:", user_id)
-
-        if not user_id:
-            continue
-
-        message = event.get("message") or {}
-        message_text = ""
-        if isinstance(message, dict):
-            message_text = str(message.get("text") or "").strip()
-
-        save_line_webhook_user(
-            shop_id,
-            user_id,
-            event_type=str(event.get("type") or ""),
-            message_text=message_text,
-        )
-        saved_count += 1
-        print("LINE user_id saved:", shop_id, user_id)
-
-    return JSONResponse({"ok": True, "saved_count": saved_count}, status_code=200)
 
 @app.post("/admin/{shop_id}/line-settings/test")
 def admin_line_settings_test_send(
@@ -5118,6 +6242,12 @@ async def admin_booking_page_editor_save(request: Request, shop_id: str):
 
 @app.get("/shop/{shop_id}", response_class=HTMLResponse)
 def shop_page(request: Request, shop_id: str):
+    line_user_id = str(request.query_params.get("line_user_id") or "").strip()
+    if line_user_id:
+        request.session["line_user_id"] = line_user_id
+        request.session["line_shop_id"] = shop_id
+        print("予約ページでLINE user_idを保存:", shop_id, line_user_id)
+
     context = build_shop_booking_context(shop_id, request)
     return templates.TemplateResponse(
         request=request,
@@ -5379,6 +6509,7 @@ def shop_reserve(
     menu_id: int = Form(...),
     reservation_date: str = Form(...),
     start_time: str = Form(...),
+    line_user_id: str = Form(""),
 ):
     shop = get_shop(shop_id)
     if not shop:
@@ -5958,7 +7089,12 @@ def member_login_submit(request: Request, shop_id: str, phone: str = Form(...), 
         )
         target = quote(_member_redirect_target(shop_id, next_url), safe='')
         return RedirectResponse(url=f"/member/{shop_id}/login?next={target}&error=電話番号またはパスワードが違います", status_code=303)
+    target_url = _member_redirect_target(shop_id, next_url)
+    line_user_id_for_link = extract_line_user_id_from_next_url(str(target_url or next_url or ""))
+
     _login_member_session(request, shop_id, member)
+    if line_user_id_for_link:
+        complete_line_member_link_after_registration(shop_id, member, line_user_id_for_link)
     _record_audit_log(
         request,
         actor_type="member",
@@ -5972,6 +7108,90 @@ def member_login_submit(request: Request, shop_id: str, phone: str = Form(...), 
     )
     return RedirectResponse(url=_member_redirect_target(shop_id, next_url or f"/member/{shop_id}/mypage"), status_code=303)
 
+
+
+def complete_line_member_link_after_registration(shop_id: str, member: dict, line_user_id: str) -> None:
+    """会員登録/ログイン後に、顧客とLINE user_idを確実に紐づけます。"""
+    clean_line_user_id = str(line_user_id or "").strip()
+    if not clean_line_user_id:
+        return
+    try:
+        ensure_customer_line_user_id_schema()
+        member_customer_id = int((member or {}).get("customer_id") or 0)
+        if member_customer_id:
+            update_customer_line_user_id(shop_id, member_customer_id, clean_line_user_id)
+        else:
+            linked_customer = ensure_line_customer_for_reservation(
+                shop_id,
+                clean_line_user_id,
+                str((member or {}).get("name") or ""),
+                str((member or {}).get("phone") or (member or {}).get("phone_normalized") or ""),
+            )
+            member_customer_id = int(linked_customer.get("id") or 0)
+            try:
+                with get_connection() as conn:
+                    conn.execute(
+                        "UPDATE members SET customer_id = ? WHERE shop_id = ? AND id = ?",
+                        (member_customer_id, str(shop_id or "").strip(), int((member or {}).get("id") or 0)),
+                    )
+                    conn.commit()
+            except Exception as exc:
+                print("member customer_id backfill error:", repr(exc))
+
+        settings = get_shop_line_settings(shop_id)
+        token = str(settings.get("line_channel_access_token") or "").strip()
+        if token:
+            send_line_message(
+                token,
+                clean_line_user_id,
+                "会員登録が完了し、このLINEと会員情報を紐づけました。\n予約を続ける場合は「予約」と送信してください。",
+            )
+        print("LINE member linked:", shop_id, clean_line_user_id, member_customer_id)
+    except Exception as exc:
+        print("complete line member link error:", repr(exc))
+
+
+@app.get("/member/{shop_id}/line-register-complete", response_class=HTMLResponse)
+def member_line_register_complete_page(request: Request, shop_id: str, line_user_id: str = ""):
+    shop = get_shop(shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+
+    member = _get_member_for_shop_session(request, shop_id)
+    if member is not None and str(line_user_id or "").strip():
+        complete_line_member_link_after_registration(shop_id, member, line_user_id)
+
+    settings = get_shop_line_settings(shop_id)
+    line_official_url = str(settings.get("line_official_url") or "").strip()
+    shop_name = str((shop or {}).get("shop_name") or "店舗")
+    line_button = f'<a class="btn" href="{line_official_url}">LINEに戻る</a>' if line_official_url else '<p class="sub">この画面を閉じてLINEアプリに戻ってください。</p>'
+    html = f"""
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LINE連携完了</title>
+  <style>
+    body {{ font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:#f6f7f9; margin:0; padding:24px; color:#111827; }}
+    .card {{ max-width:520px; margin:32px auto; background:white; border-radius:18px; padding:24px; box-shadow:0 10px 30px rgba(15,23,42,.08); }}
+    h1 {{ font-size:22px; margin:0 0 12px; }}
+    p {{ line-height:1.8; }}
+    .btn {{ display:block; text-align:center; background:#06c755; color:white; text-decoration:none; border-radius:12px; padding:14px 16px; font-weight:700; margin-top:16px; }}
+    .sub {{ color:#6b7280; font-size:14px; }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>LINE連携が完了しました</h1>
+    <p>{shop_name}の会員情報とLINEを紐づけました。</p>
+    <p>予約を続ける場合は、LINEに戻って <strong>「予約」</strong> と送信してください。</p>
+    {line_button}
+  </div>
+</body>
+</html>
+"""
+    return HTMLResponse(html)
 
 @app.get("/member/{shop_id}/register", response_class=HTMLResponse)
 def member_register_page(request: Request, shop_id: str, next: str | None = None, error: str | None = None):
@@ -6105,6 +7325,9 @@ def member_register_verify_submit(
                 status_code=303,
             )
         member = consume_member_registration_verification(shop_id, token)
+        line_user_id = extract_line_user_id_from_next_url(str(verification.get('next_url') or target_url))
+        if line_user_id:
+            complete_line_member_link_after_registration(shop_id, member, line_user_id)
     except ValueError as exc:
         return RedirectResponse(
             url=f"/member/{shop_id}/register/verify?token={quote(token, safe='')}&next={verify_target}&error={quote(str(exc), safe='')}",
@@ -6487,6 +7710,7 @@ def site_page(request: Request, shop_id: str):
             "calendar_prev_month": f"{prev_year:04d}-{prev_month:02d}",
             "calendar_next_month": f"{next_year:04d}-{next_month:02d}",
             "calendar_base_path": request.url.path,
+            "line_official_url": (get_shop_line_settings(shop_id) or {}).get("line_official_url",""),
         },
     )
 

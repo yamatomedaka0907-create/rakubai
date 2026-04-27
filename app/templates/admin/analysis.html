@@ -1,0 +1,128 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<style>
+.analysis-hero{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;padding:26px 28px;border-radius:28px;background:linear-gradient(135deg,#ffffff 0%,#f0fdfa 55%,#eff6ff 100%);border:1px solid rgba(20,184,166,.18);box-shadow:0 18px 50px rgba(15,23,42,.08);margin-bottom:22px;}
+.analysis-hero h1{margin:0 0 8px;font-size:28px;letter-spacing:-.04em;color:#0f172a;}
+.analysis-hero p{margin:0;color:#64748b;line-height:1.8;font-weight:600;}
+.analysis-pill{display:inline-flex;align-items:center;gap:8px;padding:9px 13px;border-radius:999px;background:#fff;color:#0f766e;font-size:13px;font-weight:800;border:1px solid rgba(20,184,166,.2);white-space:nowrap;}
+.analysis-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
+.analysis-tab{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 16px;border-radius:999px;text-decoration:none;font-weight:900;color:#475569;background:#fff;border:1px solid #e5e7eb;}
+.analysis-tab.is-active{color:#fff;background:#0f766e;border-color:#0f766e;box-shadow:0 10px 24px rgba(15,118,110,.2);}
+.analysis-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:22px;}
+.analysis-kpi{position:relative;overflow:hidden;border-radius:24px;background:#fff;border:1px solid #e5e7eb;padding:22px;box-shadow:0 12px 30px rgba(15,23,42,.06);}
+.analysis-kpi:after{content:"";position:absolute;right:-22px;top:-22px;width:86px;height:86px;border-radius:999px;background:rgba(20,184,166,.12);}
+.analysis-kpi-label{font-size:13px;font-weight:800;color:#64748b;margin-bottom:10px;}
+.analysis-kpi-value{font-size:34px;font-weight:900;color:#0f172a;letter-spacing:-.04em;}
+.analysis-kpi-note{margin-top:8px;color:#94a3b8;font-size:12px;font-weight:700;}
+.analysis-panel{border-radius:26px;background:#fff;border:1px solid #e5e7eb;box-shadow:0 12px 30px rgba(15,23,42,.06);padding:22px;margin-bottom:18px;}
+.analysis-panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px;}
+.analysis-panel h2{margin:0;font-size:22px;letter-spacing:-.03em;}
+.analysis-badge{display:inline-flex;padding:7px 10px;border-radius:999px;background:#ecfeff;color:#0e7490;font-size:12px;font-weight:900;}
+.analysis-chart{height:300px;display:flex;align-items:flex-end;gap:12px;padding:18px;border-radius:22px;background:linear-gradient(180deg,#f8fafc,#ffffff);border:1px solid #e5e7eb;overflow-x:auto;}
+.analysis-chart-col{min-width:58px;flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:8px;height:100%;}
+.analysis-bars{height:210px;width:100%;display:flex;align-items:flex-end;justify-content:center;gap:6px;}
+.analysis-bar-count,.analysis-bar-sales{width:18px;border-radius:999px 999px 6px 6px;min-height:4px;}
+.analysis-bar-count{background:linear-gradient(180deg,#14b8a6,#0f766e);}
+.analysis-bar-sales{background:linear-gradient(180deg,#60a5fa,#2563eb);}
+.analysis-chart-value{font-size:11px;font-weight:900;color:#0f172a;text-align:center;line-height:1.35;min-height:30px;}
+.analysis-chart-label{font-size:11px;color:#64748b;font-weight:800;white-space:nowrap;}
+.analysis-legend{display:flex;gap:14px;flex-wrap:wrap;color:#64748b;font-size:12px;font-weight:900;}
+.analysis-legend span{display:inline-flex;align-items:center;gap:6px;}
+.analysis-dot{width:10px;height:10px;border-radius:999px;display:inline-block;}
+.analysis-dot.count{background:#14b8a6}.analysis-dot.sales{background:#2563eb}
+.analysis-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.analysis-source-list{display:grid;gap:12px;}
+.analysis-source-item{padding:16px;border-radius:18px;background:#f8fafc;border:1px solid #e5e7eb;}
+.analysis-source-top{display:flex;justify-content:space-between;align-items:center;gap:12px;font-weight:900;color:#0f172a;}
+.analysis-source-meta{color:#64748b;font-size:13px;font-weight:700;margin-top:4px;}
+.analysis-bar{height:12px;border-radius:999px;background:#e2e8f0;overflow:hidden;margin-top:12px;}
+.analysis-bar-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#14b8a6,#2563eb);}
+.analysis-table{width:100%;border-collapse:separate;border-spacing:0 10px;}
+.analysis-table th{font-size:12px;color:#64748b;text-align:left;padding:0 12px;font-weight:900;}
+.analysis-table td{background:#f8fafc;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;padding:14px 12px;font-weight:800;}
+.analysis-table td:first-child{border-left:1px solid #e5e7eb;border-radius:14px 0 0 14px;}
+.analysis-table td:last-child{border-right:1px solid #e5e7eb;border-radius:0 14px 14px 0;text-align:right;}
+.analysis-empty{padding:28px;border-radius:18px;background:#f8fafc;color:#64748b;font-weight:800;text-align:center;}
+@media(max-width:960px){.analysis-kpi-grid,.analysis-grid{grid-template-columns:1fr 1fr}.analysis-hero{flex-direction:column}.analysis-grid{grid-template-columns:1fr}}
+@media(max-width:640px){.analysis-kpi-grid{grid-template-columns:1fr}.analysis-hero h1{font-size:24px}.analysis-kpi-value{font-size:30px}.analysis-chart{gap:10px}.analysis-chart-col{min-width:54px}}
+</style>
+
+<section class="analysis-hero">
+  <div>
+    <h1>解析ツール</h1>
+    <p>予約数・売上・リピート率・予約流入をグラフで確認できます。</p>
+  </div>
+  <div class="analysis-pill">売上・予約流入</div>
+</section>
+
+<nav class="analysis-tabs">
+  <a class="analysis-tab {% if selected_period == 'day' %}is-active{% endif %}" href="/admin/{{ shop_id }}/analysis?period=day">日別</a>
+  <a class="analysis-tab {% if selected_period == 'week' %}is-active{% endif %}" href="/admin/{{ shop_id }}/analysis?period=week">週別</a>
+  <a class="analysis-tab {% if selected_period == 'month' %}is-active{% endif %}" href="/admin/{{ shop_id }}/analysis?period=month">月別</a>
+</nav>
+
+<section class="analysis-kpi-grid">
+  <div class="analysis-kpi"><div class="analysis-kpi-label">予約数</div><div class="analysis-kpi-value">{{ analysis_summary.reservation_count }}</div><div class="analysis-kpi-note">キャンセル除外</div></div>
+  <div class="analysis-kpi"><div class="analysis-kpi-label">売上</div><div class="analysis-kpi-value">¥{{ analysis_summary.total_sales }}</div><div class="analysis-kpi-note">来店済み分</div></div>
+  <div class="analysis-kpi"><div class="analysis-kpi-label">リピート率</div><div class="analysis-kpi-value">{{ analysis_summary.repeat_rate }}%</div><div class="analysis-kpi-note">2回以上予約した顧客</div></div>
+  <div class="analysis-kpi"><div class="analysis-kpi-label">来店済み</div><div class="analysis-kpi-value">{{ analysis_summary.completed_count }}</div><div class="analysis-kpi-note">完了予約</div></div>
+</section>
+
+<section class="analysis-panel">
+  <div class="analysis-panel-head">
+    <h2>{{ selected_period_label }}グラフ</h2>
+    <div class="analysis-legend"><span><i class="analysis-dot count"></i>予約数</span><span><i class="analysis-dot sales"></i>売上</span></div>
+  </div>
+  {% if period_summary %}
+  <div class="analysis-chart">
+    {% for item in period_summary %}
+    <div class="analysis-chart-col">
+      <div class="analysis-chart-value">{{ item.count }}件<br>¥{{ item.sales }}</div>
+      <div class="analysis-bars">
+        <div class="analysis-bar-count" style="height:{{ item.count_height }}%;"></div>
+        <div class="analysis-bar-sales" style="height:{{ item.sales_height }}%;"></div>
+      </div>
+      <div class="analysis-chart-label">{{ item.label }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="analysis-empty">まだグラフ化できる予約がありません。</div>
+  {% endif %}
+</section>
+
+<section class="analysis-grid">
+  <div class="analysis-panel">
+    <div class="analysis-panel-head"><h2>予約流入</h2><span class="analysis-badge">経路別</span></div>
+    {% if source_summary %}
+    <div class="analysis-source-list">
+      {% for item in source_summary %}
+      <div class="analysis-source-item">
+        <div class="analysis-source-top"><span>{{ item.label }}</span><span>{{ item.count }}件 / ¥{{ item.sales }}</span></div>
+        <div class="analysis-source-meta">{{ item.percent }}%</div>
+        <div class="analysis-bar"><div class="analysis-bar-fill" style="width:{{ item.percent }}%;"></div></div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="analysis-empty">まだ予約データがありません。</div>
+    {% endif %}
+  </div>
+
+  <div class="analysis-panel">
+    <div class="analysis-panel-head"><h2>{{ selected_period_label }}サマリー</h2><span class="analysis-badge">切替対応</span></div>
+    {% if period_summary %}
+    <table class="analysis-table">
+      <thead><tr><th>期間</th><th>予約数</th><th style="text-align:right;">売上</th></tr></thead>
+      <tbody>
+        {% for item in period_summary|reverse %}
+        <tr><td>{{ item.label }}</td><td>{{ item.count }}件</td><td>¥{{ item.sales }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="analysis-empty">まだ集計できる予約がありません。</div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

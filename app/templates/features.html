@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>機能一覧 | らくばい</title>
+  <link rel="icon" href="/static/favicon.ico">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root {
+      --bg: #fffaf4;
+      --card: #ffffff;
+      --text: #2f2a25;
+      --muted: #756f68;
+      --line: #f1dfc8;
+      --main: #f08a24;
+      --main-dark: #d96f10;
+      --green: #3fb284;
+      --shadow: 0 14px 34px rgba(112, 68, 22, .10);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans",
+        "Hiragino Kaku Gothic ProN", "Noto Sans JP", Meiryo, sans-serif;
+      background:
+        radial-gradient(circle at top left, #fff0d7 0, transparent 34%),
+        linear-gradient(180deg, #fffaf4 0%, #ffffff 58%, #fffaf4 100%);
+      color: var(--text);
+      line-height: 1.75;
+    }
+    a { color: inherit; text-decoration: none; }
+    .page { min-height: 100vh; padding: 56px 18px 80px; }
+    .wrap { width: min(1120px, 100%); margin: 0 auto; }
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 44px 26px 38px;
+      margin-bottom: 30px;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: linear-gradient(135deg, rgba(255,255,255,.95), rgba(255,247,235,.96));
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+    .hero::before, .hero::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      pointer-events: none;
+    }
+    .hero::before {
+      width: 180px;
+      height: 180px;
+      top: -76px;
+      left: -48px;
+      background: rgba(240, 138, 36, .12);
+    }
+    .hero::after {
+      width: 220px;
+      height: 220px;
+      right: -90px;
+      bottom: -110px;
+      background: rgba(63, 178, 132, .10);
+    }
+    .label {
+      position: relative;
+      z-index: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 7px 15px;
+      margin-bottom: 14px;
+      border-radius: 999px;
+      background: #fff3df;
+      color: var(--main-dark);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .08em;
+    }
+    .title {
+      position: relative;
+      z-index: 1;
+      margin: 0;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.28;
+      font-weight: 900;
+      letter-spacing: -.04em;
+    }
+    .lead {
+      position: relative;
+      z-index: 1;
+      max-width: 740px;
+      margin: 16px auto 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+    .hero-actions {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 24px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 800;
+      transition: .2s ease;
+    }
+    .btn-primary {
+      color: #fff;
+      background: var(--main);
+      box-shadow: 0 10px 20px rgba(240, 138, 36, .22);
+    }
+    .btn-primary:hover { background: var(--main-dark); transform: translateY(-2px); }
+    .btn-sub {
+      color: var(--main-dark);
+      background: #fff;
+      border: 1px solid var(--line);
+    }
+    .btn-sub:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(112, 68, 22, .08); }
+    .toolbar {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 18px;
+      margin: 34px 0 18px;
+    }
+    .section-kicker {
+      margin: 0 0 4px;
+      color: var(--main-dark);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .14em;
+    }
+    .section-title { margin: 0; font-size: 24px; line-height: 1.35; }
+    .count { flex: 0 0 auto; color: var(--muted); font-size: 13px; font-weight: 700; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 18px;
+    }
+    .feature-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-height: 210px;
+      padding: 22px 20px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255,255,255,.94);
+      box-shadow: 0 8px 22px rgba(112, 68, 22, .055);
+      transition: .22s ease;
+    }
+    .feature-card:hover {
+      transform: translateY(-5px);
+      border-color: #f6c58d;
+      box-shadow: var(--shadow);
+    }
+    .icon-box {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 15px;
+      border-radius: 16px;
+      background: #fff3df;
+      color: var(--main);
+    }
+    .icon-box svg { width: 25px; height: 25px; stroke-width: 2; }
+    .feature-card h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      line-height: 1.45;
+      font-weight: 900;
+      letter-spacing: -.02em;
+    }
+    .feature-card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
+    .card-footer {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: auto;
+      padding-top: 16px;
+      color: var(--main-dark);
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .card-footer svg { width: 15px; height: 15px; transition: .2s ease; }
+    .feature-card:hover .card-footer svg { transform: translateX(3px); }
+    @media (max-width: 980px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (max-width: 720px) {
+      .page { padding-top: 26px; }
+      .hero { padding: 34px 18px 30px; border-radius: 22px; }
+      .toolbar { display: block; }
+      .count { display: block; margin-top: 6px; }
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+      .feature-card { min-height: 205px; padding: 18px 15px 15px; }
+      .feature-card h3 { font-size: 14px; }
+      .feature-card p { font-size: 12px; }
+    }
+    @media (max-width: 420px) {
+      .grid { grid-template-columns: 1fr; }
+      .feature-card { min-height: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="wrap">
+      <section class="hero">
+        <div class="label"><i data-lucide="sparkles"></i>FEATURES</div>
+        <h1 class="title">らくばいで使える<br>便利な機能一覧</h1>
+        <p class="lead">
+          予約受付から顧客管理、LINE連携、ホームページ作成まで。
+          店舗運営に必要な機能を一覧で確認できます。
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="/signup">無料ではじめる</a>
+          <a class="btn btn-sub" href="/store-login">店舗ログイン</a>
+        </div>
+      </section>
+
+      <div class="toolbar">
+        <div>
+          <p class="section-kicker">SYSTEM</p>
+          <h2 class="section-title">機能を選んで詳しく見る</h2>
+        </div>
+        <span class="count" id="featureCount"></span>
+      </div>
+
+      <section class="grid" id="featureGrid"></section>
+    </div>
+  </main>
+
+  <script>
+    const features = [
+      { id: "multi-device", title: "マルチデバイス対応", description: "スマホ・タブレット・PCなど、あらゆるデバイスから利用できます。", icon: "monitor-smartphone", url: "/features/multi-device", order: 1, visible: true },
+      { id: "customer", title: "顧客管理・顧客台帳", description: "顧客情報や来店履歴、メモなどを一元管理できます。", icon: "users", url: "/features/customer", order: 2, visible: true },
+      { id: "reservation", title: "予約管理・予約登録", description: "予約の作成・変更・確認をスムーズに行えます。", icon: "calendar-days", url: "/features/reservation", order: 3, visible: true },
+      { id: "analytics", title: "解析ツール", description: "売上や来店数などのデータを分析し、経営改善に活用できます。", icon: "chart-no-axes-combined", url: "/features/analytics", order: 4, visible: true },
+      { id: "staff", title: "スタッフ登録", description: "スタッフ情報の登録・管理を簡単に行えます。", icon: "user-plus", url: "/features/staff", order: 5, visible: true },
+      { id: "timeline", title: "タイムラインカルテ", description: "施術履歴やメモを時系列で管理し、顧客対応に活かせます。", icon: "history", url: "/features/timeline", order: 6, visible: true },
+      { id: "store-info", title: "店舗情報", description: "営業時間や住所などの店舗情報を設定・管理できます。", icon: "store", url: "/features/store-info", order: 7, visible: true },
+      { id: "reservation-site", title: "予約サイト", description: "お客様が利用できる専用の予約ページを作成できます。", icon: "globe", url: "/features/reservation-site", order: 8, visible: true },
+      { id: "line", title: "公式LINE連携", description: "LINEと連携して予約受付や通知をスムーズにできます。", icon: "message-circle", url: "/features/line", order: 9, visible: true },
+      { id: "homepage", title: "ホームページ作成", description: "店舗専用のホームページを簡単に作成できます。", icon: "layout-template", url: "/features/homepage", order: 10, visible: true },
+      { id: "remind", title: "リマインド", description: "予約前に自動で通知を送り、うっかり忘れや無断キャンセルを防ぎます。", icon: "bell", url: "/features/remind", order: 11, visible: true },
+      { id: "membership", title: "会員システム", description: "会員登録やログイン機能で、顧客との関係性を強化できます。", icon: "badge-check", url: "/features/membership", order: 12, visible: true },
+      { id: "photo", title: "写真登録＆共有", description: "施術写真などを登録・共有し、顧客情報と紐付けて管理できます。", icon: "images", url: "/features/photo", order: 13, visible: true },
+      { id: "store-management", title: "店舗登録＆管理", description: "複数店舗の登録や情報管理をまとめて行えます。", icon: "building-2", url: "/features/store-management", order: 14, visible: true },
+      { id: "nomination", title: "スタッフ指名予約・無指名予約", description: "スタッフを指名した予約や、無指名予約の受付に対応しています。", icon: "user-check", url: "/features/nomination", order: 15, visible: true },
+      { id: "chat", title: "チャット機能", description: "顧客とメッセージのやり取りができ、スムーズな対応が可能です。", icon: "messages-square", url: "/features/chat", order: 16, visible: true }
+    ];
+
+    const featureGrid = document.getElementById("featureGrid");
+    const featureCount = document.getElementById("featureCount");
+    const visibleFeatures = features.filter(feature => feature.visible).sort((a, b) => a.order - b.order);
+    featureCount.textContent = `${visibleFeatures.length} 機能`;
+
+    visibleFeatures.forEach(feature => {
+      const card = document.createElement("a");
+      card.href = feature.url;
+      card.className = "feature-card";
+      card.setAttribute("aria-label", `${feature.title}の説明ページを見る`);
+      card.innerHTML = `
+        <div class="icon-box"><i data-lucide="${feature.icon}"></i></div>
+        <h3>${feature.title}</h3>
+        <p>${feature.description}</p>
+        <div class="card-footer">詳しく見る <i data-lucide="arrow-right"></i></div>
+      `;
+      featureGrid.appendChild(card);
+    });
+
+    lucide.createIcons();
+  </script>
+</body>
+</html>

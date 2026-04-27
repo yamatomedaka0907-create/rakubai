@@ -2455,13 +2455,18 @@ def get_due_reservation_reminders(now: datetime | None = None) -> list[dict[str,
                 s.reminder_day_before_subject,
                 s.reminder_day_before_body,
                 s.reminder_same_day_subject,
-                s.reminder_same_day_body
+                s.reminder_same_day_body,
+                s.line_channel_access_token,
+                c.line_user_id
             FROM reservations r
             JOIN shops s ON s.shop_id = r.shop_id
+            LEFT JOIN customers c ON c.shop_id = r.shop_id AND c.id = r.customer_id
             WHERE COALESCE(s.reminder_enabled, 0) = 1
-              AND COALESCE(r.receive_email, 0) = 1
-              AND TRIM(COALESCE(r.customer_email, '')) <> ''
               AND r.status = '予約済み'
+              AND (
+                    (COALESCE(r.receive_email, 0) = 1 AND TRIM(COALESCE(r.customer_email, '')) <> '')
+                    OR (TRIM(COALESCE(c.line_user_id, '')) <> '' AND TRIM(COALESCE(s.line_channel_access_token, '')) <> '')
+                  )
             ORDER BY r.reservation_date ASC, r.start_time ASC, r.id ASC
             '''
         ).fetchall()
@@ -2565,6 +2570,20 @@ def normalize_member_phone(phone: str) -> str:
     return value
 
 
+
+
+def delete_inactive_member_by_phone(shop_id: str, phone: str) -> None:
+    normalized_phone = normalize_member_phone(phone)
+    if not normalized_phone:
+        return
+    with get_connection() as conn:
+        conn.execute(
+            'DELETE FROM members WHERE shop_id = ? AND phone_normalized = ? AND is_active = 0',
+            (shop_id, normalized_phone),
+        )
+        conn.commit()
+
+
 def get_member_by_phone(shop_id: str, phone: str) -> dict[str, Any] | None:
     normalized_phone = normalize_member_phone(phone)
     if not normalized_phone:
@@ -2608,15 +2627,12 @@ def create_member(shop_id: str, name: str, phone: str, password: str, email: str
     if len(password or '') < 4:
         raise ValueError('パスワードは4文字以上で入力してください。')
 
+    delete_inactive_member_by_phone(shop_id, normalized_phone)
     existing = get_member_by_phone(shop_id, normalized_phone)
     if existing is not None:
         raise ValueError('この電話番号はすでに会員登録されています。')
 
-    customer = find_customer(shop_id, name.strip(), normalized_phone, normalized_email)
-    if customer is None:
-        customer = create_customer(shop_id, name.strip(), normalized_phone, normalized_email)
-    else:
-        customer = update_customer_contact(shop_id, int(customer['id']), name.strip(), normalized_phone, normalized_email) or customer
+    customer = create_customer(shop_id, name.strip(), normalized_phone, normalized_email)
 
     with get_connection() as conn:
         cursor = conn.execute(
@@ -2675,6 +2691,7 @@ def create_member_registration_verification(
     if len(normalized_code) != 6:
         raise ValueError('確認コードの生成に失敗しました。')
 
+    delete_inactive_member_by_phone(shop_id, normalized_phone)
     existing = get_member_by_phone(shop_id, normalized_phone)
     if existing is not None:
         raise ValueError('この電話番号はすでに会員登録されています。')
@@ -2797,17 +2814,14 @@ def consume_member_registration_verification(shop_id: str, token: str) -> dict[s
         raise ValueError('確認コードの有効期限が切れました。最初からやり直してください。')
 
     normalized_phone = str(verification.get('phone_normalized') or '').strip()
+    delete_inactive_member_by_phone(shop_id, normalized_phone)
     existing = get_member_by_phone(shop_id, normalized_phone)
     if existing is not None:
         raise ValueError('この電話番号はすでに会員登録されています。')
 
     normalized_name = str(verification.get('name') or '').strip()
     normalized_email = str(verification.get('email') or '').strip().lower()
-    customer = find_customer(shop_id, normalized_name, normalized_phone, normalized_email)
-    if customer is None:
-        customer = create_customer(shop_id, normalized_name, normalized_phone, normalized_email)
-    else:
-        customer = update_customer_contact(shop_id, int(customer['id']), normalized_name, normalized_phone, normalized_email) or customer
+    customer = create_customer(shop_id, normalized_name, normalized_phone, normalized_email)
 
     with get_connection() as conn:
         cursor = conn.execute(
