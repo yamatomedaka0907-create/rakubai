@@ -957,6 +957,28 @@ def get_customer_by_line_user_id(shop_id: str, line_user_id: str) -> dict | None
     return dict(row) if row else None
 
 
+def build_line_member_register_url(shop_id: str, line_user_id: str) -> str:
+    """LINE予約から会員登録へ進むためのURLを作ります。"""
+    from urllib.parse import quote
+
+    clean_shop_id = str(shop_id or "").strip()
+    clean_line_user_id = str(line_user_id or "").strip()
+    next_url = f"/member/{clean_shop_id}/mypage?line_user_id={quote(clean_line_user_id, safe='')}"
+    return f"https://www.rakubai.net/member/{clean_shop_id}/register?next={quote(next_url, safe='')}"
+
+
+def extract_line_user_id_from_next_url(next_url: str) -> str:
+    """会員登録のnext_urlに含めたline_user_idを取り出します。"""
+    from urllib.parse import parse_qs, urlparse
+
+    try:
+        parsed = urlparse(str(next_url or ""))
+        values = parse_qs(parsed.query).get("line_user_id") or []
+        return str(values[0] or "").strip() if values else ""
+    except Exception:
+        return ""
+
+
 def parse_line_customer_info(text: str) -> tuple[str, str] | None:
     """「山田太郎 09012345678」のような入力から名前と電話番号を取り出します。"""
     raw = str(text or "").strip()
@@ -1119,16 +1141,40 @@ def handle_line_complete_reservation_flow(shop_id: str, user_id: str, access_tok
             return reply_options(confirm_text, ["はい", "いいえ"])
 
         upsert_line_reservation_session(
-            shop_id, user_id, step="input_customer_info",
+            shop_id, user_id, step="select_customer_type",
             reservation_date=selected.get("date") or "", start_time=selected.get("start") or "", end_time=selected.get("end") or "",
             customer_id=0, customer_name="", customer_phone="",
         )
-        return send_line_message(
-            access_token,
-            user_id,
-            "初回のため、お名前と電話番号を送信してください。\n\n例：山田太郎 09012345678\n\n会員登録済みの場合も、登録した電話番号を入力してください。"
+        register_url = build_line_member_register_url(shop_id, user_id)
+        return reply_options(
+            "初回のため、お客様情報が必要です。\n\n"
+            "会員登録する場合はこちらから登録してください。\n"
+            f"{register_url}\n\n"
+            "非会員のまま予約する場合は「非会員で予約する」を選んでください。",
+            ["非会員で予約する", "会員登録URLを表示"]
         )
 
+    if step == "select_customer_type":
+        if normalized_text in {"非会員で予約する", "非会員", "会員登録しない"}:
+            upsert_line_reservation_session(shop_id, user_id, step="input_customer_info")
+            return send_line_message(
+                access_token,
+                user_id,
+                "非会員予約として、お名前と電話番号を送信してください。\n\n例：山田太郎 09012345678\n\n入力内容は顧客リストに保存し、次回からこのLINEと紐づけます。"
+            )
+        if normalized_text in {"会員登録urlを表示", "会員登録URLを表示", "会員登録する", "会員登録"}:
+            register_url = build_line_member_register_url(shop_id, user_id)
+            return reply_options(
+                "会員登録はこちらから行ってください。\n"
+                f"{register_url}\n\n"
+                "登録完了後、このLINEと顧客情報が紐づきます。\n"
+                "非会員で進める場合は「非会員で予約する」を選んでください。",
+                ["非会員で予約する"]
+            )
+        return reply_options(
+            "会員登録するか、非会員で予約するかを選んでください。",
+            ["非会員で予約する", "会員登録URLを表示"]
+        )
     if step == "input_customer_info":
         parsed = parse_line_customer_info(text)
         if not parsed:
@@ -1169,8 +1215,15 @@ def handle_line_complete_reservation_flow(shop_id: str, user_id: str, access_tok
                     customer_name = str(linked_customer.get("name") or "").strip()
                     customer_phone = str(linked_customer.get("phone") or "").strip()
             if not customer_id or not customer_name:
-                upsert_line_reservation_session(shop_id, user_id, step="input_customer_info")
-                return send_line_message(access_token, user_id, "初回のため、お名前と電話番号を送信してください。\n例：山田太郎 09012345678")
+                upsert_line_reservation_session(shop_id, user_id, step="select_customer_type")
+                register_url = build_line_member_register_url(shop_id, user_id)
+                return reply_options(
+                    "初回のため、お客様情報が必要です。\n\n"
+                    "会員登録する場合はこちらから登録してください。\n"
+                    f"{register_url}\n\n"
+                    "非会員のまま予約する場合は「非会員で予約する」を選んでください。",
+                    ["非会員で予約する", "会員登録URLを表示"]
+                )
             reservation_customer_name = f"{customer_name}（LINE予約）"
             duration_minutes = int(session.get("duration") or 60)
             reservation_date = str(session.get("reservation_date") or "")
@@ -6755,6 +6808,15 @@ def member_login_submit(request: Request, shop_id: str, phone: str = Form(...), 
         )
         target = quote(_member_redirect_target(shop_id, next_url), safe='')
         return RedirectResponse(url=f"/member/{shop_id}/login?next={target}&error=電話番号またはパスワードが違います", status_code=303)
+    line_user_id_for_link = extract_line_user_id_from_next_url(str(verification.get('next_url') or target_url))
+    if line_user_id_for_link:
+        try:
+            customer_id_for_link = int(member.get('customer_id') or 0)
+            if customer_id_for_link:
+                update_customer_line_user_id(shop_id, customer_id_for_link, line_user_id_for_link)
+        except Exception as exc:
+            print("member line link error:", repr(exc))
+
     _login_member_session(request, shop_id, member)
     _record_audit_log(
         request,
