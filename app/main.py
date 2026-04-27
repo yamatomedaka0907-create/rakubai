@@ -429,6 +429,11 @@ def handle_line_complete_booking_message(shop_id: str, user_id: str, message_tex
 def features_page(request: Request):
     return templates.TemplateResponse("features.html", {"request": request})
 
+@app.get("/features/multi-device", response_class=HTMLResponse)
+def feature_multi_device(request: Request):
+    return templates.TemplateResponse("features/multi-device.html", {"request": request})
+
+
 
 @app.get("/features.html")
 def features_html_redirect():
