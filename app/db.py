@@ -2455,13 +2455,18 @@ def get_due_reservation_reminders(now: datetime | None = None) -> list[dict[str,
                 s.reminder_day_before_subject,
                 s.reminder_day_before_body,
                 s.reminder_same_day_subject,
-                s.reminder_same_day_body
+                s.reminder_same_day_body,
+                s.line_channel_access_token,
+                c.line_user_id
             FROM reservations r
             JOIN shops s ON s.shop_id = r.shop_id
+            LEFT JOIN customers c ON c.shop_id = r.shop_id AND c.id = r.customer_id
             WHERE COALESCE(s.reminder_enabled, 0) = 1
-              AND COALESCE(r.receive_email, 0) = 1
-              AND TRIM(COALESCE(r.customer_email, '')) <> ''
               AND r.status = '予約済み'
+              AND (
+                    (COALESCE(r.receive_email, 0) = 1 AND TRIM(COALESCE(r.customer_email, '')) <> '')
+                    OR (TRIM(COALESCE(c.line_user_id, '')) <> '' AND TRIM(COALESCE(s.line_channel_access_token, '')) <> '')
+                  )
             ORDER BY r.reservation_date ASC, r.start_time ASC, r.id ASC
             '''
         ).fetchall()
