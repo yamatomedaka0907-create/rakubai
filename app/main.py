@@ -429,6 +429,12 @@ def handle_line_complete_booking_message(shop_id: str, user_id: str, message_tex
 def features_page(request: Request):
     return templates.TemplateResponse("features.html", {"request": request})
 
+
+@app.get("/features.html")
+def features_html_redirect():
+    return RedirectResponse(url="/features", status_code=302)
+
+
 @app.get("/line-test")
 def line_test(shop_id: str = "yamato", user_id: str = ""):
     settings = get_shop_line_settings(shop_id)
