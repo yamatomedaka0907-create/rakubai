@@ -1183,12 +1183,28 @@ def handle_line_complete_reservation_flow(shop_id: str, user_id: str, access_tok
             )
             return reply_options(confirm_text, ["はい", "いいえ"])
 
+        previous_name = str((linked_customer or {}).get("name") or "").strip()
+        previous_phone = normalize_member_phone((linked_customer or {}).get("phone") or "")
+        has_previous_guest_info = bool(linked_customer and previous_name and previous_phone and not previous_name.startswith("LINE予約"))
         upsert_line_reservation_session(
             shop_id, user_id, step="select_customer_type",
             reservation_date=selected.get("date") or "", start_time=selected.get("start") or "", end_time=selected.get("end") or "",
-            customer_id=0, customer_name="", customer_phone="",
+            customer_id=int((linked_customer or {}).get("id") or 0) if has_previous_guest_info else 0,
+            customer_name=previous_name if has_previous_guest_info else "",
+            customer_phone=previous_phone if has_previous_guest_info else "",
         )
         register_url = build_line_member_register_url(shop_id, user_id)
+        if has_previous_guest_info:
+            return reply_options(
+                "前回は非会員としてこちらの情報で予約されています。\n\n"
+                f"お名前：{previous_name}\n"
+                f"電話番号：{previous_phone}\n\n"
+                "会員登録すると次回以降の予約確認がスムーズになります。\n"
+                f"{register_url}\n\n"
+                "今回はどうしますか？",
+                ["この情報で予約する", "情報を変更する", "会員登録URLを表示"]
+            )
+
         return reply_options(
             "初回のため、お客様情報が必要です。\n\n"
             "会員登録する場合はこちらから登録してください。\n"
@@ -1198,12 +1214,30 @@ def handle_line_complete_reservation_flow(shop_id: str, user_id: str, access_tok
         )
 
     if step == "select_customer_type":
-        if normalized_text in {"非会員で予約する", "非会員", "会員登録しない"}:
+        if normalized_text in {"この情報で予約する", "前回の情報で予約する", "この情報で進む"}:
+            customer_id = int(session.get("customer_id") or 0)
+            customer_name = str(session.get("customer_name") or "").strip()
+            customer_phone = str(session.get("customer_phone") or "").strip()
+            if customer_id and customer_name:
+                session = upsert_line_reservation_session(shop_id, user_id, step="confirm") or {}
+                confirm_text = (
+                    "この内容で予約しますか？\n\n"
+                    + f"お名前：{session.get('customer_name')}（LINE予約）\n"
+                    + f"電話番号：{session.get('customer_phone')}\n"
+                    + f"担当者：{session.get('staff_name')}\n"
+                    + f"メニュー：{session.get('menu_name')}\n"
+                    + f"日時：{session.get('reservation_date')} {session.get('start_time')}"
+                )
+                return reply_options(confirm_text, ["はい", "いいえ"])
+            upsert_line_reservation_session(shop_id, user_id, step="input_customer_info")
+            return send_line_message(access_token, user_id, "お名前と電話番号を送信してください。\n例：山田太郎 09012345678")
+
+        if normalized_text in {"情報を変更する", "変更する", "非会員で予約する", "非会員", "会員登録しない"}:
             upsert_line_reservation_session(shop_id, user_id, step="input_customer_info")
             return send_line_message(
                 access_token,
                 user_id,
-                "非会員予約として、お名前と電話番号を送信してください。\n\n例：山田太郎 09012345678\n\n入力内容は顧客リストに保存します。次回も会員登録の案内を表示します。"
+                "非会員予約として、お名前と電話番号を送信してください。\n\n例：山田太郎 09012345678\n\n入力内容は顧客リストに保存します。次回は前回情報を確認して会員登録をご案内します。"
             )
         if normalized_text in {"会員登録urlを表示", "会員登録URLを表示", "会員登録する", "会員登録"}:
             register_url = build_line_member_register_url(shop_id, user_id)
@@ -1213,6 +1247,11 @@ def handle_line_complete_reservation_flow(shop_id: str, user_id: str, access_tok
                 "登録完了後、このLINEと顧客情報が紐づきます。\n"
                 "非会員で進める場合は「非会員で予約する」を選んでください。",
                 ["非会員で予約する"]
+            )
+        if str(session.get("customer_name") or "").strip() and str(session.get("customer_phone") or "").strip():
+            return reply_options(
+                "前回の情報で予約するか、情報を変更するか、会員登録するかを選んでください。",
+                ["この情報で予約する", "情報を変更する", "会員登録URLを表示"]
             )
         return reply_options(
             "会員登録するか、非会員で予約するかを選んでください。",
