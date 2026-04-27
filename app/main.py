@@ -3233,6 +3233,7 @@ def build_shop_booking_context(shop_id: str, request: Request, error_message: st
         'line_user_id': str(request.session.get('line_user_id') or ''),
         'line_display_name': str(request.session.get('line_display_name') or ''),
         'line_booking_entry_url': f"/shop/{shop_id}/line-reserve",
+        'line_official_url': str(get_shop_line_settings(shop_id).get('line_official_url') or '').strip(),
         'error_message': error_message,
     }
 
