@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>マルチデバイス対応 | らくばい</title>
+  <title>店舗情報 | らくばい</title>
   <link rel="icon" href="/static/favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
   <link rel="icon" type="image/png" sizes="48x48" href="/static/favicon-48.png">
@@ -331,18 +331,18 @@
         <span>›</span>
         <a href="/features">機能一覧</a>
         <span>›</span>
-        <span>マルチデバイス対応</span>
+        <span>店舗情報</span>
       </nav>
 
       <section class="hero">
         <div>
           <div class="label">
-            <i data-lucide="monitor-smartphone"></i>
-            MULTI DEVICE
+            <i data-lucide="store"></i>
+            STORE INFO
           </div>
-          <h1 class="title">マルチデバイス対応</h1>
-          <p class="lead">スマホ・タブレット・PCなど、どの端末からでも予約管理ができます。</p>
-          <p class="copy">店舗にいない時でも、外出先や自宅から予約状況を確認できます。パソコンだけに縛られず、あなたの働き方に合わせて、いつでもどこでもスムーズに管理できます。</p>
+          <h1 class="title">店舗情報</h1>
+          <p class="lead">営業時間や住所などの店舗情報を設定・管理できます。</p>
+          <p class="copy">店舗名、住所、営業時間、定休日など、予約サイトや管理画面に必要な情報を整理できます。</p>
           <div class="actions">
             <a class="btn btn-primary" href="/signup">
               無料ではじめる
@@ -356,7 +356,27 @@
         </div>
 
         <div class="mockup-card">
-          <img src="/static/features/multi-device-mockup.png" alt="マルチデバイス対応の画面イメージ">
+          <div class="screen-mock">
+            <div class="mock-sidebar">
+              <div class="mock-logo">らくばい</div>
+              <div class="mock-menu active">店舗情報</div>
+              <div class="mock-menu"></div>
+              <div class="mock-menu"></div>
+              <div class="mock-menu"></div>
+            </div>
+            <div class="mock-main">
+              <div class="mock-hero">
+                <strong>店舗情報</strong>
+                <span>営業時間や住所などの店舗情報を設定・管理できます。</span>
+              </div>
+              <div class="mock-search"></div>
+              <div class="mock-table">
+                <span></span><span></span><span></span>
+                <span></span><span></span><span></span>
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+          </div>
         </div>
 
       </section>
@@ -364,30 +384,30 @@
       <section class="section">
         <div class="section-head">
           <p class="section-label">POINT</p>
-          <h2 class="section-title">どこでも、すぐに使える</h2>
-          <p class="section-text">インターネット環境があれば、端末を選ばず予約状況を確認できます。店舗の中でも外でも、予約管理をもっと自由に行えます。</p>
+          <h2 class="section-title">店舗情報をまとめて管理</h2>
+          <p class="section-text">お客様に伝える情報を正しく整え、予約受付の土台を作ります。</p>
         </div>
 
         <div class="point-grid">
           <article class="point-card">
-            <div class="point-icon"><i data-lucide="briefcase-business"></i></div>
-            <h3>外出先でも予約確認</h3>
-            <p>移動中や出先でも、予約状況や当日のスケジュールをすぐに確認できます。</p>
+            <div class="point-icon"><i data-lucide="store"></i></div>
+            <h3>基本情報を設定</h3>
+            <p>店舗名や住所などを登録できます。</p>
           </article>
           <article class="point-card">
-            <div class="point-icon"><i data-lucide="smartphone"></i></div>
-            <h3>スマホだけでも運用</h3>
-            <p>パソコンがない環境でも、スマホから予約確認や顧客対応を行えます。</p>
+            <div class="point-icon"><i data-lucide="clock"></i></div>
+            <h3>営業時間を管理</h3>
+            <p>営業日や受付時間を設定できます。</p>
           </article>
           <article class="point-card">
-            <div class="point-icon"><i data-lucide="users"></i></div>
-            <h3>スタッフごとに確認</h3>
-            <p>スタッフ別の予約状況も確認でき、店舗内の連携をスムーズにします。</p>
+            <div class="point-icon"><i data-lucide="map-pin"></i></div>
+            <h3>住所情報を掲載</h3>
+            <p>来店に必要な住所情報をわかりやすく表示できます。</p>
           </article>
           <article class="point-card">
-            <div class="point-icon"><i data-lucide="layout-dashboard"></i></div>
-            <h3>管理画面も予約サイトも対応</h3>
-            <p>管理者側の画面だけでなく、お客様が見る予約サイトも各端末に合わせて表示されます。</p>
+            <div class="point-icon"><i data-lucide="calendar-x"></i></div>
+            <h3>定休日を設定</h3>
+            <p>定休日や休業日の設定に対応できます。</p>
           </article>
         </div>
       </section>
@@ -400,18 +420,18 @@
 
         <div class="usage">
           <article class="usage-card">
-            <h3><i data-lucide="store"></i> 店舗で使う</h3>
-            <p>受付やスタッフルームのPCから、当日の予約やスタッフごとの予定を確認できます。</p>
+            <h3><i data-lucide="globe"></i> 予約サイトに反映</h3>
+            <p>設定した店舗情報を予約サイトに活用できます。</p>
           </article>
           <article class="usage-card">
-            <h3><i data-lucide="map-pin"></i> 外出先で使う</h3>
-            <p>出先や移動中でもスマホで予約状況を確認できます。急な予約確認にも対応しやすくなります。</p>
+            <h3><i data-lucide="settings"></i> 変更にも対応</h3>
+            <p>営業時間や住所の変更にも対応できます。</p>
           </article>
         </div>
       </section>
 
       <section class="cta">
-        <h2>端末を選ばず、予約管理をもっと自由に。</h2>
+        <h2>店舗情報を整えて、わかりやすい予約受付へ。</h2>
         <p>
           らくばいなら、予約管理や店舗運営に必要な機能をまとめて使えます。
           毎日の業務をもっとラクに、わかりやすく整えましょう。

@@ -429,16 +429,91 @@ def handle_line_complete_booking_message(shop_id: str, user_id: str, message_tex
 def features_page(request: Request):
     return templates.TemplateResponse("features.html", {"request": request})
 
-@app.get("/features/multi-device", response_class=HTMLResponse)
-def feature_multi_device(request: Request):
-    return templates.TemplateResponse("features/multi-device.html", {"request": request})
-
-
 
 @app.get("/features.html")
 def features_html_redirect():
     return RedirectResponse(url="/features", status_code=302)
 
+
+
+@app.get("/features/multi-device", response_class=HTMLResponse)
+def feature_multi_device_page(request: Request):
+    return templates.TemplateResponse("features/multi-device.html", {"request": request})
+
+
+@app.get("/features/customer", response_class=HTMLResponse)
+def feature_customer_page(request: Request):
+    return templates.TemplateResponse("features/customer.html", {"request": request})
+
+
+@app.get("/features/reservation", response_class=HTMLResponse)
+def feature_reservation_page(request: Request):
+    return templates.TemplateResponse("features/reservation.html", {"request": request})
+
+
+@app.get("/features/analytics", response_class=HTMLResponse)
+def feature_analytics_page(request: Request):
+    return templates.TemplateResponse("features/analytics.html", {"request": request})
+
+
+@app.get("/features/staff", response_class=HTMLResponse)
+def feature_staff_page(request: Request):
+    return templates.TemplateResponse("features/staff.html", {"request": request})
+
+
+@app.get("/features/timeline", response_class=HTMLResponse)
+def feature_timeline_page(request: Request):
+    return templates.TemplateResponse("features/timeline.html", {"request": request})
+
+
+@app.get("/features/store-info", response_class=HTMLResponse)
+def feature_store_info_page(request: Request):
+    return templates.TemplateResponse("features/store-info.html", {"request": request})
+
+
+@app.get("/features/reservation-site", response_class=HTMLResponse)
+def feature_reservation_site_page(request: Request):
+    return templates.TemplateResponse("features/reservation-site.html", {"request": request})
+
+
+@app.get("/features/line", response_class=HTMLResponse)
+def feature_line_page(request: Request):
+    return templates.TemplateResponse("features/line.html", {"request": request})
+
+
+@app.get("/features/homepage", response_class=HTMLResponse)
+def feature_homepage_page(request: Request):
+    return templates.TemplateResponse("features/homepage.html", {"request": request})
+
+
+@app.get("/features/remind", response_class=HTMLResponse)
+def feature_remind_page(request: Request):
+    return templates.TemplateResponse("features/remind.html", {"request": request})
+
+
+@app.get("/features/membership", response_class=HTMLResponse)
+def feature_membership_page(request: Request):
+    return templates.TemplateResponse("features/membership.html", {"request": request})
+
+
+@app.get("/features/photo", response_class=HTMLResponse)
+def feature_photo_page(request: Request):
+    return templates.TemplateResponse("features/photo.html", {"request": request})
+
+
+@app.get("/features/store-management", response_class=HTMLResponse)
+def feature_store_management_page(request: Request):
+    return templates.TemplateResponse("features/store-management.html", {"request": request})
+
+
+@app.get("/features/nomination", response_class=HTMLResponse)
+def feature_nomination_page(request: Request):
+    return templates.TemplateResponse("features/nomination.html", {"request": request})
+
+
+@app.get("/features/chat", response_class=HTMLResponse)
+def feature_chat_page(request: Request):
+    return templates.TemplateResponse("features/chat.html", {"request": request})
 
 @app.get("/line-test")
 def line_test(shop_id: str = "yamato", user_id: str = ""):
