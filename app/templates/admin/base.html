@@ -161,6 +161,12 @@
             <span class="nav-label">管理トップ</span>
           </span>
         </a>
+        <a href="/features" target="_blank" rel="noopener">
+          <span class="nav-link-main">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.5L19.5 10l-4.7 3.4L16.4 19 12 15.6 7.6 19l1.6-5.6L4.5 10l5.7-1.5L12 3Z"/></svg>
+            <span class="nav-label">機能一覧</span>
+          </span>
+        </a>
         <a href="/admin/{{ shop_id }}/reservations" class="{% if active_page == 'reservations' %}active{% endif %}">
           <span class="nav-link-main">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M8 14h3"/></svg>
@@ -211,8 +217,7 @@
           </span>
         </a>
         <form method="post" action="/admin/logout/{{ shop_id }}"><button type="submit"><span class="nav-link-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg><span class="nav-label">ログアウト</span></span></button></form>
-      <a href="/features.html">機能一覧</a>
-</nav>
+      </nav>
       {% if staff_list %}
       <div class="nav-group-title">Staff</div>
       <nav class="staff-nav">
