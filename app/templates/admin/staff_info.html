@@ -200,13 +200,38 @@
     min-height: 48px;
   }
 }
-</style>
+
+    .staff-register-action {
+      display: flex;
+      justify-content: flex-end;
+      margin: 0 0 18px;
+    }
+    .staff-register-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 18px;
+      border-radius: 999px;
+      background: #22b8a7;
+      color: #fff;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 10px 24px rgba(34, 184, 167, .22);
+    }
+    .staff-register-button:hover {
+      filter: brightness(.96);
+    }
+
+  </style>
 
 
 <div class="staff-info-page">
 <div class="hero">
       <div class="hero-top">
         <div>
+      <div class="staff-register-action">
+        <a href="/admin/staff/create" class="staff-register-button">スタッフを登録する</a>
+      </div>
           <h1>登録スタッフ一覧</h1>
           <p>登録済みスタッフと対応メニュー・休日設定を確認できます。</p><p style="margin-top:10px;"><strong>スタッフ情報ページ</strong></p>
         </div>
