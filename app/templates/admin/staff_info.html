@@ -100,6 +100,26 @@
   gap: 6px;
 }
 
+.staff-register-button {
+  border: 1px solid #23b5aa;
+  background: #23b5aa;
+  color: #fff;
+  border-radius: 14px;
+  padding: 12px 18px;
+  min-height: 46px;
+  font-weight: 900;
+  text-decoration: none;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 12px 26px rgba(35,181,170,.22);
+}
+
+.staff-register-button:hover {
+  filter: brightness(.98);
+}
+
 .staff-info-mobile {
   display: none;
 }
@@ -170,6 +190,11 @@
     word-break: break-word;
   }
 
+  .staff-register-button {
+    width: 100%;
+    min-height: 50px;
+  }
+
   .staff-edit-button {
     width: 100%;
     min-height: 48px;
@@ -185,11 +210,15 @@
           <h1>登録スタッフ一覧</h1>
           <p>登録済みスタッフと対応メニュー・休日設定を確認できます。</p><p style="margin-top:10px;"><strong>スタッフ情報ページ</strong></p>
         </div>
+        <div class="hero-actions">
+          <a class="staff-register-button" href="/admin/register/{{ shop_id }}">＋ 新規スタッフ登録</a>
+        </div>
       </div>
     </div>
 
 {% if hidden_staff_count %}<div class="card" style="margin-bottom:16px;border-color:#fed7aa;background:#fff7ed;"><div class="card-header"><h2>表示制限中</h2><span class="badge">{{ hidden_staff_count }}名非表示</span></div><p class="section-note">現在のプラン上限を超えた新しいスタッフは削除せず、表示のみ停止しています。</p></div>{% endif %}
   {% if success_message %}<div class="card" style="margin-bottom:16px; color:var(--primary-dark); font-weight:800;">{{ success_message }}</div>{% endif %}
+  {% if error_message %}<div class="card" style="margin-bottom:16px; color:#b91c1c; font-weight:800;">{{ error_message }}</div>{% endif %}
 
   <div class="card staff-info-card">
     <h2 class="staff-info-title">👥 登録スタッフ一覧</h2>
@@ -243,6 +272,7 @@
     <p class="staff-note">※ 表示内容をクリックすると詳細を確認・編集できます。</p>
     {% else %}
     <p class="empty">スタッフがまだ登録されていません。</p>
+    <div style="display:flex; justify-content:center; margin-top:16px;"><a class="staff-register-button" href="/admin/register/{{ shop_id }}">＋ 最初のスタッフを登録する</a></div>
     {% endif %}
   </div>
 </div>
