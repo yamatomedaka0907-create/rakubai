@@ -204,7 +204,7 @@
     .staff-register-action {
       display: flex;
       justify-content: flex-end;
-      margin: 0 0 18px;
+      margin: 0 0 16px;
     }
     .staff-register-button {
       display: inline-flex;
@@ -229,16 +229,10 @@
 <div class="hero">
       <div class="hero-top">
         <div>
-      <div class="staff-register-action">
-        <a href="/admin/staff/create" class="staff-register-button">スタッフを登録する</a>
-      </div>
-          <h1>登録スタッフ一覧</h1>
+<h1>登録スタッフ一覧</h1>
           <p>登録済みスタッフと対応メニュー・休日設定を確認できます。</p><p style="margin-top:10px;"><strong>スタッフ情報ページ</strong></p>
         </div>
-        <div class="hero-actions">
-          <a class="staff-register-button" href="/admin/register/{{ shop_id }}">＋ 新規スタッフ登録</a>
-        </div>
-      </div>
+</div>
     </div>
 
 {% if hidden_staff_count %}<div class="card" style="margin-bottom:16px;border-color:#fed7aa;background:#fff7ed;"><div class="card-header"><h2>表示制限中</h2><span class="badge">{{ hidden_staff_count }}名非表示</span></div><p class="section-note">現在のプラン上限を超えた新しいスタッフは削除せず、表示のみ停止しています。</p></div>{% endif %}
@@ -246,7 +240,11 @@
   {% if error_message %}<div class="card" style="margin-bottom:16px; color:#b91c1c; font-weight:800;">{{ error_message }}</div>{% endif %}
 
   <div class="card staff-info-card">
-    <h2 class="staff-info-title">👥 登録スタッフ一覧</h2>
+        <div class="staff-register-action">
+      <a class="staff-register-button" href="/admin/register/{{ shop_id }}">＋ 新規スタッフ登録</a>
+    </div>
+
+<h2 class="staff-info-title">👥 登録スタッフ一覧</h2>
 
     {% if staff_list %}
     <div class="staff-info-desktop">
