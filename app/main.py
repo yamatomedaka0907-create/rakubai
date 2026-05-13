@@ -8010,6 +8010,100 @@ def _current_store_sample_shop_id(request: Request) -> str:
     return str(request.session.get("store_logged_in_shop_id") or request.session.get("admin_shop_id") or "").strip()
 
 
+
+def _sample_layout_key(sample: dict) -> str:
+    template_file = str(sample.get("template_file") or "")
+    variant = str(sample.get("variant") or "").strip().lower()
+    if variant in {"split", "editorial", "dark", "cards", "story"}:
+        return variant
+    if "split_intro" in template_file:
+        return "split"
+    if "editorial_grid" in template_file:
+        return "editorial"
+    if "luxury_dark" in template_file:
+        return "dark"
+    if "cards_catalog" in template_file:
+        return "cards"
+    if "story_flow" in template_file:
+        return "story"
+    return "default"
+
+
+def _set_sample_layout_marker(custom_css: str, layout_key: str) -> str:
+    base = re.sub(r"/\*\s*rakubai_sample_layout:[^*]*\*/\s*", "", custom_css or "").strip()
+    marker = f"/* rakubai_sample_layout:{layout_key} */"
+    return f"{marker}\n{base}" if base else marker
+
+
+def _nonempty(value) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, (list, tuple, dict)):
+        return bool(value)
+    return True
+
+
+def _keep_existing_value(existing: dict, key: str, sample_value):
+    current = existing.get(key) if existing else None
+    return current if _nonempty(current) else sample_value
+
+
+def _merge_sample_with_existing_homepage(shop_id: str, sample_settings: dict, sample_sections: list[dict]) -> tuple[dict, list[dict]]:
+    existing_homepage = get_shop_homepage_settings(shop_id) or {}
+    existing_sections = get_shop_homepage_sections(shop_id)
+
+    preserve_setting_keys = [
+        "site_title", "hero_title", "hero_subtitle", "about_text", "menu_intro",
+        "menu_items", "gallery_images", "feature_items", "news_items", "access_info",
+        "reserve_button_label", "reserve_button_url", "public_path", "logo_image_url",
+        "hero_image_url", "hero_align",
+    ]
+    merged_settings = dict(sample_settings)
+    for key in preserve_setting_keys:
+        if key in merged_settings:
+            merged_settings[key] = _keep_existing_value(existing_homepage, key, merged_settings[key])
+
+    # 色・背景・フォントは選んだサンプルに合わせる。ただし独自CSS本文は残し、レイアウト印だけ差し替える。
+    merged_settings["custom_css"] = _set_sample_layout_marker(
+        str(existing_homepage.get("custom_css") or ""),
+        str(sample_settings.get("sample_layout_key") or "default"),
+    )
+    merged_settings.pop("sample_layout_key", None)
+
+    used_existing_ids: set[int] = set()
+    merged_sections: list[dict] = []
+    for sample_section in sample_sections:
+        section_type = str(sample_section.get("section_type") or "")
+        existing = next(
+            (
+                section for section in existing_sections
+                if int(section.get("id") or 0) not in used_existing_ids
+                and str(section.get("section_type") or "") == section_type
+            ),
+            None,
+        )
+        if existing:
+            used_existing_ids.add(int(existing.get("id") or 0))
+        merged_section = dict(sample_section)
+        if existing:
+            for key in ["title", "subtitle", "body_text", "image_url", "button_label", "button_url", "items", "is_visible"]:
+                merged_section[key] = _keep_existing_value(existing, key, merged_section.get(key))
+        merged_sections.append(merged_section)
+
+    # ユーザーが追加した独自セクションは末尾に残す。
+    next_sort = (max([int(section.get("sort_order") or 0) for section in merged_sections] or [0]) + 10)
+    for existing in existing_sections:
+        if int(existing.get("id") or 0) in used_existing_ids:
+            continue
+        preserved = {k: existing.get(k) for k in ["section_type", "title", "subtitle", "body_text", "image_url", "button_label", "button_url", "items", "is_visible"]}
+        preserved["sort_order"] = next_sort
+        next_sort += 10
+        merged_sections.append(preserved)
+
+    return merged_settings, merged_sections
+
 def _sample_to_homepage_payload(shop: dict, sample: dict) -> tuple[dict, list[dict]]:
     copy = sample.get("copy") or {}
     theme = sample.get("theme") or {}
@@ -8044,6 +8138,7 @@ def _sample_to_homepage_payload(shop: dict, sample: dict) -> tuple[dict, list[di
     reserve_label = str(copy.get("primary_cta") or copy.get("cta") or "予約する")
     settings = {
         "template_id": 0,
+        "sample_layout_key": _sample_layout_key(sample),
         "site_title": str(shop.get("shop_name") or sample.get("brand") or sample.get("name") or ""),
         "hero_title": hero_title,
         "hero_subtitle": hero_text,
@@ -8067,7 +8162,7 @@ def _sample_to_homepage_payload(shop: dict, sample: dict) -> tuple[dict, list[di
         "text_color": str(theme.get("text") or "#111827"),
         "subtext_color": str(theme.get("sub") or "#6b7280"),
         "font_family": "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
-        "custom_css": "",
+        "custom_css": _set_sample_layout_marker("", _sample_layout_key(sample)),
     }
     sections = [
         {
@@ -8219,7 +8314,8 @@ def admin_apply_sample_homepage(
     if not sample:
         raise HTTPException(status_code=404, detail="サンプルが見つかりません")
 
-    settings, sections = _sample_to_homepage_payload(shop, sample)
+    sample_settings, sample_sections = _sample_to_homepage_payload(shop, sample)
+    settings, sections = _merge_sample_with_existing_homepage(shop_id, sample_settings, sample_sections)
     upsert_shop_homepage_settings(shop_id, **settings)
     replace_shop_homepage_sections(shop_id, sections)
 
