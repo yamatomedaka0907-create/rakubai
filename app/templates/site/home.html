@@ -23,6 +23,7 @@ body{padding-top:72px}.editable{outline:1px dashed transparent;outline-offset:4p
 @media(max-width:900px){.catalog-hero-grid,.catalog-stats{grid-template-columns:1fr}.catalog-copy-card{min-height:0}.catalog-images{gap:18px}.catalog-images img{height:220px}.catalog-title{font-size:42px}}
 
 .public-site.layout-split .split-hero-grid{display:grid;grid-template-columns:.92fr 1.08fr;gap:34px;align-items:center}.public-site.layout-split .split-hero-media img{width:100%;height:520px;object-fit:cover;border-radius:32px;box-shadow:0 26px 70px rgba(15,23,42,.14)}.public-site.layout-split .default-content{display:grid;gap:18px}.public-site.layout-split .section .panel{border-radius:30px}
+.public-site.layout-editorial .public-editorial-main{display:grid;grid-template-columns:.72fr 1.28fr;gap:28px;align-items:start;padding:28px 0 0}.public-site.layout-editorial .editorial-side{position:sticky;top:96px}.public-site.layout-editorial .editorial-side h1{font-size:clamp(38px,6vw,72px);line-height:1.02;letter-spacing:-.04em;margin:14px 0 18px;white-space:pre-line}.public-site.layout-editorial .editorial-stack{display:grid;gap:18px}.public-site.layout-editorial .editorial-stack img{height:280px;object-fit:cover;border-radius:28px}.public-site.layout-editorial .editorial-mosaic{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}.public-site.layout-editorial .mosaic-side{display:grid;gap:18px}.public-site.layout-editorial .quote-box{padding:20px;border-radius:24px;background:var(--surface);border:1px solid var(--editorial-line);line-height:1.9}.public-site.layout-editorial .editorial-public-content .card-lite,.public-site.layout-editorial .editorial-public-content .panel{border-radius:28px;background:var(--surface);border:1px solid var(--editorial-line)}
 .public-site.layout-editorial .editorial-hero-grid{display:grid;grid-template-columns:1.05fr .75fr;gap:36px;align-items:end}.public-site.layout-editorial .editorial-wide-image img{width:100%;height:430px;object-fit:cover;margin-top:34px;border-radius:0}.public-site.layout-editorial .default-content{max-width:1260px}.public-site.layout-editorial .image-text{grid-template-columns:1fr 1fr}.public-site.layout-editorial .gallery-item{border-radius:0}.public-site.layout-editorial .btn{border-radius:0}
 .public-site.layout-dark .dark-hero{min-height:620px;display:grid;align-items:center}.public-site.layout-dark .dark-hero::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(15,11,9,.88),rgba(15,11,9,.42))}.public-site.layout-dark .dark-hero .hero-inner{position:relative;z-index:1}.public-site.layout-dark .btn.alt{color:#f8f0e7}.public-site.layout-dark .public-calendar,.public-site.layout-dark .public-calendar-day,.public-site.layout-dark .public-calendar-nav a{background:#1a1512;color:#f8f0e7;border-color:rgba(255,255,255,.14)}
 .public-site.layout-story .story-hero{padding:100px 0 80px;text-align:center;background:linear-gradient(180deg,var(--surface),var(--bg))}.public-site.layout-story .story-hero-inner{max-width:860px}.public-site.layout-story .story-title{font-size:clamp(44px,8vw,104px);line-height:.96;letter-spacing:-.07em;margin:20px 0}.public-site.layout-story .section{padding:52px 0}.public-site.layout-story .image-text{grid-template-columns:1fr 1fr}.public-site.layout-story .section:nth-of-type(odd) .image-text .image-wrap{order:2}
@@ -168,6 +169,44 @@ body{padding-top:72px}.editable{outline:1px dashed transparent;outline-offset:4p
 </section>
 {% endif %}
 
+{% if sample_layout_key == 'editorial' %}
+<div class="wrap editorial-public-content">
+  {% set feature_section = sections_by_type.get('features') %}
+  {% set menu_section = sections_by_type.get('menu') %}
+  {% set gallery_section = sections_by_type.get('gallery') %}
+  {% set news_section = sections_by_type.get('news') %}
+  {% set intro_section = sections_by_type.get('image_text') or sections_by_type.get('text') %}
+  <section class="editorial-main public-editorial-main">
+    <aside class="editorial-side {% if edit_mode %}edit-region{% endif %}" {% if edit_mode %}data-edit-region="hero" data-edit-label="メインビジュアルを編集"{% endif %}>
+      <div class="eyebrow">{{ homepage.site_title or shop.shop_name }}</div>
+      <h1 class="{% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-homepage-field="hero_title"{% endif %}>{{ homepage.hero_title or shop.shop_name }}</h1>
+      <p class="muted {% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-homepage-field="hero_subtitle"{% endif %}>{{ homepage.hero_subtitle or shop.catch_copy }}</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:22px"><a class="btn" href="{{ homepage.reserve_button_url or '/shop/' ~ shop_id }}" {% if edit_mode %}data-homepage-link="reserve_button"{% endif %}>{{ homepage.reserve_button_label or '予約する' }}</a><a class="btn alt" href="#menu">メニューを見る</a></div>
+      {% if intro_section and intro_section.body_text %}<div class="quote-box muted {% if edit_mode %}editable{% endif %}" style="margin-top:22px" {% if edit_mode %}contenteditable="true" data-section-id="{{ intro_section.id }}" data-section-field="body_text"{% endif %}>{{ intro_section.body_text }}</div>{% endif %}
+    </aside>
+    <div class="editorial-stack">
+      <div class="mosaic editorial-mosaic">
+        {% if public_images|length > 0 %}<img class="editable-image" src="{{ public_images[0] }}" alt="hero" {% if edit_mode %}data-homepage-image="hero_image_url"{% endif %}>{% endif %}
+        <div class="mosaic-side">
+          {% if public_images|length > 1 %}<img src="{{ public_images[1] }}" alt="gallery">{% endif %}
+          {% if public_images|length > 2 %}<img src="{{ public_images[2] }}" alt="gallery">{% endif %}
+        </div>
+      </div>
+      {% if feature_section %}
+      <div class="grid-2" id="features">{% for item in feature_section['items'] %}<div class="feature-card card-lite" data-item-index="{{ loop.index0 }}"><strong>{{ item.title }}</strong><div class="muted">{{ item.description }}</div></div>{% endfor %}</div>
+      {% endif %}
+      {% if menu_section %}
+      <div class="card panel" style="padding:28px" id="menu"><div class="eyebrow">{{ menu_section.title or 'Menu / Service' }}</div><div class="grid-3" style="margin-top:16px">{% for item in menu_section['items'] %}<div class="menu-card card-lite"><strong>{{ item.title }}</strong><div class="price">{{ item.price }}</div><div class="muted">{{ item.description }}</div></div>{% endfor %}</div></div>
+      {% endif %}
+      <div class="grid-2">
+        {% if intro_section %}<div class="news-card card-lite"><div class="muted">{{ intro_section.subtitle or intro_section.body_text }}</div></div>{% endif %}
+        {% if news_section %}<div class="news-card card-lite"><div class="eyebrow">Latest</div>{% for item in news_section['items'] %}<div style="padding-top:12px;margin-top:12px;border-top:1px solid var(--editorial-line)"><strong>{{ item.date }}</strong><div class="muted">{{ item.title }}</div></div>{% endfor %}</div>{% endif %}
+      </div>
+    </div>
+  </section>
+</div>
+<div class="wrap default-content">
+{% else %}
 <div class="wrap default-content">
   {% for section in sections %}
     {% if section.section_type != 'hero' %}
@@ -259,6 +298,7 @@ body{padding-top:72px}.editable{outline:1px dashed transparent;outline-offset:4p
     </section>
     {% endif %}
   {% endfor %}
+{% endif %}
 
   <section id="reserve-calendar" class="section">
     <div class="panel">

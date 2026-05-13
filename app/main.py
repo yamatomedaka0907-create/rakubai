@@ -7788,6 +7788,17 @@ def _extract_sample_layout_key(homepage: dict) -> str:
             key = _sample_layout_key(sample)
             if key in allowed_layouts:
                 return key
+        sample_code_lower = sample_code.lower()
+        if "editorial" in sample_code_lower or "gallery" in sample_code_lower:
+            return "editorial"
+        if "split" in sample_code_lower:
+            return "split"
+        if "dark" in sample_code_lower or "luxury" in sample_code_lower:
+            return "dark"
+        if "card" in sample_code_lower or "catalog" in sample_code_lower:
+            return "cards"
+        if "story" in sample_code_lower:
+            return "story"
     return "default"
 
 def _build_site_home_context(request: Request, shop_id: str, *, edit_mode: bool = False) -> dict:
@@ -7803,12 +7814,37 @@ def _build_site_home_context(request: Request, shop_id: str, *, edit_mode: bool 
     prev_year, prev_month = shift_month(calendar_year, calendar_month, -1)
     next_year, next_month = shift_month(calendar_year, calendar_month, 1)
     holiday_weekday = WEEKDAY_MAP.get(shop.get("holiday"))
+    sections_by_type: dict[str, dict] = {}
+    for section in sections:
+        section_type = str(section.get("section_type") or "")
+        if section_type and section_type not in sections_by_type:
+            sections_by_type[section_type] = section
+
+    public_images: list[str] = []
+    for image_url in [homepage.get("hero_image_url"), homepage.get("logo_image_url")]:
+        if str(image_url or "").strip():
+            public_images.append(str(image_url).strip())
+    for section in sections:
+        image_url = str(section.get("image_url") or "").strip()
+        if image_url:
+            public_images.append(image_url)
+        for item in section.get("items") or []:
+            item_url = str((item or {}).get("url") or "").strip()
+            if item_url:
+                public_images.append(item_url)
+    deduped_public_images: list[str] = []
+    for image_url in public_images:
+        if image_url not in deduped_public_images:
+            deduped_public_images.append(image_url)
+
     context = {
         "request": request,
         "shop": shop,
         "shop_id": shop_id,
         "homepage": homepage,
         "sections": sections,
+        "sections_by_type": sections_by_type,
+        "public_images": deduped_public_images,
         "theme": _homepage_theme_context(shop, homepage),
         "sample_layout_key": _extract_sample_layout_key(homepage),
         "subscription": subscription,
