@@ -79,4 +79,134 @@
     </div>
   </section>
 </div>
+
+<section class="card" style="margin-top:16px;">
+  <div class="card-header">
+    <h2>ページ内容の追加・編集</h2>
+    <span class="badge">管理画面で編集</span>
+  </div>
+  <p class="section-note">特徴・ギャラリー・お知らせ・メニューを、直接編集モードを使わずに追加・編集・削除できます。</p>
+
+  <form method="post" action="/admin/{{ shop_id }}/website/section/add" style="margin-top:16px;display:flex;gap:12px;align-items:end;flex-wrap:wrap;">
+    <label style="display:grid;gap:6px;min-width:240px;font-weight:800;">
+      追加する内容
+      <select name="section_type" style="min-height:44px;border:1px solid rgba(15,23,42,.14);border-radius:12px;padding:0 12px;">
+        <option value="features">特徴</option>
+        <option value="gallery">ギャラリー</option>
+        <option value="news">お知らせ</option>
+        <option value="menu">メニュー / SERVICE</option>
+        <option value="text">テキスト</option>
+        <option value="image_text">画像＋テキスト</option>
+      </select>
+    </label>
+    <button type="submit" style="min-height:44px;border:0;border-radius:12px;background:#14b8a6;color:#fff;font-weight:900;padding:0 18px;">追加する</button>
+  </form>
+
+  <div style="margin-top:18px;display:grid;gap:16px;">
+    {% for section in homepage_sections if section.section_type != 'hero' %}
+    <div class="nav-card">
+      <form method="post" action="/admin/{{ shop_id }}/website/section/{{ section.id }}/save" enctype="multipart/form-data" style="display:grid;gap:12px;">
+        <input type="hidden" name="section_type" value="{{ section.section_type }}">
+        <input type="hidden" name="sort_order" value="{{ section.sort_order }}">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+          <div>
+            <h2 style="margin:0;font-size:18px;">{{ section.title or section.section_type }}</h2>
+            <p class="section-note" style="margin:4px 0 0;">種類：{{ section.section_type }}</p>
+          </div>
+          <label style="display:inline-flex;gap:8px;align-items:center;font-weight:800;"><input type="checkbox" name="is_visible" value="1" {% if section.is_visible %}checked{% endif %}> 表示する</label>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+          <label style="display:grid;gap:6px;font-weight:800;">見出し<input name="title" value="{{ section.title }}" style="min-height:42px;border:1px solid rgba(15,23,42,.14);border-radius:12px;padding:0 12px;"></label>
+          <label style="display:grid;gap:6px;font-weight:800;">小見出し<input name="subtitle" value="{{ section.subtitle }}" style="min-height:42px;border:1px solid rgba(15,23,42,.14);border-radius:12px;padding:0 12px;"></label>
+        </div>
+
+        {% if section.section_type in ['text','image_text','cta','contact'] %}
+        <label style="display:grid;gap:6px;font-weight:800;">本文<textarea name="body_text" rows="4" style="border:1px solid rgba(15,23,42,.14);border-radius:12px;padding:12px;">{{ section.body_text }}</textarea></label>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+          <label style="display:grid;gap:6px;font-weight:800;">画像URL<input name="image_url" value="{{ section.image_url }}" style="min-height:42px;border:1px solid rgba(15,23,42,.14);border-radius:12px;padding:0 12px;"></label>
+          <label style="display:grid;gap:6px;font-weight:800;">画像アップロード<input type="file" name="section_image_file" accept="image/*" style="min-height:42px;border:1px solid rgba(15,23,42,.14);border-radius:12px;padding:8px 12px;background:#fff;"></label>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+          <label style="display:grid;gap:6px;font-weight:800;">ボタン文言<input name="button_label" value="{{ section.button_label }}" style="min-height:42px;border:1px solid rgba(15,23,42,.14);border-radius:12px;padding:0 12px;"></label>
+          <label style="display:grid;gap:6px;font-weight:800;">ボタンURL<input name="button_url" value="{{ section.button_url }}" style="min-height:42px;border:1px solid rgba(15,23,42,.14);border-radius:12px;padding:0 12px;"></label>
+        </div>
+        {% endif %}
+
+        {% if section.section_type == 'features' %}
+          <div style="display:grid;gap:10px;">
+            {% for item in section['items'] %}
+            <div style="display:grid;grid-template-columns:36px 1fr 1.3fr;gap:10px;align-items:end;border:1px solid rgba(15,23,42,.1);border-radius:14px;padding:12px;">
+              <label style="font-weight:800;"><input type="checkbox" name="item_delete" value="{{ loop.index0 }}"> 削除</label>
+              <label style="display:grid;gap:6px;font-weight:800;">特徴タイトル<input name="item_title" value="{{ item.title }}" style="min-height:40px;border:1px solid rgba(15,23,42,.14);border-radius:10px;padding:0 10px;"></label>
+              <label style="display:grid;gap:6px;font-weight:800;">説明<input name="item_description" value="{{ item.description }}" style="min-height:40px;border:1px solid rgba(15,23,42,.14);border-radius:10px;padding:0 10px;"></label>
+            </div>
+            {% endfor %}
+            <div style="display:grid;grid-template-columns:1fr 1.3fr;gap:10px;border:1px dashed rgba(15,23,42,.2);border-radius:14px;padding:12px;">
+              <label style="display:grid;gap:6px;font-weight:800;">特徴タイトルを追加<input name="item_title" placeholder="例：初回カウンセリング" style="min-height:40px;border:1px solid rgba(15,23,42,.14);border-radius:10px;padding:0 10px;"></label>
+              <label style="display:grid;gap:6px;font-weight:800;">説明を追加<input name="item_description" placeholder="例：悩みに合わせて提案" style="min-height:40px;border:1px solid rgba(15,23,42,.14);border-radius:10px;padding:0 10px;"></label>
+            </div>
+          </div>
+        {% elif section.section_type == 'gallery' %}
+          <div style="display:grid;gap:10px;">
+            {% for item in section['items'] %}
+            <div style="display:grid;grid-template-columns:36px 1fr 1.2fr 1fr;gap:10px;align-items:end;border:1px solid rgba(15,23,42,.1);border-radius:14px;padding:12px;">
+              <label style="font-weight:800;"><input type="checkbox" name="item_delete" value="{{ loop.index0 }}"> 削除</label>
+              <label style="display:grid;gap:6px;font-weight:800;">写真名<input name="item_label" value="{{ item.label }}" style="min-height:40px;border:1px solid rgba(15,23,42,.14);border-radius:10px;padding:0 10px;"></label>
+              <label style="display:grid;gap:6px;font-weight:800;">画像URL<input name="item_url" value="{{ item.url }}" style="min-height:40px;border:1px solid rgba(15,23,42,.14);border-radius:10px;padding:0 10px;"></label>
+              <label style="display:grid;gap:6px;font-weight:800;">画像変更<input type="file" name="item_file" accept="image/*" style="min-height:40px;border:1px solid rgba(15,23,42,.14);border-radius:10px;padding:7px 10px;background:#fff;"></label>
+            </div>
+            {% endfor %}
+            <div style="display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:10px;border:1px dashed rgba(15,23,42,.2);border-radius:14px;padding:12px;">
+              <label style="display:grid;gap:6px;font-weight:800;">写真名を追加<input name="item_label" placeholder="例：店内写真" style="min-height:40px;border:1px solid rgba(15,23,42,.14);border-radius:10px;padding:0 10px;"></label>
+              <label style="display:grid;gap:6px;font-weight:800;">画像URLを追加<input name="item_url" placeholder="https:// または /uploads/..." style="min-height:40px;border:1px solid rgba(15,23,42,.14);border-radius:10px;padding:0 10px;"></label>
+              <label style="display:grid;gap:6px;font-weight:800;">画像アップロード<input type="file" name="item_file" accept="image/*" style="min-height:40px;border:1px solid rgba(15,23,42,.14);border-radius:10px;padding:7px 10px;background:#fff;"></label>
+            </div>
+          </div>
+        {% elif section.section_type == 'news' %}
+          <div style="display:grid;gap:10px;">
+            {% for item in section['items'] %}
+            <div style="display:grid;grid-template-columns:36px 180px 1fr;gap:10px;align-items:end;border:1px solid rgba(15,23,42,.1);border-radius:14px;padding:12px;">
+              <label style="font-weight:800;"><input type="checkbox" name="item_delete" value="{{ loop.index0 }}"> 削除</label>
+              <label style="display:grid;gap:6px;font-weight:800;">日付<input name="item_date" value="{{ item.date }}" style="min-height:40px;border:1px solid rgba(15,23,42,.14);border-radius:10px;padding:0 10px;"></label>
+              <label style="display:grid;gap:6px;font-weight:800;">お知らせ内容<input name="item_title" value="{{ item.title }}" style="min-height:40px;border:1px solid rgba(15,23,42,.14);border-radius:10px;padding:0 10px;"></label>
+            </div>
+            {% endfor %}
+            <div style="display:grid;grid-template-columns:180px 1fr;gap:10px;border:1px dashed rgba(15,23,42,.2);border-radius:14px;padding:12px;">
+              <label style="display:grid;gap:6px;font-weight:800;">日付を追加<input name="item_date" placeholder="2026.05.13" style="min-height:40px;border:1px solid rgba(15,23,42,.14);border-radius:10px;padding:0 10px;"></label>
+              <label style="display:grid;gap:6px;font-weight:800;">お知らせを追加<input name="item_title" placeholder="例：新メニューを追加しました" style="min-height:40px;border:1px solid rgba(15,23,42,.14);border-radius:10px;padding:0 10px;"></label>
+            </div>
+          </div>
+        {% elif section.section_type == 'menu' %}
+          <div style="display:grid;gap:10px;">
+            {% for item in section['items'] %}
+            <div style="display:grid;grid-template-columns:36px 1fr 160px 1.3fr;gap:10px;align-items:end;border:1px solid rgba(15,23,42,.1);border-radius:14px;padding:12px;">
+              <label style="font-weight:800;"><input type="checkbox" name="item_delete" value="{{ loop.index0 }}"> 削除</label>
+              <label style="display:grid;gap:6px;font-weight:800;">メニュー名<input name="item_title" value="{{ item.title }}" style="min-height:40px;border:1px solid rgba(15,23,42,.14);border-radius:10px;padding:0 10px;"></label>
+              <label style="display:grid;gap:6px;font-weight:800;">価格<input name="item_price" value="{{ item.price }}" style="min-height:40px;border:1px solid rgba(15,23,42,.14);border-radius:10px;padding:0 10px;"></label>
+              <label style="display:grid;gap:6px;font-weight:800;">説明<input name="item_description" value="{{ item.description }}" style="min-height:40px;border:1px solid rgba(15,23,42,.14);border-radius:10px;padding:0 10px;"></label>
+            </div>
+            {% endfor %}
+            <div style="display:grid;grid-template-columns:1fr 160px 1.3fr;gap:10px;border:1px dashed rgba(15,23,42,.2);border-radius:14px;padding:12px;">
+              <label style="display:grid;gap:6px;font-weight:800;">メニュー名を追加<input name="item_title" style="min-height:40px;border:1px solid rgba(15,23,42,.14);border-radius:10px;padding:0 10px;"></label>
+              <label style="display:grid;gap:6px;font-weight:800;">価格を追加<input name="item_price" style="min-height:40px;border:1px solid rgba(15,23,42,.14);border-radius:10px;padding:0 10px;"></label>
+              <label style="display:grid;gap:6px;font-weight:800;">説明を追加<input name="item_description" style="min-height:40px;border:1px solid rgba(15,23,42,.14);border-radius:10px;padding:0 10px;"></label>
+            </div>
+          </div>
+        {% endif %}
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button type="submit" style="min-height:42px;border:0;border-radius:12px;background:#2563eb;color:#fff;font-weight:900;padding:0 18px;">保存する</button>
+        </div>
+      </form>
+      <form method="post" action="/admin/{{ shop_id }}/website/section/{{ section.id }}/delete" onsubmit="return confirm('このセクションを削除しますか？');" style="margin-top:10px;">
+        <button type="submit" style="min-height:40px;border:1px solid rgba(220,38,38,.25);border-radius:12px;background:#fff;color:#dc2626;font-weight:900;padding:0 16px;">このセクションを削除</button>
+      </form>
+    </div>
+    {% else %}
+    <div class="nav-card">まだ編集できるセクションがありません。「追加する」から作成してください。</div>
+    {% endfor %}
+  </div>
+</section>
+
 {% endblock %}
