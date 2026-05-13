@@ -6563,7 +6563,7 @@ def shop_reserve(
     phone: str = Form(""),
     email: str = Form(""),
     receive_email: str = Form("1"),
-    staff_id: int = Form(...),
+    staff_id: str = Form(""),
     menu_id: int = Form(...),
     reservation_date: str = Form(...),
     start_time: str = Form(...),
