@@ -7961,9 +7961,28 @@ def _build_site_home_context(request: Request, shop_id: str, *, edit_mode: bool 
         "calendar_prev_month": f"{prev_year:04d}-{prev_month:02d}",
         "calendar_next_month": f"{next_year:04d}-{next_month:02d}",
         "calendar_base_path": request.url.path,
+        "news_detail_base_url": request.url.path.rstrip("/"),
         "edit_mode": edit_mode,
         "section_type_options": ["text", "image_text", "menu", "features", "gallery", "news", "cta", "contact"],
     }
+    return context
+
+
+def _build_news_detail_context(request: Request, shop_id: str, news_index: int, *, public_path: str | None = None) -> dict:
+    context = _build_site_home_context(request, shop_id, edit_mode=False)
+    news_section = next((section for section in context.get("sections", []) if str(section.get("section_type") or "") == "news"), None)
+    news_items = list((news_section or {}).get("items") or [])
+    if news_index < 0 or news_index >= len(news_items):
+        raise HTTPException(status_code=404, detail="お知らせが見つかりません")
+    news_item = dict(news_items[news_index] or {})
+    news_image_url = str(news_item.get("image_url") or news_item.get("url") or "").strip()
+    context.update({
+        "news_section": news_section,
+        "news_item": news_item,
+        "news_index": news_index,
+        "news_image_url": news_image_url,
+        "news_back_url": f"/p/{public_path}" if public_path else f"/site/{shop_id}",
+    })
     return context
 
 
@@ -7973,65 +7992,15 @@ async def _save_homepage_form_upload(shop_id: str, upload: UploadFile, category:
         return ""
     safe_category = re.sub(r"[^a-zA-Z0-9_-]", "", category or "gallery") or "gallery"
     filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(4)}{suffix}"
-    file_bytes = await upload.read()
-    if not file_bytes:
-        return ""
-
-    s3_settings = _get_customer_photo_s3_settings()
-    bucket = s3_settings["bucket"]
-    if bucket:
-        region = s3_settings["region"]
-        prefix = s3_settings["prefix"]
-        endpoint_url = s3_settings["endpoint_url"] or None
-        public_base_url = s3_settings["public_base_url"]
-        acl = s3_settings["acl"]
-        key_parts = [part for part in [prefix, shop_id, "homepage", safe_category, filename] if part]
-        key = "/".join(key_parts)
-        content_type = (upload.content_type or "").strip() or "application/octet-stream"
-
-        client_kwargs = {"region_name": region}
-        if endpoint_url:
-            client_kwargs["endpoint_url"] = endpoint_url
-        s3 = boto3.client("s3", **client_kwargs)
-
-        extra_args = {"ContentType": content_type}
-        if acl:
-            extra_args["ACL"] = acl
-
-        try:
-            s3.put_object(Bucket=bucket, Key=key, Body=file_bytes, **extra_args)
-        except (ClientError, BotoCoreError):
-            return ""
-
-        if public_base_url:
-            return f"{public_base_url}/{key}"
-        if endpoint_url:
-            return f"{endpoint_url.rstrip('/')}/{bucket}/{key}"
-        return f"https://{bucket}.s3.{region}.amazonaws.com/{key}"
-
     upload_dir = Path("data/uploads/shops") / shop_id / "homepage" / safe_category
     upload_dir.mkdir(parents=True, exist_ok=True)
     save_path = upload_dir / filename
+    file_bytes = await upload.read()
+    if not file_bytes:
+        return ""
     save_path.write_bytes(file_bytes)
     relative = save_path.relative_to(Path("data/uploads"))
     return "/uploads/" + str(relative).replace("\\", "/")
-
-
-def _normalize_homepage_news_items(items: list[dict] | tuple | None) -> list[dict]:
-    normalized: list[dict] = []
-    for item in items or []:
-        if not isinstance(item, dict):
-            continue
-        body = str(item.get("body") or item.get("description") or item.get("content") or item.get("text") or "")
-        image_url = str(item.get("image_url") or item.get("image") or item.get("url") or "")
-        normalized.append({
-            "date": str(item.get("date") or ""),
-            "title": str(item.get("title") or ""),
-            "body": body,
-            "description": body,
-            "image_url": image_url,
-        })
-    return normalized
 
 
 async def _homepage_items_from_form(shop_id: str, section_type: str, form) -> list[dict]:
@@ -8065,13 +8034,12 @@ async def _homepage_items_from_form(shop_id: str, section_type: str, form) -> li
                 uploaded_url = await _save_homepage_form_upload(shop_id, upload, 'news')
                 if uploaded_url:
                     image_url = uploaded_url
-            body = bodies[idx] if idx < len(bodies) else ''
             items.append({
                 'date': dates[idx] if idx < len(dates) else '',
                 'title': titles[idx] if idx < len(titles) else '',
-                'body': body,
-                'description': body,
+                'body': bodies[idx] if idx < len(bodies) else '',
                 'image_url': image_url,
+                'url': image_url,
             })
     else:
         titles, descs = values('item_title'), values('item_description')
@@ -8118,19 +8086,15 @@ async def admin_website_editor_save(request: Request, shop_id: str):
     for idx, section in enumerate(sections, start=1):
         if str(section.get("section_type") or "") == "hero":
             continue
-        section_type = str(section.get("section_type") or "text")
-        section_items = section.get("items") or []
-        if section_type == "news":
-            section_items = _normalize_homepage_news_items(section_items)
         normalized_sections.append({
-            "section_type": section_type,
+            "section_type": str(section.get("section_type") or "text"),
             "title": str(section.get("title") or ""),
             "subtitle": str(section.get("subtitle") or ""),
             "body_text": str(section.get("body_text") or ""),
             "image_url": str(section.get("image_url") or ""),
             "button_label": str(section.get("button_label") or ""),
             "button_url": str(section.get("button_url") or ""),
-            "items": section_items,
+            "items": section.get("items") or [],
             "sort_order": int(section.get("sort_order") or idx * 10),
             "is_visible": int(bool(section.get("is_visible", 1))),
         })
@@ -8143,10 +8107,17 @@ async def admin_website_editor_upload(request: Request, shop_id: str, file: Uplo
     redirect = require_store_login(request, shop_id)
     if redirect:
         return JSONResponse({"ok": False, "error": "ログインが必要です。"}, status_code=401)
-    uploaded_url = await _save_homepage_form_upload(shop_id, file, category or "editor")
-    if not uploaded_url:
-        return JSONResponse({"ok": False, "error": "画像ファイルを保存できませんでした。"}, status_code=400)
-    return JSONResponse({"ok": True, "url": uploaded_url})
+    suffix = Path(file.filename or "image.jpg").suffix.lower() or ".jpg"
+    if suffix not in {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}:
+        return JSONResponse({"ok": False, "error": "画像ファイルを選択してください。"}, status_code=400)
+    safe_category = re.sub(r"[^a-zA-Z0-9_-]", "", category or "editor") or "editor"
+    filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(4)}{suffix}"
+    upload_dir = Path("data/uploads/shops") / shop_id / "homepage" / safe_category
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    save_path = upload_dir / filename
+    save_path.write_bytes(await file.read())
+    relative = save_path.relative_to(Path("data/uploads"))
+    return JSONResponse({"ok": True, "url": "/uploads/" + str(relative).replace("\\", "/")})
 
 
 @app.post("/admin/{shop_id}/website/editor/section/add")
@@ -8222,34 +8193,22 @@ def admin_website_section_delete_from_form(request: Request, shop_id: str, secti
     return RedirectResponse(f"/admin/{shop_id}/website?saved=セクションを削除しました", status_code=303)
 
 
-def _find_homepage_news_item(shop_id: str, news_index: int) -> tuple[dict, dict]:
-    sections = get_shop_homepage_sections(shop_id)
-    news_section = next((section for section in sections if str(section.get("section_type") or "") == "news" and int(section.get("is_visible", 1) or 0)), None)
-    if not news_section:
-        raise HTTPException(status_code=404, detail="お知らせが見つかりません")
-    items = news_section.get("items") or []
-    if news_index < 0 or news_index >= len(items):
-        raise HTTPException(status_code=404, detail="お知らせが見つかりません")
-    item = _normalize_homepage_news_items([items[news_index] or {}])[0]
-    if not str(item.get("title") or "").strip():
-        raise HTTPException(status_code=404, detail="お知らせが見つかりません")
-    return news_section, item
-
-
-def _render_homepage_news_detail(request: Request, shop_id: str, news_index: int):
-    context = _build_site_home_context(request, shop_id, edit_mode=False)
-    news_section, news_item = _find_homepage_news_item(shop_id, news_index)
-    context.update({
-        "news_section": news_section,
-        "news_item": news_item,
-        "news_index": news_index,
-    })
-    return templates.TemplateResponse(request=request, name="site/news_detail.html", context=context)
-
-
 @app.get("/site/{shop_id}", response_class=HTMLResponse)
 def site_page(request: Request, shop_id: str):
     return templates.TemplateResponse(request=request, name="site/home.html", context=_build_site_home_context(request, shop_id, edit_mode=False))
+
+
+@app.get("/site/{shop_id}/news/{news_index}", response_class=HTMLResponse)
+def site_news_detail_page(request: Request, shop_id: str, news_index: int):
+    return templates.TemplateResponse(request=request, name="site/news_detail.html", context=_build_news_detail_context(request, shop_id, news_index))
+
+
+@app.get("/p/{public_path}/news/{news_index}", response_class=HTMLResponse)
+def public_news_detail_page(request: Request, public_path: str, news_index: int):
+    homepage = get_shop_homepage_by_public_path(public_path)
+    if not homepage:
+        raise HTTPException(status_code=404, detail="公開ページが見つかりません")
+    return templates.TemplateResponse(request=request, name="site/news_detail.html", context=_build_news_detail_context(request, homepage["shop_id"], news_index, public_path=public_path))
 
 
 @app.get("/p/{public_path}", response_class=HTMLResponse)
@@ -8258,19 +8217,6 @@ def public_homepage(request: Request, public_path: str):
     if not homepage:
         raise HTTPException(status_code=404, detail="公開ページが見つかりません")
     return site_page(request, homepage["shop_id"])
-
-
-@app.get("/site/{shop_id}/news/{news_index}", response_class=HTMLResponse)
-def site_news_detail_page(request: Request, shop_id: str, news_index: int):
-    return _render_homepage_news_detail(request, shop_id, news_index)
-
-
-@app.get("/p/{public_path}/news/{news_index}", response_class=HTMLResponse)
-def public_news_detail_page(request: Request, public_path: str, news_index: int):
-    homepage = get_shop_homepage_by_public_path(public_path)
-    if not homepage:
-        raise HTTPException(status_code=404, detail="公開ページが見つかりません")
-    return _render_homepage_news_detail(request, homepage["shop_id"], news_index)
 
 
 def _current_store_sample_shop_id(request: Request) -> str:
@@ -8512,9 +8458,9 @@ def _sample_to_homepage_payload(shop: dict, sample: dict) -> tuple[dict, list[di
     news_items = []
     for item in copy.get("news") or []:
         if isinstance(item, (list, tuple)) and len(item) >= 2:
-            news_items.append({"date": str(item[0] or ""), "title": str(item[1] or ""), "body": "", "image_url": ""})
+            news_items.append({"date": str(item[0] or ""), "title": str(item[1] or ""), "body": "", "image_url": "", "url": ""})
         elif isinstance(item, dict):
-            news_items.append({"date": str(item.get("date") or ""), "title": str(item.get("title") or ""), "body": str(item.get("body") or item.get("description") or ""), "image_url": str(item.get("image_url") or item.get("url") or "")})
+            news_items.append({"date": str(item.get("date") or ""), "title": str(item.get("title") or ""), "body": str(item.get("body") or item.get("description") or ""), "image_url": str(item.get("image_url") or item.get("url") or ""), "url": str(item.get("image_url") or item.get("url") or "")})
     gallery_items = []
     for index, url in enumerate(assets[:3], start=1):
         gallery_items.append({"label": f"ギャラリー{index}", "url": str(url or "")})

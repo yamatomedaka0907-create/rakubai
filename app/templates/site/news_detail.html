@@ -1,9 +1,23 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ news_item.title }} | {{ homepage.site_title or shop.shop_name }}</title>
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ news_item.title }} | {{ homepage.site_title or shop.shop_name }}</title>
 <style>
-:root{--primary:{{ theme.primary or '#2563eb' }};--bg:{{ theme.background or '#f8fafc' }};--surface:{{ theme.surface or '#ffffff' }};--accent:{{ theme.accent or '#dbeafe' }};--text:{{ theme.text or '#111827' }};--sub:{{ theme.subtext or '#6b7280' }};--font:{{ theme.font_family or "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }};}*{box-sizing:border-box}body{margin:0;font-family:var(--font);background:var(--bg);color:var(--text)}a{text-decoration:none;color:inherit}img{max-width:100%;display:block}.wrap{max-width:960px;margin:0 auto;padding:0 20px}.topbar{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.86);backdrop-filter:blur(14px);border-bottom:1px solid rgba(15,23,42,.08)}.topbar-inner{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:68px}.brand{display:flex;align-items:center;gap:12px;font-weight:800}.brand-logo{width:42px;height:42px;border-radius:12px;object-fit:cover;background:#e5e7eb}.brand-mark{width:42px;height:42px;border-radius:12px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:var(--primary);font-weight:900}.article{padding:44px 0 64px}.article-card{background:var(--surface);border:1px solid rgba(15,23,42,.08);box-shadow:0 18px 48px rgba(15,23,42,.08);border-radius:28px;overflow:hidden}.article-body{padding:clamp(24px,5vw,48px)}.eyebrow{display:inline-flex;padding:8px 12px;border-radius:999px;background:var(--accent);color:var(--primary);font-size:13px;font-weight:900}.article-title{font-size:clamp(28px,5vw,48px);line-height:1.18;margin:18px 0 20px}.article-image{width:100%;max-height:520px;object-fit:cover;background:#e5e7eb}.article-text{font-size:17px;line-height:2;white-space:pre-line;color:var(--text)}.back{display:inline-flex;margin-top:28px;color:var(--primary);font-weight:800}.footer{padding:28px 0 44px;color:var(--sub);text-align:center}
-</style></head><body>
-{% set home_path = '/p/' ~ homepage.public_path if homepage.public_path else '/site/' ~ shop_id %}
-<header class="topbar"><div class="wrap topbar-inner"><a class="brand" href="{{ home_path }}">{% if homepage.logo_image_url %}<img class="brand-logo" src="{{ homepage.logo_image_url }}" alt="{{ homepage.site_title or shop.shop_name }}">{% else %}<span class="brand-mark">{{ (homepage.site_title or shop.shop_name or 'R')[:1] }}</span>{% endif %}<span>{{ homepage.site_title or shop.shop_name }}</span></a><a href="{{ home_path }}#news">お知らせ一覧へ</a></div></header>
-<main class="article"><div class="wrap"><article class="article-card">{% if news_item.image_url %}<img class="article-image" src="{{ news_item.image_url }}" alt="{{ news_item.title }}">{% endif %}<div class="article-body">{% if news_item.date %}<div class="eyebrow">{{ news_item.date }}</div>{% endif %}<h1 class="article-title">{{ news_item.title }}</h1>{% if news_item.body %}<div class="article-text">{{ news_item.body }}</div>{% endif %}<a class="back" href="{{ home_path }}#news">← トップページのお知らせへ戻る</a></div></article></div></main>
-<footer class="footer"><div class="wrap">{{ homepage.site_title or shop.shop_name }}</div></footer>
-</body></html>
+:root{--primary:{{ theme.primary or '#2563eb' }};--bg:{{ theme.background or '#f8fafc' }};--surface:{{ theme.surface or '#ffffff' }};--text:{{ theme.text or '#111827' }};--sub:{{ theme.subtext or '#6b7280' }};--font:{{ theme.font_family or "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }};}*{box-sizing:border-box}body{margin:0;font-family:var(--font);background:var(--bg);color:var(--text)}a{color:inherit}.wrap{max-width:900px;margin:0 auto;padding:28px 20px 64px}.article{background:var(--surface);border:1px solid rgba(15,23,42,.08);border-radius:24px;padding:clamp(22px,4vw,44px);box-shadow:0 16px 40px rgba(15,23,42,.06)}.date{display:inline-flex;padding:7px 12px;border-radius:999px;background:rgba(148,163,184,.14);color:var(--sub);font-size:13px;font-weight:800}.title{font-size:clamp(30px,5vw,48px);line-height:1.18;margin:18px 0 18px}.main-image{width:100%;max-height:520px;object-fit:cover;border-radius:20px;margin:18px 0 24px;background:#e5e7eb}.body{font-size:17px;line-height:2;white-space:pre-line}.back{display:inline-flex;margin-bottom:18px;color:var(--sub);text-decoration:none;font-weight:800}.back:hover{color:var(--primary)}
+</style>
+{% if homepage.custom_css %}<style>{{ homepage.custom_css|safe }}</style>{% endif %}
+</head>
+<body>
+  <main class="wrap">
+    <a class="back" href="{{ news_back_url }}#news">← お知らせ一覧へ戻る</a>
+    <article class="article">
+      {% if news_item.date %}<div class="date">{{ news_item.date }}</div>{% endif %}
+      <h1 class="title">{{ news_item.title }}</h1>
+      {% if news_image_url %}<img class="main-image" src="{{ news_image_url }}" alt="{{ news_item.title }}">{% endif %}
+      <div class="body">{{ news_item.body or news_item.description or '' }}</div>
+    </article>
+  </main>
+</body>
+</html>

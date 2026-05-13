@@ -241,9 +241,17 @@
         const url = await askImage();
         if (url === null) return;
         item.url = url;
-        el.src = url || '';
-        markDirty();
-        showToast('画像を反映しました。');
+        item.image_url = url;
+        if (el.tagName === 'IMG') {
+          el.src = url || '';
+          markDirty();
+          await save();
+          showToast('画像を反映しました。');
+        } else {
+          markDirty();
+          await save();
+          location.reload();
+        }
       } catch (err) {
         showToast(err.message, true);
       }
@@ -309,12 +317,10 @@
       }
       if (action === 'edit') {
         const item = sec.items[idx];
-        const keys = sec.section_type === 'news' ? ['date', 'title', 'body', 'image_url'] : Object.keys(item);
-        keys.forEach((key) => {
+        Object.keys(item).forEach((key) => {
           const next = prompt(`${key} を入力`, item[key] || '');
           if (next !== null) item[key] = next.trim();
         });
-        if (sec.section_type === 'news') item.description = item.body || '';
         markDirty();
         await save();
         location.reload();
@@ -324,17 +330,19 @@
         try {
           const url = await askImage();
           if (url === null) return;
-          if (sec.section_type === 'news') {
-            item.image_url = url;
+          item.url = url;
+          item.image_url = url;
+          const img = card.querySelector('img');
+          if (img) {
+            img.src = url;
+            markDirty();
+            await save();
+            showToast('画像を反映しました。');
+          } else {
             markDirty();
             await save();
             location.reload();
-            return;
           }
-          else item.url = url;
-          const img = card.querySelector('img');
-          if (img) img.src = url;
-          markDirty();
         } catch (err) {
           showToast(err.message, true);
         }
@@ -350,7 +358,7 @@
       let item;
       if (sec.section_type === 'menu') item = { title: '新しいメニュー', price: '¥0', description: '説明を入力' };
       else if (sec.section_type === 'gallery') item = { label: '写真', url: '' };
-      else if (sec.section_type === 'news') item = { date: new Date().toISOString().slice(0, 10), title: 'お知らせを入力', body: '本文を入力', image_url: '' };
+      else if (sec.section_type === 'news') item = { date: new Date().toISOString().slice(0, 10), title: 'お知らせを入力', body: '', image_url: '', url: '' };
       else item = { title: 'タイトル', description: '説明を入力' };
       sec.items.push(item);
       markDirty();
