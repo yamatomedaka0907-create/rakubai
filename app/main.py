@@ -8117,24 +8117,30 @@ def _merge_sample_with_existing_homepage(shop_id: str, sample_settings: dict, sa
     existing_homepage = get_shop_homepage_settings(shop_id) or {}
     existing_sections = get_shop_homepage_sections(shop_id)
 
+    # サンプル変更時は「見た目・並び・構成」はサンプルを採用し、
+    # 店舗ごとに入力済みの文言・画像・リンク・店舗情報は保持する。
     preserve_setting_keys = [
         "site_title", "hero_title", "hero_subtitle", "about_text", "menu_intro",
         "menu_items", "gallery_images", "feature_items", "news_items", "access_info",
         "reserve_button_label", "reserve_button_url", "public_path", "logo_image_url",
-        "hero_image_url", "hero_align",
+        "hero_image_url",
     ]
     merged_settings = dict(sample_settings)
     for key in preserve_setting_keys:
         if key in merged_settings:
             merged_settings[key] = _keep_existing_value(existing_homepage, key, merged_settings[key])
 
-    # 色・背景・フォントは選んだサンプルに合わせる。ただし独自CSS本文は残し、レイアウト印だけ差し替える。
+    # custom_cssは古いサンプルのレイアウト指定を残すと前回配置が残るため、
+    # 選択したサンプルのレイアウト印だけに差し替える。
     merged_settings["custom_css"] = _set_sample_layout_marker(
-        str(existing_homepage.get("custom_css") or ""),
+        "",
         str(sample_settings.get("sample_layout_key") or "default"),
     )
     merged_settings.pop("sample_layout_key", None)
 
+    preserve_section_content_keys = [
+        "title", "subtitle", "body_text", "image_url", "button_label", "button_url", "items",
+    ]
     used_existing_ids: set[int] = set()
     merged_sections: list[dict] = []
     for sample_section in sample_sections:
@@ -8151,19 +8157,9 @@ def _merge_sample_with_existing_homepage(shop_id: str, sample_settings: dict, sa
             used_existing_ids.add(int(existing.get("id") or 0))
         merged_section = dict(sample_section)
         if existing:
-            for key in ["title", "subtitle", "body_text", "image_url", "button_label", "button_url", "items", "is_visible"]:
+            for key in preserve_section_content_keys:
                 merged_section[key] = _keep_existing_value(existing, key, merged_section.get(key))
         merged_sections.append(merged_section)
-
-    # ユーザーが追加した独自セクションは末尾に残す。
-    next_sort = (max([int(section.get("sort_order") or 0) for section in merged_sections] or [0]) + 10)
-    for existing in existing_sections:
-        if int(existing.get("id") or 0) in used_existing_ids:
-            continue
-        preserved = {k: existing.get(k) for k in ["section_type", "title", "subtitle", "body_text", "image_url", "button_label", "button_url", "items", "is_visible"]}
-        preserved["sort_order"] = next_sort
-        next_sort += 10
-        merged_sections.append(preserved)
 
     return merged_settings, merged_sections
 
