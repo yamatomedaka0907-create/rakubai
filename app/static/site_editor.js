@@ -309,10 +309,12 @@
       }
       if (action === 'edit') {
         const item = sec.items[idx];
-        Object.keys(item).forEach((key) => {
+        const keys = sec.section_type === 'news' ? ['date', 'title', 'body', 'image_url'] : Object.keys(item);
+        keys.forEach((key) => {
           const next = prompt(`${key} を入力`, item[key] || '');
           if (next !== null) item[key] = next.trim();
         });
+        if (sec.section_type === 'news') item.description = item.body || '';
         markDirty();
         await save();
         location.reload();
@@ -322,7 +324,8 @@
         try {
           const url = await askImage();
           if (url === null) return;
-          item.url = url;
+          if (sec.section_type === 'news') item.image_url = url;
+          else item.url = url;
           const img = card.querySelector('img');
           if (img) img.src = url;
           markDirty();

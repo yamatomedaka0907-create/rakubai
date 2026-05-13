@@ -344,7 +344,7 @@ body{padding-top:72px}.editable{outline:1px dashed transparent;outline-offset:4p
           <div class="grid-3">
             {% for item in section['items'] %}
             <div class="card-lite news-card" data-item-index="{{ loop.index0 }}">
-              {% if edit_mode %}<div class="item-actions"><button type="button" data-item-action="edit">項目編集</button><button type="button" data-item-action="up">↑</button><button type="button" data-item-action="down">↓</button><button type="button" data-item-action="delete">削除</button></div>{% endif %}
+              {% if edit_mode %}<div class="item-actions"><button type="button" data-item-action="edit">項目編集</button><button type="button" data-item-action="image">画像</button><button type="button" data-item-action="up">↑</button><button type="button" data-item-action="down">↓</button><button type="button" data-item-action="delete">削除</button></div>{% endif %}
               <strong class="{% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-item-field="date"{% endif %}>{{ item.date }}</strong>
               {% if edit_mode %}<div class="editable" contenteditable="true" data-item-field="title">{{ item.title }}</div>{% else %}<a href="{{ news_base_path }}/news/{{ loop.index0 }}"><div>{{ item.title }}</div></a>{% endif %}
             </div>
