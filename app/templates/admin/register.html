@@ -95,12 +95,13 @@
           <h1>{{ shop.shop_name }}</h1>
           <p class="lead">ログイン機能は持たせず、スタッフ名と対応メニューだけを登録します。</p>
 
-          <form method="post" action="/admin/register/{{ shop_id }}">
+          <form method="post" action="/admin/register/{{ shop_id }}" enctype="multipart/form-data">
             <label>スタッフ名
               <input type="text" name="name" placeholder="例: 山田 花子" required>
             </label>
-            <label>顔写真URL
-              <input type="url" name="photo_url" placeholder="https://example.com/staff.jpg">
+            <label>顔写真をアップロードまたは撮影
+              <input type="file" name="photo" accept="image/*">
+              <div class="upload-choice-note">スマホでは撮影または写真ライブラリから選択できます。</div>
             </label>
             <label>デフォルト画像
               <select name="gender">

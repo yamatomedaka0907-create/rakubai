@@ -6735,6 +6735,8 @@ def admin_staff_register_submit(
     name: str = Form(...),
     menu_ids: list[str] = Form([]),
     holiday_dates: str = Form(""),
+    gender: str = Form('male'),
+    photo: UploadFile | None = File(None),
 ):
     redirect = require_store_login(request, shop_id)
     if redirect:
@@ -6764,11 +6766,17 @@ def admin_staff_register_submit(
     staff_limit = _get_staff_limit_for_subscription(subscription)
     if staff_limit is not None and len(staff_list) >= int(staff_limit):
         return RedirectResponse(f"/admin/{normalized_shop_id}/staff-info?error=現在のプランではスタッフは{staff_limit}人までです。", status_code=303)
+    default_avatar = _normalize_staff_default_avatar(gender)
+    next_staff_id = len(staff_list) + 1
+    photo_url = ''
+    if photo is not None and str(photo.filename or '').strip():
+        photo_url = _save_staff_photo_file(normalized_shop_id, next_staff_id, photo)
+
     staff_list.append({
         "name": staff_name,
         "menu_ids": normalized_menu_ids,
-        "photo_url": '',
-        "default_avatar": 'male',
+        "photo_url": photo_url,
+        "default_avatar": default_avatar,
     })
     update_shop_staff_list(normalized_shop_id, staff_list)
     return RedirectResponse(f"/admin/{normalized_shop_id}/staff-info?saved=スタッフを登録しました。", status_code=303)
