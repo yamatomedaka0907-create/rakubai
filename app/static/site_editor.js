@@ -35,6 +35,29 @@
   const sectionEl = (sectionId) => document.querySelector(`[data-section-id="${sectionId}"]`);
   const normalizeText = (value) => (value || '').replace(/\u00a0/g, ' ').trim();
 
+  const syncEditableState = () => {
+    document.querySelectorAll('[data-homepage-field]').forEach((el) => {
+      const field = el.dataset.homepageField;
+      if (!field || el.dataset.readonly === 'true') return;
+      state.homepage[field] = normalizeText(el.innerText);
+    });
+    document.querySelectorAll('[data-section-field]').forEach((el) => {
+      const sectionNode = el.closest('[data-section-id]');
+      const section = sectionNode ? findSection(sectionNode.dataset.sectionId) : null;
+      if (!section) return;
+      section[el.dataset.sectionField] = normalizeText(el.innerText);
+    });
+    document.querySelectorAll('[data-item-field]').forEach((el) => {
+      const wrapper = el.closest('[data-item-index]');
+      const sectionNode = el.closest('[data-section-id]');
+      const section = sectionNode ? findSection(sectionNode.dataset.sectionId) : null;
+      if (!wrapper || !section) return;
+      const item = section.items[Number(wrapper.dataset.itemIndex)];
+      if (!item) return;
+      item[el.dataset.itemField] = normalizeText(el.innerText);
+    });
+  };
+
   const applyManagedCss = () => {
     let styleEl = document.getElementById('editor-managed-styles');
     if (!styleEl) {
@@ -316,8 +339,16 @@
         return;
       }
       if (action === 'edit') {
+        syncEditableState();
         const item = sec.items[idx];
-        Object.keys(item).forEach((key) => {
+        const editableKeysByType = {
+          menu: ['title', 'price', 'description'],
+          gallery: ['label'],
+          news: ['date', 'title', 'body'],
+          features: ['title', 'description'],
+        };
+        const editableKeys = editableKeysByType[sec.section_type] || ['title', 'description'];
+        editableKeys.forEach((key) => {
           const next = prompt(`${key} を入力`, item[key] || '');
           if (next !== null) item[key] = next.trim();
         });
@@ -456,6 +487,7 @@
   };
 
   const save = async () => {
+    syncEditableState();
     const payload = {
       homepage: state.homepage,
       sections: state.sections.map((s, index) => ({ ...s, sort_order: (index + 1) * 10 })),
