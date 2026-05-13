@@ -429,18 +429,6 @@ def handle_line_complete_booking_message(shop_id: str, user_id: str, message_tex
 def features_page(request: Request):
     return templates.TemplateResponse("features.html", {"request": request})
 
-
-
-@app.get("/features/{slug}", response_class=HTMLResponse)
-def feature_detail_page(slug: str, request: Request):
-    template_path = f"features/{slug}.html"
-    template_file = Path("app/templates") / template_path
-
-    if not template_file.exists():
-        raise HTTPException(status_code=404, detail="見つかりません")
-
-    return templates.TemplateResponse(template_path, {"request": request})
-
 @app.get("/line-test")
 def line_test(shop_id: str = "yamato", user_id: str = ""):
     settings = get_shop_line_settings(shop_id)
@@ -2745,12 +2733,11 @@ def _build_public_week_availability_matrix(*, shop: dict, reservations: list[dic
         })
 
     reservations_by_date: dict[tuple[str, str], list[dict]] = {}
-    if selected_staff_id:
-        for item in active_reservations:
-            if str(item.get('staff_id') or '') != str(selected_staff_id):
-                continue
-            key = (str(item.get('reservation_date') or ''), str(item.get('staff_id') or ''))
-            reservations_by_date.setdefault(key, []).append(item)
+    for item in active_reservations:
+        if selected_staff_id and str(item.get('staff_id') or '') != str(selected_staff_id):
+            continue
+        key = (str(item.get('reservation_date') or ''), str(item.get('staff_id') or ''))
+        reservations_by_date.setdefault(key, []).append(item)
 
     weekly_rows: list[dict] = []
     for slot in time_slots:
@@ -2760,14 +2747,17 @@ def _build_public_week_availability_matrix(*, shop: dict, reservations: list[dic
         for day in week_days:
             is_available = False
             is_closed = bool(day['is_holiday'])
-            if selected_staff_id and selected_menu and not is_closed:
+            if selected_menu and not is_closed:
                 slot_is_past = day['date'] < today_obj.isoformat() or (day['date'] == today_obj.isoformat() and start_dt.time() <= now_dt.time())
-                day_reservations = reservations_by_date.get((day['date'], str(selected_staff_id)), [])
-                slot_is_conflict = any(
-                    start_dt < datetime.strptime(str(r.get('end_time')), '%H:%M') and end_dt > datetime.strptime(str(r.get('start_time')), '%H:%M')
-                    for r in day_reservations
-                )
-                is_available = not slot_is_past and not slot_is_conflict
+                if selected_staff_id:
+                    day_reservations = reservations_by_date.get((day['date'], str(selected_staff_id)), [])
+                    slot_is_conflict = any(
+                        start_dt < datetime.strptime(str(r.get('end_time')), '%H:%M') and end_dt > datetime.strptime(str(r.get('start_time')), '%H:%M')
+                        for r in day_reservations
+                    )
+                    is_available = not slot_is_past and not slot_is_conflict
+                else:
+                    is_available = (not slot_is_past) and (_find_available_staff_for_public_reservation(shop, active_reservations, selected_menu, day['date'], slot) is not None)
             symbol = '休' if is_closed else ('◎' if is_available else '×')
             cell_class = 'is-holiday' if is_closed else ('is-open' if is_available else 'is-booked')
             cells.append({
@@ -2782,6 +2772,47 @@ def _build_public_week_availability_matrix(*, shop: dict, reservations: list[dic
         weekly_rows.append({'time': slot, 'cells': cells})
 
     return week_days, time_slots, weekly_rows
+
+
+
+def _find_available_staff_for_public_reservation(shop: dict, reservations: list[dict], menu: dict, reservation_date: str, start_time: str) -> dict | None:
+    try:
+        start_dt = datetime.strptime(str(start_time), '%H:%M')
+    except ValueError:
+        return None
+    duration = int((menu or {}).get('duration') or 60)
+    end_dt = start_dt + timedelta(minutes=duration)
+    reservation_day = _safe_parse_date(str(reservation_date), date.today())
+    if _is_shop_holiday(shop, reservation_day):
+        return None
+
+    candidates = []
+    for staff in shop.get('staff_list', []) or []:
+        if not _staff_allows_menu(staff, (menu or {}).get('id')):
+            continue
+        if _is_staff_holiday(staff, reservation_day):
+            continue
+        staff_id_text = str(staff.get('id') or '').strip()
+        if not staff_id_text:
+            continue
+        staff_reservations = [
+            item for item in reservations
+            if str(item.get('status') or '') != 'キャンセル'
+            and str(item.get('reservation_date') or '') == str(reservation_date)
+            and str(item.get('staff_id') or '').strip() == staff_id_text
+        ]
+        has_conflict = any(
+            start_dt < datetime.strptime(str(item.get('end_time')), '%H:%M')
+            and end_dt > datetime.strptime(str(item.get('start_time')), '%H:%M')
+            for item in staff_reservations
+        )
+        if not has_conflict:
+            candidates.append((len(staff_reservations), staff))
+
+    if not candidates:
+        return None
+    candidates.sort(key=lambda item: (item[0], int(item[1].get('id') or 0)))
+    return candidates[0][1]
 
 def _send_reservation_mail(*, to_email: str, shop: dict, reservation_date: str, start_time: str, reply_to_email: str = '') -> None:
     mail_settings = _get_mail_runtime_settings()
@@ -3173,23 +3204,28 @@ def build_shop_booking_context(shop_id: str, request: Request, error_message: st
 
     available_slots = []
     selected_slot = None
-    if selected_menu and selected_staff:
+    if selected_menu and (selected_staff or not selected_staff_id):
         duration = int(selected_menu.get('duration', 60) or 60)
         current_dt = datetime.now()
-        selected_reservations = [r for r in reservations if r.get('reservation_date') == selected_date and str(r.get('staff_id')) == str(selected_staff_id)]
+        selected_reservations = [r for r in reservations if r.get('reservation_date') == selected_date and str(r.get('staff_id')) == str(selected_staff_id)] if selected_staff_id else []
         selected_day_is_holiday = _is_shop_holiday(shop, selected_date_obj) or _is_staff_holiday(selected_staff, selected_date_obj)
         for start_time in _build_half_hour_slots(shop.get('business_hours')):
             start_dt = datetime.strptime(start_time, '%H:%M')
             end_dt = start_dt + timedelta(minutes=duration)
             slot_is_past = selected_date_obj < today or (selected_date_obj == today and start_dt.time() <= current_dt.time())
-            slot_is_conflict = any(
-                start_dt < datetime.strptime(str(r.get('end_time')), '%H:%M') and end_dt > datetime.strptime(str(r.get('start_time')), '%H:%M')
-                for r in selected_reservations
-            )
+            if selected_staff_id:
+                slot_is_conflict = any(
+                    start_dt < datetime.strptime(str(r.get('end_time')), '%H:%M') and end_dt > datetime.strptime(str(r.get('start_time')), '%H:%M')
+                    for r in selected_reservations
+                )
+                is_available = (not selected_day_is_holiday) and (not slot_is_past) and (not slot_is_conflict)
+            else:
+                slot_is_conflict = False
+                is_available = (not selected_day_is_holiday) and (not slot_is_past) and (_find_available_staff_for_public_reservation(shop, reservations, selected_menu, selected_date, start_time) is not None)
             slot = {
                 'start_time': start_time,
                 'end_time': end_dt.strftime('%H:%M'),
-                'is_available': (not selected_day_is_holiday) and (not slot_is_past) and (not slot_is_conflict),
+                'is_available': is_available,
                 'is_conflict': slot_is_conflict or selected_day_is_holiday,
             }
             if selected_start_time == start_time:
@@ -6093,7 +6129,7 @@ def admin_create_reservation(
     request: Request,
     shop_id: str,
     customer_id: int = Form(...),
-    staff_id: int = Form(...),
+    staff_id: str = Form(""),
     menu_id: int = Form(...),
     reservation_date: str = Form(...),
     start_time: str = Form(...),
@@ -6432,7 +6468,7 @@ def shop_confirm(
     phone: str = Form(""),
     email: str = Form(""),
     receive_email: str = Form("1"),
-    staff_id: int = Form(...),
+    staff_id: str = Form(""),
     menu_id: int = Form(...),
 ):
     shop = get_shop(shop_id)
@@ -6440,9 +6476,9 @@ def shop_confirm(
         raise HTTPException(status_code=404, detail="店舗が見つかりません")
     subscription = get_shop_subscription(shop_id) or {'status': 'active', 'plan_name': 'Free', 'show_ads': False}
     shop = _build_shop_with_visible_staff(shop, subscription)
-    staff = next((s for s in shop.get("staff_list", []) if int(s["id"]) == int(staff_id)), None)
+    staff = next((s for s in shop.get("staff_list", []) if str(s.get("id") or "") == str(staff_id or "")), None) if str(staff_id or "").strip() else None
     menu = next((m for m in shop.get("menus", []) if int(m["id"]) == int(menu_id)), None)
-    if not staff or not menu:
+    if not menu or (staff_id and not staff):
         ctx = build_shop_booking_context(shop_id, request, "スタッフまたはメニューが見つかりません。")
         return templates.TemplateResponse(
             request=request,
@@ -6450,7 +6486,7 @@ def shop_confirm(
             context=ctx,
             status_code=400,
         )
-    if not _staff_allows_menu(staff, menu_id):
+    if staff and not _staff_allows_menu(staff, menu_id):
         ctx = build_shop_booking_context(shop_id, request, "選択したスタッフではこのメニューを予約できません。")
         return templates.TemplateResponse(
             request=request,
@@ -6459,6 +6495,16 @@ def shop_confirm(
             status_code=400,
         )
     reservation_day = _safe_parse_date(reservation_date, date.today())
+    if not staff:
+        staff = _find_available_staff_for_public_reservation(shop, get_reservations(shop_id), menu, reservation_date, start_time)
+        if not staff:
+            ctx = build_shop_booking_context(shop_id, request, "この時間に予約できるスタッフがいません。別の時間を選んでください。")
+            return templates.TemplateResponse(
+                request=request,
+                name="shop/index.html",
+                context=ctx,
+                status_code=400,
+            )
     if _is_shop_holiday(shop, reservation_day) or _is_staff_holiday(staff, reservation_day):
         ctx = build_shop_booking_context(shop_id, request, "選択した日はこのスタッフの休日のため予約できません。")
         return templates.TemplateResponse(
@@ -6474,7 +6520,7 @@ def shop_confirm(
         "phone": phone,
         "email": email,
         "receive_email": 1 if receive_email == '1' else 0,
-        "staff_id": staff_id,
+        "staff_id": int(staff.get("id") or 0),
         "staff_name": staff["name"],
         "menu_id": menu_id,
         "menu_name": menu["name"],
@@ -6528,9 +6574,9 @@ def shop_reserve(
         raise HTTPException(status_code=404, detail="店舗が見つかりません")
     subscription = get_shop_subscription(shop_id) or {'status': 'active', 'plan_name': 'Free', 'show_ads': False}
     shop = _build_shop_with_visible_staff(shop, subscription)
-    staff = next((s for s in shop.get("staff_list", []) if int(s["id"]) == int(staff_id)), None)
+    staff = next((s for s in shop.get("staff_list", []) if str(s.get("id") or "") == str(staff_id or "")), None) if str(staff_id or "").strip() else None
     menu = next((m for m in shop.get("menus", []) if int(m["id"]) == int(menu_id)), None)
-    if not staff or not menu:
+    if not menu or (staff_id and not staff):
         ctx = build_shop_booking_context(shop_id, request, "スタッフまたはメニューが見つかりません。")
         return templates.TemplateResponse(
             request=request,
@@ -6538,7 +6584,7 @@ def shop_reserve(
             context=ctx,
             status_code=400,
         )
-    if not _staff_allows_menu(staff, menu_id):
+    if staff and not _staff_allows_menu(staff, menu_id):
         ctx = build_shop_booking_context(shop_id, request, "選択したスタッフではこのメニューを予約できません。")
         return templates.TemplateResponse(
             request=request,
@@ -6547,6 +6593,16 @@ def shop_reserve(
             status_code=400,
         )
     reservation_day = _safe_parse_date(reservation_date, date.today())
+    if not staff:
+        staff = _find_available_staff_for_public_reservation(shop, get_reservations(shop_id), menu, reservation_date, start_time)
+        if not staff:
+            ctx = build_shop_booking_context(shop_id, request, "この時間に予約できるスタッフがいません。別の時間を選んでください。")
+            return templates.TemplateResponse(
+                request=request,
+                name="shop/index.html",
+                context=ctx,
+                status_code=400,
+            )
     if _is_shop_holiday(shop, reservation_day) or _is_staff_holiday(staff, reservation_day):
         ctx = build_shop_booking_context(shop_id, request, "選択した日はこのスタッフの休日のため予約できません。")
         return templates.TemplateResponse(
@@ -6575,7 +6631,7 @@ def shop_reserve(
         customer_name=customer_name,
         customer_email=email,
         receive_email=1 if receive_email == '1' else 0,
-        staff_id=int(staff_id),
+        staff_id=int(staff.get("id") or 0),
         staff_name=staff["name"],
         menu_id=int(menu_id),
         menu_name=menu["name"],
