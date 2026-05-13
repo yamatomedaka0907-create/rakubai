@@ -131,67 +131,131 @@
       border-radius: 22px;
       box-shadow: 0 18px 36px rgba(15,23,42,.12);
     }
-    .screen-mock {
+    .device-mock {
       display: grid;
-      grid-template-columns: 150px 1fr;
+      grid-template-columns: minmax(0, 1fr) 132px;
+      gap: 14px;
+      align-items: center;
       min-height: 360px;
+    }
+    .pc-device {
+      display: grid;
+      grid-template-columns: 116px 1fr;
+      min-height: 308px;
       overflow: hidden;
       border-radius: 22px;
       background: #fff;
       box-shadow: 0 18px 36px rgba(15,23,42,.12);
     }
     .mock-sidebar {
-      padding: 22px 14px;
+      padding: 18px 12px;
       background: linear-gradient(180deg,#0f172a,#172336);
       color: #fff;
     }
     .mock-logo {
-      margin-bottom: 22px;
+      margin-bottom: 16px;
       color: var(--main);
-      font-size: 24px;
+      font-size: 21px;
+      line-height: 1.1;
       font-weight: 900;
     }
     .mock-menu {
-      height: 38px;
-      margin-bottom: 10px;
-      border-radius: 12px;
-      background: rgba(255,255,255,.10);
-    }
-    .mock-menu.active {
       display: flex;
       align-items: center;
-      padding: 0 12px;
-      background: var(--main);
-      font-size: 12px;
+      height: 28px;
+      margin-bottom: 8px;
+      padding: 0 10px;
+      border-radius: 10px;
+      background: rgba(255,255,255,.10);
+      font-size: 10px;
       font-weight: 900;
+      color: rgba(255,255,255,.78);
     }
-    .mock-main { padding: 22px; }
+    .mock-menu.active {
+      color: #fff;
+      background: linear-gradient(135deg, var(--main), var(--green));
+    }
+    .pc-main { padding: 18px; }
     .mock-hero {
-      min-height: 110px;
-      padding: 22px;
-      border-radius: 22px;
+      min-height: 84px;
+      padding: 18px;
+      border-radius: 20px;
       color: #fff;
       background: linear-gradient(135deg,#ef6f9a,#22b8a7);
     }
-    .mock-hero strong { display: block; font-size: 26px; line-height: 1.3; }
-    .mock-hero span { display: block; margin-top: 10px; font-size: 13px; opacity: .9; }
-    .mock-search {
-      height: 58px;
-      margin-top: 18px;
-      border-radius: 16px;
-      border: 1px solid #e8eef4;
-      background: #fff;
-    }
-    .mock-table {
+    .mock-hero strong { display: block; font-size: 22px; line-height: 1.25; }
+    .mock-hero span { display: block; margin-top: 8px; font-size: 11px; opacity: .9; }
+    .staff-grid {
       display: grid;
       grid-template-columns: repeat(3,1fr);
       gap: 10px;
-      margin-top: 18px;
+      margin-top: 14px;
     }
-    .mock-table span {
-      height: 46px;
-      border-radius: 12px;
-      background: #f5f8fb;
+    .staff-card {
+      min-height: 76px;
+      padding: 11px;
+      border-radius: 14px;
+      border: 1px solid #e8eef4;
+      background: #fff;
+    }
+    .avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      background: linear-gradient(135deg,#cfe8ff,#2f8cff);
+    }
+    .avatar.pink { background: linear-gradient(135deg,#ffd4e6,#ef5e9b); }
+    .bar {
+      height: 8px;
+      margin-top: 9px;
+      border-radius: 999px;
+      background: #edf2f7;
+    }
+    .bar.short { width: 72%; }
+    .phone-device {
+      min-height: 316px;
+      padding: 8px;
+      border-radius: 28px;
+      background: #111827;
+      box-shadow: 0 18px 36px rgba(15,23,42,.18);
+    }
+    .phone-screen {
+      overflow: hidden;
+      height: 300px;
+      border-radius: 22px;
+      background: #fff;
+    }
+    .phone-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 38px;
+      padding: 0 12px;
+      font-size: 11px;
+      font-weight: 900;
+      color: var(--main);
+    }
+    .phone-hero {
+      padding: 14px;
+      color: #fff;
+      background: linear-gradient(135deg,#ef6f9a,#22b8a7);
+    }
+    .phone-hero strong { display: block; font-size: 15px; }
+    .phone-list { padding: 12px; }
+    .phone-staff {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 0;
+      border-bottom: 1px solid #eef2f7;
+    }
+    .phone-staff .avatar { width: 24px; height: 24px; }
+    .phone-staff span {
+      display: block;
+      height: 8px;
+      width: 62px;
+      border-radius: 999px;
+      background: #edf2f7;
     }
     .section { margin-top: 70px; }
     .section-head {
@@ -318,8 +382,8 @@
       .btn { width: 100%; }
       .point-grid { grid-template-columns: 1fr; }
       .point-card { min-height: auto; }
-      .screen-mock { grid-template-columns: 1fr; }
-      .mock-sidebar { display: none; }
+      .device-mock { grid-template-columns: 1fr; }
+      .phone-device { display: none; }
     }
   </style>
 </head>
@@ -356,24 +420,42 @@
         </div>
 
         <div class="mockup-card">
-          <div class="screen-mock">
-            <div class="mock-sidebar">
-              <div class="mock-logo">らくばい</div>
-              <div class="mock-menu active">スタッフ登録</div>
-              <div class="mock-menu"></div>
-              <div class="mock-menu"></div>
-              <div class="mock-menu"></div>
-            </div>
-            <div class="mock-main">
-              <div class="mock-hero">
-                <strong>スタッフ登録</strong>
-                <span>スタッフ情報の登録・管理を簡単に行えます。</span>
+          <div class="device-mock" aria-label="らくばいのマルチデバイス対応イメージ">
+            <div class="pc-device">
+              <div class="mock-sidebar">
+                <div class="mock-logo">らくばい</div>
+                <div class="mock-menu">管理トップ</div>
+                <div class="mock-menu active">スタッフ登録</div>
+                <div class="mock-menu">予約管理</div>
+                <div class="mock-menu">顧客管理</div>
+                <div class="mock-menu">店舗情報</div>
               </div>
-              <div class="mock-search"></div>
-              <div class="mock-table">
-                <span></span><span></span><span></span>
-                <span></span><span></span><span></span>
-                <span></span><span></span><span></span>
+              <div class="pc-main">
+                <div class="mock-hero">
+                  <strong>スタッフ登録</strong>
+                  <span>PCでもスマホでも、スタッフ情報をかんたん管理。</span>
+                </div>
+                <div class="staff-grid">
+                  <div class="staff-card"><div class="avatar"></div><div class="bar"></div><div class="bar short"></div></div>
+                  <div class="staff-card"><div class="avatar pink"></div><div class="bar"></div><div class="bar short"></div></div>
+                  <div class="staff-card"><div class="avatar"></div><div class="bar"></div><div class="bar short"></div></div>
+                  <div class="staff-card"><div class="avatar pink"></div><div class="bar"></div><div class="bar short"></div></div>
+                  <div class="staff-card"><div class="avatar"></div><div class="bar"></div><div class="bar short"></div></div>
+                  <div class="staff-card"><div class="avatar pink"></div><div class="bar"></div><div class="bar short"></div></div>
+                </div>
+              </div>
+            </div>
+            <div class="phone-device">
+              <div class="phone-screen">
+                <div class="phone-top"><span>☰</span><span>らくばい</span><span>○</span></div>
+                <div class="phone-hero"><strong>スタッフ登録</strong></div>
+                <div class="phone-list">
+                  <div class="phone-staff"><div class="avatar"></div><span></span></div>
+                  <div class="phone-staff"><div class="avatar pink"></div><span></span></div>
+                  <div class="phone-staff"><div class="avatar"></div><span></span></div>
+                  <div class="phone-staff"><div class="avatar pink"></div><span></span></div>
+                  <div class="phone-staff"><div class="avatar"></div><span></span></div>
+                </div>
               </div>
             </div>
           </div>
