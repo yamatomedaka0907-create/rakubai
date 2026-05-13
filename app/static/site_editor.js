@@ -341,7 +341,7 @@
       let item;
       if (sec.section_type === 'menu') item = { title: '新しいメニュー', price: '¥0', description: '説明を入力' };
       else if (sec.section_type === 'gallery') item = { label: '写真', url: '' };
-      else if (sec.section_type === 'news') item = { date: new Date().toISOString().slice(0, 10), title: 'お知らせを入力' };
+      else if (sec.section_type === 'news') item = { date: new Date().toISOString().slice(0, 10), title: 'お知らせを入力', description: '本文を入力', url: '' };
       else item = { title: 'タイトル', description: '説明を入力' };
       sec.items.push(item);
       markDirty();

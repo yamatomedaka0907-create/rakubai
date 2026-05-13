@@ -8005,9 +8005,22 @@ async def _homepage_items_from_form(shop_id: str, section_type: str, form) -> li
                     url = uploaded_url
             items.append({'label': labels[idx] if idx < len(labels) else '', 'url': url})
     elif section_type == 'news':
-        dates, titles = values('item_date'), values('item_title')
-        for idx in range(max(len(dates), len(titles))):
-            items.append({'date': dates[idx] if idx < len(dates) else '', 'title': titles[idx] if idx < len(titles) else ''})
+        dates, titles, descs, urls = values('item_date'), values('item_title'), values('item_description'), values('item_url')
+        files = form.getlist('item_file')
+        count = max(len(dates), len(titles), len(descs), len(urls), len(files))
+        for idx in range(count):
+            url = urls[idx] if idx < len(urls) else ''
+            upload = files[idx] if idx < len(files) else None
+            if hasattr(upload, 'filename') and hasattr(upload, 'read') and (upload.filename or '').strip():
+                uploaded_url = await _save_homepage_form_upload(shop_id, upload, 'news')
+                if uploaded_url:
+                    url = uploaded_url
+            items.append({
+                'date': dates[idx] if idx < len(dates) else '',
+                'title': titles[idx] if idx < len(titles) else '',
+                'description': descs[idx] if idx < len(descs) else '',
+                'url': url,
+            })
     else:
         titles, descs = values('item_title'), values('item_description')
         for idx in range(max(len(titles), len(descs))):
