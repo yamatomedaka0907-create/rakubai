@@ -8005,9 +8005,22 @@ async def _homepage_items_from_form(shop_id: str, section_type: str, form) -> li
                     url = uploaded_url
             items.append({'label': labels[idx] if idx < len(labels) else '', 'url': url})
     elif section_type == 'news':
-        dates, titles, links = values('item_date'), values('item_title'), values('item_link')
-        for idx in range(max(len(dates), len(titles), len(links))):
-            items.append({'date': dates[idx] if idx < len(dates) else '', 'title': titles[idx] if idx < len(titles) else '', 'link': links[idx] if idx < len(links) else ''})
+        dates, titles, bodies, image_urls = values('item_date'), values('item_title'), values('item_body'), values('item_image_url')
+        files = form.getlist('item_file')
+        count = max(len(dates), len(titles), len(bodies), len(image_urls), len(files))
+        for idx in range(count):
+            image_url = image_urls[idx] if idx < len(image_urls) else ''
+            upload = files[idx] if idx < len(files) else None
+            if hasattr(upload, 'filename') and hasattr(upload, 'read') and (upload.filename or '').strip():
+                uploaded_url = await _save_homepage_form_upload(shop_id, upload, 'news')
+                if uploaded_url:
+                    image_url = uploaded_url
+            items.append({
+                'date': dates[idx] if idx < len(dates) else '',
+                'title': titles[idx] if idx < len(titles) else '',
+                'body': bodies[idx] if idx < len(bodies) else '',
+                'image_url': image_url,
+            })
     else:
         titles, descs = values('item_title'), values('item_description')
         for idx in range(max(len(titles), len(descs))):
@@ -8160,6 +8173,31 @@ def admin_website_section_delete_from_form(request: Request, shop_id: str, secti
     return RedirectResponse(f"/admin/{shop_id}/website?saved=セクションを削除しました", status_code=303)
 
 
+def _find_homepage_news_item(shop_id: str, news_index: int) -> tuple[dict, dict]:
+    sections = get_shop_homepage_sections(shop_id)
+    news_section = next((section for section in sections if str(section.get("section_type") or "") == "news" and int(section.get("is_visible", 1) or 0)), None)
+    if not news_section:
+        raise HTTPException(status_code=404, detail="お知らせが見つかりません")
+    items = news_section.get("items") or []
+    if news_index < 0 or news_index >= len(items):
+        raise HTTPException(status_code=404, detail="お知らせが見つかりません")
+    item = items[news_index] or {}
+    if not str(item.get("title") or "").strip():
+        raise HTTPException(status_code=404, detail="お知らせが見つかりません")
+    return news_section, item
+
+
+def _render_homepage_news_detail(request: Request, shop_id: str, news_index: int):
+    context = _build_site_home_context(request, shop_id, edit_mode=False)
+    news_section, news_item = _find_homepage_news_item(shop_id, news_index)
+    context.update({
+        "news_section": news_section,
+        "news_item": news_item,
+        "news_index": news_index,
+    })
+    return templates.TemplateResponse(request=request, name="site/news_detail.html", context=context)
+
+
 @app.get("/site/{shop_id}", response_class=HTMLResponse)
 def site_page(request: Request, shop_id: str):
     return templates.TemplateResponse(request=request, name="site/home.html", context=_build_site_home_context(request, shop_id, edit_mode=False))
@@ -8171,6 +8209,19 @@ def public_homepage(request: Request, public_path: str):
     if not homepage:
         raise HTTPException(status_code=404, detail="公開ページが見つかりません")
     return site_page(request, homepage["shop_id"])
+
+
+@app.get("/site/{shop_id}/news/{news_index}", response_class=HTMLResponse)
+def site_news_detail_page(request: Request, shop_id: str, news_index: int):
+    return _render_homepage_news_detail(request, shop_id, news_index)
+
+
+@app.get("/p/{public_path}/news/{news_index}", response_class=HTMLResponse)
+def public_news_detail_page(request: Request, public_path: str, news_index: int):
+    homepage = get_shop_homepage_by_public_path(public_path)
+    if not homepage:
+        raise HTTPException(status_code=404, detail="公開ページが見つかりません")
+    return _render_homepage_news_detail(request, homepage["shop_id"], news_index)
 
 
 def _current_store_sample_shop_id(request: Request) -> str:
@@ -8412,9 +8463,9 @@ def _sample_to_homepage_payload(shop: dict, sample: dict) -> tuple[dict, list[di
     news_items = []
     for item in copy.get("news") or []:
         if isinstance(item, (list, tuple)) and len(item) >= 2:
-            news_items.append({"date": str(item[0] or ""), "title": str(item[1] or "")})
+            news_items.append({"date": str(item[0] or ""), "title": str(item[1] or ""), "body": "", "image_url": ""})
         elif isinstance(item, dict):
-            news_items.append({"date": str(item.get("date") or ""), "title": str(item.get("title") or "")})
+            news_items.append({"date": str(item.get("date") or ""), "title": str(item.get("title") or ""), "body": str(item.get("body") or item.get("description") or ""), "image_url": str(item.get("image_url") or item.get("url") or "")})
     gallery_items = []
     for index, url in enumerate(assets[:3], start=1):
         gallery_items.append({"label": f"ギャラリー{index}", "url": str(url or "")})
