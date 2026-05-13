@@ -250,8 +250,8 @@
             <input type="hidden" name="week_start" value="{{ week_start }}">
             <div class="grid-2">
               <label>担当スタッフ
-                <select name="staff_id" onchange="document.getElementById('finder-form').submit()">
-                  <option value="" {% if not selected_staff_id %}selected{% endif %}>指名なし（空いているスタッフをご案内）</option>
+                <select name="staff_id" required onchange="document.getElementById('finder-form').submit()">
+                  <option value="">スタッフを選んでください</option>
                   {% for staff in staff_list %}
                   <option value="{{ staff.id }}" {% if selected_staff_id|string == staff.id|string %}selected{% endif %}>{{ staff.name }}</option>
                   {% endfor %}
@@ -267,14 +267,10 @@
               </label>
             </div>
             <div class="summary-box">
-              {% if selected_menu %}
-                {% if selected_staff %}
-                  <span style="display:inline-flex; align-items:center; gap:10px; flex-wrap:wrap;"><img src="{{ selected_staff.avatar_url }}" alt="{{ selected_staff.name }}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid rgba(148,163,184,.28);background:#fff;"><strong>{{ selected_staff.name }}</strong></span> / <strong>{{ selected_menu.name }}</strong> / {{ selected_menu.duration }}分 / ¥{{ selected_menu.price }}
-                {% else %}
-                  <strong>指名なし</strong> / <strong>{{ selected_menu.name }}</strong> / {{ selected_menu.duration }}分 / ¥{{ selected_menu.price }}
-                {% endif %}
+              {% if selected_staff and selected_menu %}
+                <span style="display:inline-flex; align-items:center; gap:10px; flex-wrap:wrap;"><img src="{{ selected_staff.avatar_url }}" alt="{{ selected_staff.name }}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid rgba(148,163,184,.28);background:#fff;"><strong>{{ selected_staff.name }}</strong></span> / <strong>{{ selected_menu.name }}</strong> / {{ selected_menu.duration }}分 / ¥{{ selected_menu.price }}
               {% else %}
-                メニューを選ぶと、週間表に空き状況が表示されます。
+                スタッフとメニューを選ぶと、週間表に空き状況が表示されます。
               {% endif %}
             </div>
           </form>
@@ -321,7 +317,7 @@
               </tbody>
             </table>
           </div>
-          <div class="summary-box">× は予約済み・受付終了です。休 は定休日です。{{ selected_menu and '◎ を押すとその日付と時間が選択されます。' or '先にメニューを選んでください。' }}</div>
+          <div class="summary-box">× は予約済み・受付終了です。休 は定休日です。{{ selected_staff and selected_menu and '◎ を押すとその日付と時間が選択されます。' or '先にスタッフとメニューを選んでください。' }}</div>
         </div>
 
         <div class="panel" id="customer-info">
@@ -351,8 +347,8 @@
           </div>
           {% endif %}
 
-          {% if not selected_menu %}
-            <div class="summary-box">先に左側でメニューを選んでください。スタッフは指名なしでも予約できます。</div>
+          {% if not selected_staff or not selected_menu %}
+            <div class="summary-box">先に左側でスタッフとメニューを選んでください。</div>
           {% elif not selected_start_time %}
             <div class="summary-box">左側の週間空き状況から ◎ を押すと、その時間を選んだままお客様情報入力へ進めます。</div>
           {% elif selected_slot and selected_slot.is_available %}
