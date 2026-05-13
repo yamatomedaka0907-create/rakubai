@@ -528,6 +528,8 @@
                 showToast('ヘッダー画像を反映しました。');
               } },
             { label: '文字位置を切替', run: async () => { state.homepage.hero_align = state.homepage.hero_align === 'center' ? 'left' : 'center'; markDirty(); await save(); location.reload(); } },
+            { label: 'タイトル文字色を変更', run: () => openColorPicker(getStyleValue('--hero-title-color', getStyleValue('--text', '#111827')), (color) => { upsertManagedCssBlock('hero-title-color', `.hero-title{color:${color} !important;}`); document.documentElement.style.setProperty('--hero-title-color', color); showToast('タイトル文字色を反映しました。'); }) },
+            { label: '説明文文字色を変更', run: () => openColorPicker(getStyleValue('--hero-subtitle-color', getStyleValue('--text', '#111827')), (color) => { upsertManagedCssBlock('hero-subtitle-color', `.hero-subtitle{color:${color} !important;}`); document.documentElement.style.setProperty('--hero-subtitle-color', color); showToast('説明文文字色を反映しました。'); }) },
             { label: 'ページ背景色を変更', run: () => openColorPicker(state.homepage.background_color || getStyleValue('--bg', '#f8fafc'), (color) => { state.homepage.background_color = color; applySettings(true); markDirty(); showToast('背景色を反映しました。'); }) },
           ]);
           return;
