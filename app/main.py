@@ -7769,12 +7769,25 @@ def _homepage_theme_context(shop: dict, homepage: dict) -> dict:
 
 
 def _extract_sample_layout_key(homepage: dict) -> str:
+    allowed_layouts = {"split", "editorial", "dark", "cards", "story"}
+    stored_key = str((homepage or {}).get("sample_layout_key") or "").strip().lower()
+    if stored_key in allowed_layouts:
+        return stored_key
+
     css = str((homepage or {}).get("custom_css") or "")
     match = re.search(r"/\*\s*rakubai_sample_layout:([^*\s]+)\s*\*/", css)
     if match:
         key = match.group(1).strip().lower()
-        if key in {"split", "editorial", "dark", "cards", "story"}:
+        if key in allowed_layouts:
             return key
+
+    sample_code = str((homepage or {}).get("sample_code") or "").strip()
+    if sample_code:
+        sample = next((item for item in get_all_samples() if str(item.get("code") or "") == sample_code), None)
+        if sample:
+            key = _sample_layout_key(sample)
+            if key in allowed_layouts:
+                return key
     return "default"
 
 def _build_site_home_context(request: Request, shop_id: str, *, edit_mode: bool = False) -> dict:
@@ -8077,11 +8090,13 @@ def _merge_sample_with_existing_homepage(shop_id: str, sample_settings: dict, sa
             merged_settings[key] = _keep_existing_value(existing_homepage, key, merged_settings[key])
 
     # 色・背景・フォントは選んだサンプルに合わせる。ただし独自CSS本文は残し、レイアウト印だけ差し替える。
+    selected_layout_key = str(sample_settings.get("sample_layout_key") or "default")
     merged_settings["custom_css"] = _set_sample_layout_marker(
         str(existing_homepage.get("custom_css") or ""),
-        str(sample_settings.get("sample_layout_key") or "default"),
+        selected_layout_key,
     )
-    merged_settings.pop("sample_layout_key", None)
+    merged_settings["sample_layout_key"] = selected_layout_key
+    merged_settings["sample_code"] = str(sample_settings.get("sample_code") or "")
 
     used_existing_ids: set[int] = set()
     merged_sections: list[dict] = []
@@ -8152,6 +8167,7 @@ def _sample_to_homepage_payload(shop: dict, sample: dict) -> tuple[dict, list[di
     settings = {
         "template_id": 0,
         "sample_layout_key": _sample_layout_key(sample),
+        "sample_code": str(sample.get("code") or ""),
         "site_title": str(shop.get("shop_name") or sample.get("brand") or sample.get("name") or ""),
         "hero_title": hero_title,
         "hero_subtitle": hero_text,

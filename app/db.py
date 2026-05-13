@@ -481,6 +481,8 @@ def init_db() -> None:
         _ensure_column(conn, 'shop_homepage_settings', 'subtext_color', "subtext_color TEXT DEFAULT ''")
         _ensure_column(conn, 'shop_homepage_settings', 'font_family', "font_family TEXT DEFAULT ''")
         _ensure_column(conn, 'shop_homepage_settings', 'custom_css', "custom_css TEXT DEFAULT ''")
+        _ensure_column(conn, 'shop_homepage_settings', 'sample_code', "sample_code TEXT DEFAULT ''")
+        _ensure_column(conn, 'shop_homepage_settings', 'sample_layout_key', "sample_layout_key TEXT DEFAULT ''")
         conn.execute('CREATE INDEX IF NOT EXISTS idx_customers_shop_id ON customers(shop_id)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_customer_notes_shop_customer ON customer_notes(shop_id, customer_id, id)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_customer_photos_shop_customer ON customer_photos(shop_id, customer_id, id)')
@@ -769,6 +771,8 @@ def _deserialize_homepage_row(row: sqlite3.Row | None) -> dict[str, Any] | None:
     item.setdefault('subtext_color', '')
     item.setdefault('font_family', '')
     item.setdefault('custom_css', '')
+    item.setdefault('sample_code', '')
+    item.setdefault('sample_layout_key', '')
     return item
 
 
@@ -903,6 +907,8 @@ def get_shop_homepage_settings(shop_id: str) -> dict[str, Any] | None:
                 s.subtext_color,
                 s.font_family,
                 s.custom_css,
+                s.sample_code,
+                s.sample_layout_key,
                 s.updated_at
             FROM shop_homepage_settings s
             WHERE s.shop_id = ?
@@ -941,6 +947,8 @@ def upsert_shop_homepage_settings(
     subtext_color: str = '',
     font_family: str = '',
     custom_css: str = '',
+    sample_code: str = '',
+    sample_layout_key: str = '',
 ) -> None:
     public_path = (public_path or shop_id).strip().strip('/') or shop_id
     with get_connection() as conn:
@@ -951,9 +959,9 @@ def upsert_shop_homepage_settings(
                 menu_items_json, gallery_images_json, feature_items_json, news_items_json,
                 access_info, reserve_button_label, reserve_button_url, public_path, is_published,
                 logo_image_url, hero_image_url, hero_align, primary_color, background_color, surface_color,
-                text_color, subtext_color, font_family, custom_css, updated_at
+                text_color, subtext_color, font_family, custom_css, sample_code, sample_layout_key, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(shop_id) DO UPDATE SET
                 template_id=excluded.template_id,
                 site_title=excluded.site_title,
@@ -980,6 +988,8 @@ def upsert_shop_homepage_settings(
                 subtext_color=excluded.subtext_color,
                 font_family=excluded.font_family,
                 custom_css=excluded.custom_css,
+                sample_code=excluded.sample_code,
+                sample_layout_key=excluded.sample_layout_key,
                 updated_at=CURRENT_TIMESTAMP
             ''',
             (
@@ -990,6 +1000,7 @@ def upsert_shop_homepage_settings(
                 reserve_button_url.strip(), public_path, int(bool(is_published)), logo_image_url.strip(),
                 hero_image_url.strip(), (hero_align or 'left').strip(), primary_color.strip(), background_color.strip(),
                 surface_color.strip(), text_color.strip(), subtext_color.strip(), font_family.strip(), custom_css.strip(),
+                sample_code.strip(), sample_layout_key.strip(),
             ),
         )
         conn.commit()
@@ -1027,6 +1038,8 @@ def get_shop_homepage_by_public_path(public_path: str) -> dict[str, Any] | None:
                 s.subtext_color,
                 s.font_family,
                 s.custom_css,
+                s.sample_code,
+                s.sample_layout_key,
                 s.updated_at
             FROM shop_homepage_settings s
             WHERE s.public_path = ? AND s.is_published = 1
@@ -1145,6 +1158,7 @@ def patch_shop_homepage_settings(shop_id: str, **fields) -> None:
         "access_info", "reserve_button_label", "reserve_button_url", "public_path", "is_published",
         "logo_image_url", "hero_image_url", "hero_align", "primary_color", "background_color",
         "surface_color", "text_color", "subtext_color", "font_family", "custom_css",
+        "sample_code", "sample_layout_key",
     }
     updates = {k: v for k, v in fields.items() if k in allowed}
     if not updates:
@@ -1178,6 +1192,8 @@ def patch_shop_homepage_settings(shop_id: str, **fields) -> None:
         subtext_color=str(merged.get("subtext_color") or ""),
         font_family=str(merged.get("font_family") or ""),
         custom_css=str(merged.get("custom_css") or ""),
+        sample_code=str(merged.get("sample_code") or ""),
+        sample_layout_key=str(merged.get("sample_layout_key") or ""),
     )
 
 
