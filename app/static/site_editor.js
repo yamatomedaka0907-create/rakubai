@@ -324,7 +324,13 @@
         try {
           const url = await askImage();
           if (url === null) return;
-          if (sec.section_type === 'news') item.image_url = url;
+          if (sec.section_type === 'news') {
+            item.image_url = url;
+            markDirty();
+            await save();
+            location.reload();
+            return;
+          }
           else item.url = url;
           const img = card.querySelector('img');
           if (img) img.src = url;
