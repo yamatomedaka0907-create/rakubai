@@ -7755,27 +7755,6 @@ def admin_chat_send_api(request: Request, shop_id: str, customer_id: int, messag
 
 
 
-
-def _upsert_homepage_managed_css(custom_css: str, key: str, css: str) -> str:
-    start = f"/* managed:{key}:start */"
-    end = f"/* managed:{key}:end */"
-    pattern = re.compile(re.escape(start) + r"[\s\S]*?" + re.escape(end))
-    current = str(custom_css or "")
-    next_css = pattern.sub("", current).strip()
-    block = f"{start}\n{css}\n{end}" if css else ""
-    return f"{next_css}\n\n{block}".strip() if next_css and block else (block or next_css)
-
-
-def _extract_homepage_managed_color(custom_css: str, key: str) -> str:
-    start = f"/* managed:{key}:start */"
-    end = f"/* managed:{key}:end */"
-    pattern = re.compile(re.escape(start) + r"([\s\S]*?)" + re.escape(end))
-    match = pattern.search(str(custom_css or ""))
-    if not match:
-        return ""
-    color = re.search(r"#[0-9a-fA-F]{6}", match.group(1))
-    return color.group(0) if color else ""
-
 def _homepage_theme_context(shop: dict, homepage: dict) -> dict:
     return {
         "primary": homepage.get("primary_color") or shop.get("primary_color") or "#2563eb",
@@ -7787,6 +7766,16 @@ def _homepage_theme_context(shop: dict, homepage: dict) -> dict:
         "font_family": homepage.get("font_family") or "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
     }
 
+
+
+def _extract_sample_layout_key(homepage: dict) -> str:
+    css = str((homepage or {}).get("custom_css") or "")
+    match = re.search(r"/\*\s*rakubai_sample_layout:([^*\s]+)\s*\*/", css)
+    if match:
+        key = match.group(1).strip().lower()
+        if key in {"split", "editorial", "dark", "cards", "story"}:
+            return key
+    return "default"
 
 def _build_site_home_context(request: Request, shop_id: str, *, edit_mode: bool = False) -> dict:
     shop = get_shop(shop_id)
@@ -7808,6 +7797,7 @@ def _build_site_home_context(request: Request, shop_id: str, *, edit_mode: bool 
         "homepage": homepage,
         "sections": sections,
         "theme": _homepage_theme_context(shop, homepage),
+        "sample_layout_key": _extract_sample_layout_key(homepage),
         "subscription": subscription,
         "calendar_days": build_public_calendar_days(calendar_year, calendar_month, holiday_weekday),
         "calendar_month_label": month_start.strftime("%Y年%m月"),
@@ -7817,7 +7807,6 @@ def _build_site_home_context(request: Request, shop_id: str, *, edit_mode: bool 
         "calendar_base_path": request.url.path,
         "edit_mode": edit_mode,
         "section_type_options": ["text", "image_text", "menu", "features", "gallery", "news", "cta", "contact"],
-        "homepage_title_color": _extract_homepage_managed_color(homepage.get("custom_css") or "", "hero-title-color"),
     }
     return context
 
@@ -7967,47 +7956,6 @@ def admin_website_editor_delete_section(request: Request, shop_id: str, section_
     return JSONResponse({"ok": True})
 
 
-
-@app.post("/admin/{shop_id}/website/design/save")
-async def admin_website_design_save_from_form(request: Request, shop_id: str):
-    redirect = require_store_login(request, shop_id)
-    if redirect:
-        return redirect
-    form = await request.form()
-    homepage = get_shop_homepage_settings(shop_id) or {}
-
-    def color_value(name: str, fallback: str) -> str:
-        value = str(form.get(name) or fallback or "").strip()
-        return value if re.fullmatch(r"#[0-9a-fA-F]{6}", value) else fallback
-
-    title_color = color_value("title_color", _extract_homepage_managed_color(homepage.get("custom_css") or "", "hero-title-color") or homepage.get("text_color") or "#111827")
-    text_color = color_value("text_color", homepage.get("text_color") or "#111827")
-    subtext_color = color_value("subtext_color", homepage.get("subtext_color") or "#6b7280")
-    background_color = color_value("background_color", homepage.get("background_color") or "#f8fafc")
-    surface_color = color_value("surface_color", homepage.get("surface_color") or "#ffffff")
-    custom_css = _upsert_homepage_managed_css(homepage.get("custom_css") or "", "hero-title-color", f".hero-title{{color:{title_color} !important;}}")
-
-    patch_shop_homepage_settings(
-        shop_id,
-        site_title=str(homepage.get("site_title") or ""),
-        hero_title=str(homepage.get("hero_title") or ""),
-        hero_subtitle=str(homepage.get("hero_subtitle") or ""),
-        access_info=str(homepage.get("access_info") or ""),
-        reserve_button_label=str(homepage.get("reserve_button_label") or ""),
-        reserve_button_url=str(homepage.get("reserve_button_url") or ""),
-        logo_image_url=str(homepage.get("logo_image_url") or ""),
-        hero_image_url=str(homepage.get("hero_image_url") or ""),
-        hero_align=str(homepage.get("hero_align") or "left"),
-        primary_color=str(homepage.get("primary_color") or ""),
-        background_color=background_color,
-        surface_color=surface_color,
-        text_color=text_color,
-        subtext_color=subtext_color,
-        font_family=str(homepage.get("font_family") or ""),
-        custom_css=custom_css,
-    )
-    return RedirectResponse(f"/admin/{shop_id}/website?saved=色設定を保存しました", status_code=303)
-
 @app.post("/admin/{shop_id}/website/section/add")
 async def admin_website_section_add_from_form(request: Request, shop_id: str):
     redirect = require_store_login(request, shop_id)
@@ -8117,30 +8065,24 @@ def _merge_sample_with_existing_homepage(shop_id: str, sample_settings: dict, sa
     existing_homepage = get_shop_homepage_settings(shop_id) or {}
     existing_sections = get_shop_homepage_sections(shop_id)
 
-    # サンプル変更時は「見た目・並び・構成」はサンプルを採用し、
-    # 店舗ごとに入力済みの文言・画像・リンク・店舗情報は保持する。
     preserve_setting_keys = [
         "site_title", "hero_title", "hero_subtitle", "about_text", "menu_intro",
         "menu_items", "gallery_images", "feature_items", "news_items", "access_info",
         "reserve_button_label", "reserve_button_url", "public_path", "logo_image_url",
-        "hero_image_url",
+        "hero_image_url", "hero_align",
     ]
     merged_settings = dict(sample_settings)
     for key in preserve_setting_keys:
         if key in merged_settings:
             merged_settings[key] = _keep_existing_value(existing_homepage, key, merged_settings[key])
 
-    # custom_cssは古いサンプルのレイアウト指定を残すと前回配置が残るため、
-    # 選択したサンプルのレイアウト印だけに差し替える。
+    # 色・背景・フォントは選んだサンプルに合わせる。ただし独自CSS本文は残し、レイアウト印だけ差し替える。
     merged_settings["custom_css"] = _set_sample_layout_marker(
-        "",
+        str(existing_homepage.get("custom_css") or ""),
         str(sample_settings.get("sample_layout_key") or "default"),
     )
     merged_settings.pop("sample_layout_key", None)
 
-    preserve_section_content_keys = [
-        "title", "subtitle", "body_text", "image_url", "button_label", "button_url", "items",
-    ]
     used_existing_ids: set[int] = set()
     merged_sections: list[dict] = []
     for sample_section in sample_sections:
@@ -8157,9 +8099,21 @@ def _merge_sample_with_existing_homepage(shop_id: str, sample_settings: dict, sa
             used_existing_ids.add(int(existing.get("id") or 0))
         merged_section = dict(sample_section)
         if existing:
-            for key in preserve_section_content_keys:
+            # 既存店舗の入力内容だけ保持する。
+            # レイアウト・表示状態・並び順はサンプル側を優先。
+            for key in ["title", "subtitle", "body_text", "image_url", "button_label", "button_url", "items"]:
                 merged_section[key] = _keep_existing_value(existing, key, merged_section.get(key))
         merged_sections.append(merged_section)
+
+    # ユーザーが追加した独自セクションは末尾に残す。
+    next_sort = (max([int(section.get("sort_order") or 0) for section in merged_sections] or [0]) + 10)
+    for existing in existing_sections:
+        if int(existing.get("id") or 0) in used_existing_ids:
+            continue
+        preserved = {k: existing.get(k) for k in ["section_type", "title", "subtitle", "body_text", "image_url", "button_label", "button_url", "items", "is_visible"]}
+        preserved["sort_order"] = next_sort
+        next_sort += 10
+        merged_sections.append(preserved)
 
     return merged_settings, merged_sections
 
