@@ -7755,6 +7755,27 @@ def admin_chat_send_api(request: Request, shop_id: str, customer_id: int, messag
 
 
 
+
+def _upsert_homepage_managed_css(custom_css: str, key: str, css: str) -> str:
+    start = f"/* managed:{key}:start */"
+    end = f"/* managed:{key}:end */"
+    pattern = re.compile(re.escape(start) + r"[\s\S]*?" + re.escape(end))
+    current = str(custom_css or "")
+    next_css = pattern.sub("", current).strip()
+    block = f"{start}\n{css}\n{end}" if css else ""
+    return f"{next_css}\n\n{block}".strip() if next_css and block else (block or next_css)
+
+
+def _extract_homepage_managed_color(custom_css: str, key: str) -> str:
+    start = f"/* managed:{key}:start */"
+    end = f"/* managed:{key}:end */"
+    pattern = re.compile(re.escape(start) + r"([\s\S]*?)" + re.escape(end))
+    match = pattern.search(str(custom_css or ""))
+    if not match:
+        return ""
+    color = re.search(r"#[0-9a-fA-F]{6}", match.group(1))
+    return color.group(0) if color else ""
+
 def _homepage_theme_context(shop: dict, homepage: dict) -> dict:
     return {
         "primary": homepage.get("primary_color") or shop.get("primary_color") or "#2563eb",
@@ -7796,6 +7817,7 @@ def _build_site_home_context(request: Request, shop_id: str, *, edit_mode: bool 
         "calendar_base_path": request.url.path,
         "edit_mode": edit_mode,
         "section_type_options": ["text", "image_text", "menu", "features", "gallery", "news", "cta", "contact"],
+        "homepage_title_color": _extract_homepage_managed_color(homepage.get("custom_css") or "", "hero-title-color"),
     }
     return context
 
@@ -7944,6 +7966,47 @@ def admin_website_editor_delete_section(request: Request, shop_id: str, section_
     delete_shop_homepage_section(shop_id, section_id)
     return JSONResponse({"ok": True})
 
+
+
+@app.post("/admin/{shop_id}/website/design/save")
+async def admin_website_design_save_from_form(request: Request, shop_id: str):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+    form = await request.form()
+    homepage = get_shop_homepage_settings(shop_id) or {}
+
+    def color_value(name: str, fallback: str) -> str:
+        value = str(form.get(name) or fallback or "").strip()
+        return value if re.fullmatch(r"#[0-9a-fA-F]{6}", value) else fallback
+
+    title_color = color_value("title_color", _extract_homepage_managed_color(homepage.get("custom_css") or "", "hero-title-color") or homepage.get("text_color") or "#111827")
+    text_color = color_value("text_color", homepage.get("text_color") or "#111827")
+    subtext_color = color_value("subtext_color", homepage.get("subtext_color") or "#6b7280")
+    background_color = color_value("background_color", homepage.get("background_color") or "#f8fafc")
+    surface_color = color_value("surface_color", homepage.get("surface_color") or "#ffffff")
+    custom_css = _upsert_homepage_managed_css(homepage.get("custom_css") or "", "hero-title-color", f".hero-title{{color:{title_color} !important;}}")
+
+    patch_shop_homepage_settings(
+        shop_id,
+        site_title=str(homepage.get("site_title") or ""),
+        hero_title=str(homepage.get("hero_title") or ""),
+        hero_subtitle=str(homepage.get("hero_subtitle") or ""),
+        access_info=str(homepage.get("access_info") or ""),
+        reserve_button_label=str(homepage.get("reserve_button_label") or ""),
+        reserve_button_url=str(homepage.get("reserve_button_url") or ""),
+        logo_image_url=str(homepage.get("logo_image_url") or ""),
+        hero_image_url=str(homepage.get("hero_image_url") or ""),
+        hero_align=str(homepage.get("hero_align") or "left"),
+        primary_color=str(homepage.get("primary_color") or ""),
+        background_color=background_color,
+        surface_color=surface_color,
+        text_color=text_color,
+        subtext_color=subtext_color,
+        font_family=str(homepage.get("font_family") or ""),
+        custom_css=custom_css,
+    )
+    return RedirectResponse(f"/admin/{shop_id}/website?saved=色設定を保存しました", status_code=303)
 
 @app.post("/admin/{shop_id}/website/section/add")
 async def admin_website_section_add_from_form(request: Request, shop_id: str):
