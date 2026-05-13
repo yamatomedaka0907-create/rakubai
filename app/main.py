@@ -77,6 +77,8 @@ from app.db import (
     get_shop_homepage_settings,
     get_shop_homepage_sections,
     get_shop_homepage_by_public_path,
+    upsert_shop_homepage_settings,
+    replace_shop_homepage_sections,
     create_member,
     authenticate_member,
     create_member_registration_verification,
@@ -6563,7 +6565,7 @@ def shop_reserve(
     phone: str = Form(""),
     email: str = Form(""),
     receive_email: str = Form("1"),
-    staff_id: str = Form(""),
+    staff_id: int = Form(...),
     menu_id: int = Form(...),
     reservation_date: str = Form(...),
     start_time: str = Form(...),
@@ -7799,6 +7801,134 @@ def public_homepage(request: Request, public_path: str):
     return site_page(request, homepage["shop_id"])
 
 
+def _current_store_sample_shop_id(request: Request) -> str:
+    return str(request.session.get("store_logged_in_shop_id") or request.session.get("admin_shop_id") or "").strip()
+
+
+def _sample_to_homepage_payload(shop: dict, sample: dict) -> tuple[dict, list[dict]]:
+    copy = sample.get("copy") or {}
+    theme = sample.get("theme") or {}
+    assets = sample.get("assets") or []
+    menu_items = []
+    for item in copy.get("menu") or []:
+        menu_items.append({
+            "title": str(item.get("title") or ""),
+            "price": str(item.get("price") or ""),
+            "description": str(item.get("desc") or item.get("description") or ""),
+        })
+    feature_items = []
+    for item in copy.get("features") or []:
+        feature_items.append({
+            "title": str(item.get("title") or ""),
+            "description": str(item.get("desc") or item.get("description") or ""),
+        })
+    news_items = []
+    for item in copy.get("news") or []:
+        if isinstance(item, (list, tuple)) and len(item) >= 2:
+            news_items.append({"date": str(item[0] or ""), "title": str(item[1] or "")})
+        elif isinstance(item, dict):
+            news_items.append({"date": str(item.get("date") or ""), "title": str(item.get("title") or "")})
+    gallery_items = []
+    for index, url in enumerate(assets[:3], start=1):
+        gallery_items.append({"label": f"ギャラリー{index}", "url": str(url or "")})
+
+    hero_title = str(copy.get("hero_title") or sample.get("name") or shop.get("shop_name") or "")
+    hero_text = str(copy.get("hero_text") or sample.get("lead") or sample.get("summary") or "")
+    about_lines = copy.get("story") or []
+    about_text = "\n".join(str(line or "") for line in about_lines if str(line or "").strip()) or hero_text
+    reserve_label = str(copy.get("primary_cta") or copy.get("cta") or "予約する")
+    settings = {
+        "template_id": 0,
+        "site_title": str(shop.get("shop_name") or sample.get("brand") or sample.get("name") or ""),
+        "hero_title": hero_title,
+        "hero_subtitle": hero_text,
+        "about_text": about_text,
+        "menu_intro": str((copy.get("section_titles") or {}).get("menu") or "メニュー・サービス"),
+        "menu_items": menu_items,
+        "gallery_images": gallery_items,
+        "feature_items": feature_items,
+        "news_items": news_items,
+        "access_info": str(shop.get("address") or ""),
+        "reserve_button_label": reserve_label,
+        "reserve_button_url": f"/shop/{shop.get('shop_id') or ''}",
+        "public_path": str(shop.get("shop_id") or ""),
+        "is_published": 1,
+        "logo_image_url": "",
+        "hero_image_url": str(assets[0] if assets else ""),
+        "hero_align": "left",
+        "primary_color": str(theme.get("primary") or shop.get("primary_color") or "#2563eb"),
+        "background_color": str(theme.get("bg") or "#f8fafc"),
+        "surface_color": str(theme.get("surface") or "#ffffff"),
+        "text_color": str(theme.get("text") or "#111827"),
+        "subtext_color": str(theme.get("sub") or "#6b7280"),
+        "font_family": "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
+        "custom_css": "",
+    }
+    sections = [
+        {
+            "section_type": "image_text",
+            "title": str(copy.get("intro_title") or "コンセプト"),
+            "subtitle": str(sample.get("summary") or ""),
+            "body_text": about_text,
+            "image_url": str(assets[1] if len(assets) > 1 else (assets[0] if assets else "")),
+            "button_label": reserve_label,
+            "button_url": settings["reserve_button_url"],
+            "items": [],
+            "sort_order": 10,
+            "is_visible": 1,
+        },
+        {
+            "section_type": "menu",
+            "title": str((copy.get("section_titles") or {}).get("menu") or "メニュー"),
+            "subtitle": str(sample.get("lead") or ""),
+            "body_text": "",
+            "image_url": "",
+            "button_label": "",
+            "button_url": "",
+            "items": menu_items,
+            "sort_order": 20,
+            "is_visible": 1,
+        },
+        {
+            "section_type": "features",
+            "title": "特徴",
+            "subtitle": "選ばれる理由",
+            "body_text": "",
+            "image_url": "",
+            "button_label": "",
+            "button_url": "",
+            "items": feature_items,
+            "sort_order": 30,
+            "is_visible": 1,
+        },
+        {
+            "section_type": "gallery",
+            "title": "ギャラリー",
+            "subtitle": "店舗イメージ",
+            "body_text": "",
+            "image_url": "",
+            "button_label": "",
+            "button_url": "",
+            "items": gallery_items,
+            "sort_order": 40,
+            "is_visible": 1,
+        },
+        {
+            "section_type": "news",
+            "title": "お知らせ",
+            "subtitle": "最新情報",
+            "body_text": "",
+            "image_url": "",
+            "button_label": "",
+            "button_url": "",
+            "items": news_items,
+            "sort_order": 50,
+            "is_visible": 1,
+        },
+    ]
+    return settings, sections
+
+
 @app.get("/samples", response_class=HTMLResponse)
 def sample_catalog_page(request: Request, category: str | None = None, q: str | None = None):
     categories = get_sample_categories()
@@ -7830,7 +7960,7 @@ def sample_catalog_page(request: Request, category: str | None = None, q: str | 
     for s in all_samples:
         code = s.get("category_code")
         grouped_counts[code] = grouped_counts.get(code, 0) + 1
-    current_admin_shop_id = request.session.get("admin_shop_id") or ""
+    current_admin_shop_id = _current_store_sample_shop_id(request)
     current_admin_shop = get_shop(current_admin_shop_id) if current_admin_shop_id else None
     return templates.TemplateResponse(
         request=request,
@@ -7853,7 +7983,7 @@ def sample_preview_page(request: Request, category_code: str, sample_code: str):
     if not sample:
         raise HTTPException(status_code=404, detail="サンプルが見つかりません")
     template_name = sample.get("template_file") or "platform/sample_showcase.html"
-    current_admin_shop_id = request.session.get("admin_shop_id") or ""
+    current_admin_shop_id = _current_store_sample_shop_id(request)
     current_admin_shop = get_shop(current_admin_shop_id) if current_admin_shop_id else None
     return templates.TemplateResponse(
         request=request,
@@ -7865,6 +7995,36 @@ def sample_preview_page(request: Request, category_code: str, sample_code: str):
             "return_to": str(request.url),
         },
     )
+
+
+@app.post("/admin/{shop_id}/website/apply-sample")
+def admin_apply_sample_homepage(
+    request: Request,
+    shop_id: str,
+    sample_code: str = Form(...),
+    return_to: str = Form(""),
+):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+    shop = get_shop(shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+    sample = next((item for item in get_all_samples() if str(item.get("code") or "") == str(sample_code or "")), None)
+    if not sample:
+        raise HTTPException(status_code=404, detail="サンプルが見つかりません")
+
+    settings, sections = _sample_to_homepage_payload(shop, sample)
+    upsert_shop_homepage_settings(shop_id, **settings)
+    replace_shop_homepage_sections(shop_id, sections)
+
+    redirect_to = (return_to or f"/admin/{shop_id}/website").strip()
+    if not redirect_to.startswith("/") or redirect_to.startswith("//"):
+        redirect_to = f"/admin/{shop_id}/website"
+    separator = "&" if "?" in redirect_to else "?"
+    return RedirectResponse(f"{redirect_to}{separator}applied=1", status_code=303)
+
+
 
 
 
