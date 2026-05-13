@@ -429,6 +429,18 @@ def handle_line_complete_booking_message(shop_id: str, user_id: str, message_tex
 def features_page(request: Request):
     return templates.TemplateResponse("features.html", {"request": request})
 
+
+
+@app.get("/features/{slug}", response_class=HTMLResponse)
+def feature_detail_page(slug: str, request: Request):
+    template_path = f"features/{slug}.html"
+    template_file = Path("app/templates") / template_path
+
+    if not template_file.exists():
+        raise HTTPException(status_code=404, detail="見つかりません")
+
+    return templates.TemplateResponse(template_path, {"request": request})
+
 @app.get("/line-test")
 def line_test(shop_id: str = "yamato", user_id: str = ""):
     settings = get_shop_line_settings(shop_id)
