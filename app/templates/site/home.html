@@ -91,7 +91,9 @@ body{padding-top:72px}.editable{outline:1px dashed transparent;outline-offset:4p
 {% set first_section = (sections | selectattr("section_type", "ne", "hero") | list | first) %}
 {% set gallery_section = (sections | selectattr("section_type", "equalto", "gallery") | list | first) %}
 {% set feature_section = (sections | selectattr("section_type", "equalto", "features") | list | first) %}
-{% if sample_layout_key == 'cards' %}
+{% if sample_layout_key == 'editorial' and sample_code == 'gallery-editorial' %}
+{# gallery-editorial は下の editorial-public-content をTOPとして描画する #}
+{% elif sample_layout_key == 'cards' %}
 <main id="top" class="catalog-hero">
   <div class="wrap">
     <div class="catalog-hero-grid">
@@ -176,7 +178,7 @@ body{padding-top:72px}.editable{outline:1px dashed transparent;outline-offset:4p
   {% set gallery_section = sections_by_type.get('gallery') %}
   {% set news_section = sections_by_type.get('news') %}
   {% set intro_section = sections_by_type.get('image_text') or sections_by_type.get('text') %}
-  <section class="editorial-main public-editorial-main">
+  <section id="top" class="editorial-main public-editorial-main">
     <aside class="editorial-side {% if edit_mode %}edit-region{% endif %}" {% if edit_mode %}data-edit-region="hero" data-edit-label="メインビジュアルを編集"{% endif %}>
       <div class="eyebrow">{{ homepage.site_title or shop.shop_name }}</div>
       <h1 class="{% if edit_mode %}editable{% endif %}" {% if edit_mode %}contenteditable="true" data-homepage-field="hero_title"{% endif %}>{{ homepage.hero_title or shop.shop_name }}</h1>

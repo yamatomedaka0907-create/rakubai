@@ -7847,6 +7847,7 @@ def _build_site_home_context(request: Request, shop_id: str, *, edit_mode: bool 
         "public_images": deduped_public_images,
         "theme": _homepage_theme_context(shop, homepage),
         "sample_layout_key": _extract_sample_layout_key(homepage),
+        "sample_code": str((homepage or {}).get("sample_code") or "").strip(),
         "subscription": subscription,
         "calendar_days": build_public_calendar_days(calendar_year, calendar_month, holiday_weekday),
         "calendar_month_label": month_start.strftime("%Y年%m月"),
