@@ -1,0 +1,130 @@
+<style>
+.hp-cms-panel{margin-top:24px;background:#fff;border:1px solid rgba(15,23,42,.08);border-radius:24px;padding:22px;box-shadow:0 18px 45px rgba(15,23,42,.06)}
+.hp-cms-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap;margin-bottom:16px}.hp-cms-head h2{margin:0;font-size:24px}.hp-cms-note{color:#64748b;font-size:14px;line-height:1.7;margin:6px 0 0}.hp-cms-add{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:14px 0 18px}.hp-cms-select,.hp-cms-input,.hp-cms-textarea{width:100%;border:1px solid #dbe2ea;border-radius:12px;padding:11px 12px;font:inherit;background:#fff;color:#0f172a}.hp-cms-textarea{min-height:96px;resize:vertical}.hp-cms-field label{display:block;font-size:12px;font-weight:800;color:#475569;margin:0 0 6px}.hp-cms-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px;padding:0 14px;border-radius:12px;border:1px solid #dbe2ea;background:#fff;color:#0f172a;font-weight:800;cursor:pointer;text-decoration:none}.hp-cms-btn.primary{background:#14b8a6;border-color:#14b8a6;color:#fff}.hp-cms-btn.danger{background:#fff1f2;border-color:#fecdd3;color:#be123c}.hp-cms-btn.ghost{background:#f8fafc}.hp-cms-section{border:1px solid #e2e8f0;border-radius:20px;padding:16px;margin-top:14px;background:#fff}.hp-cms-section-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}.hp-cms-title{font-weight:900;font-size:18px}.hp-cms-kind{font-size:12px;color:#64748b;margin-top:4px}.hp-cms-grid{display:grid;gap:12px;margin-top:12px}.hp-cms-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}.hp-cms-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.hp-cms-items{display:grid;gap:10px;margin-top:14px}.hp-cms-item{border:1px solid #e2e8f0;border-radius:16px;padding:12px;background:#f8fafc}.hp-cms-item-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}.hp-cms-item-title{font-size:12px;font-weight:900;color:#475569}.hp-cms-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px}.hp-cms-hidden{display:none!important}@media(max-width:760px){.hp-cms-grid.two,.hp-cms-grid.three{grid-template-columns:1fr}}
+</style>
+<section class="hp-cms-panel">
+  <div class="hp-cms-head">
+    <div>
+      <h2>ページ内容の追加・編集</h2>
+      <p class="hp-cms-note">特徴・ギャラリー・お知らせ・メニューの表示個数を固定せず、必要な数だけ追加・削除できます。</p>
+    </div>
+    <a class="hp-cms-btn ghost" href="/admin/{{ shop_id }}/website/editor">直接編集モード</a>
+  </div>
+
+  <form method="post" action="/admin/{{ shop_id }}/website/section/add" class="hp-cms-add">
+    <div class="hp-cms-field" style="min-width:240px;">
+      <label>追加する内容</label>
+      <select class="hp-cms-select" name="section_type">
+        <option value="features">特徴</option>
+        <option value="gallery">ギャラリー</option>
+        <option value="news">お知らせ</option>
+        <option value="menu">メニュー / サービス</option>
+        <option value="text">テキスト</option>
+        <option value="image_text">画像＋テキスト</option>
+      </select>
+    </div>
+    <button type="submit" class="hp-cms-btn primary">セクションを追加</button>
+  </form>
+
+  {% for section in homepage_sections if section.section_type != 'hero' %}
+  <form method="post" action="/admin/{{ shop_id }}/website/section/{{ section.id }}/save" class="hp-cms-section" data-homepage-section-form data-section-type="{{ section.section_type }}">
+    <input type="hidden" name="section_type" value="{{ section.section_type }}">
+    <input type="hidden" name="sort_order" value="{{ section.sort_order }}">
+    <div class="hp-cms-section-top">
+      <div>
+        <div class="hp-cms-title">{{ section.title or section.section_type }}</div>
+        <div class="hp-cms-kind">種類：{{ section.section_type }}</div>
+      </div>
+      <label class="hp-cms-note" style="display:inline-flex;gap:8px;align-items:center;margin:0;"><input type="checkbox" name="is_visible" value="1" {% if section.is_visible %}checked{% endif %}> 表示する</label>
+    </div>
+
+    <div class="hp-cms-grid two">
+      <div class="hp-cms-field"><label>見出し</label><input class="hp-cms-input" name="title" value="{{ section.title }}"></div>
+      <div class="hp-cms-field"><label>小見出し</label><input class="hp-cms-input" name="subtitle" value="{{ section.subtitle }}"></div>
+    </div>
+
+    {% if section.section_type in ['text','image_text','cta','contact'] %}
+    <div class="hp-cms-grid">
+      <div class="hp-cms-field"><label>本文</label><textarea class="hp-cms-textarea" name="body_text">{{ section.body_text }}</textarea></div>
+    </div>
+    <div class="hp-cms-grid two">
+      <div class="hp-cms-field"><label>画像URL</label><input class="hp-cms-input" name="image_url" value="{{ section.image_url }}"></div>
+      <div class="hp-cms-field"><label>ボタンURL</label><input class="hp-cms-input" name="button_url" value="{{ section.button_url }}"></div>
+    </div>
+    <div class="hp-cms-grid">
+      <div class="hp-cms-field"><label>ボタン文言</label><input class="hp-cms-input" name="button_label" value="{{ section.button_label }}"></div>
+    </div>
+    {% endif %}
+
+    {% if section.section_type in ['features','gallery','news','menu'] %}
+    <div class="hp-cms-items" data-homepage-items>
+      {% for item in section['items'] %}
+        {% if section.section_type == 'features' %}
+        <div class="hp-cms-item" data-homepage-item>
+          <div class="hp-cms-item-head"><div class="hp-cms-item-title">特徴 {{ loop.index }}</div><button type="button" class="hp-cms-btn danger" data-remove-homepage-item>削除</button></div>
+          <div class="hp-cms-grid two"><div class="hp-cms-field"><label>特徴タイトル</label><input class="hp-cms-input" name="item_title" value="{{ item.title }}"></div><div class="hp-cms-field"><label>説明</label><input class="hp-cms-input" name="item_description" value="{{ item.description }}"></div></div>
+        </div>
+        {% elif section.section_type == 'gallery' %}
+        <div class="hp-cms-item" data-homepage-item>
+          <div class="hp-cms-item-head"><div class="hp-cms-item-title">画像 {{ loop.index }}</div><button type="button" class="hp-cms-btn danger" data-remove-homepage-item>削除</button></div>
+          <div class="hp-cms-grid two"><div class="hp-cms-field"><label>写真名</label><input class="hp-cms-input" name="item_label" value="{{ item.label }}"></div><div class="hp-cms-field"><label>画像URL</label><input class="hp-cms-input" name="item_url" value="{{ item.url }}"></div></div>
+        </div>
+        {% elif section.section_type == 'news' %}
+        <div class="hp-cms-item" data-homepage-item>
+          <div class="hp-cms-item-head"><div class="hp-cms-item-title">お知らせ {{ loop.index }}</div><button type="button" class="hp-cms-btn danger" data-remove-homepage-item>削除</button></div>
+          <div class="hp-cms-grid two"><div class="hp-cms-field"><label>日付</label><input class="hp-cms-input" name="item_date" value="{{ item.date }}"></div><div class="hp-cms-field"><label>お知らせ内容</label><input class="hp-cms-input" name="item_title" value="{{ item.title }}"></div></div>
+        </div>
+        {% elif section.section_type == 'menu' %}
+        <div class="hp-cms-item" data-homepage-item>
+          <div class="hp-cms-item-head"><div class="hp-cms-item-title">メニュー {{ loop.index }}</div><button type="button" class="hp-cms-btn danger" data-remove-homepage-item>削除</button></div>
+          <div class="hp-cms-grid three"><div class="hp-cms-field"><label>メニュー名</label><input class="hp-cms-input" name="item_title" value="{{ item.title }}"></div><div class="hp-cms-field"><label>価格</label><input class="hp-cms-input" name="item_price" value="{{ item.price }}"></div><div class="hp-cms-field"><label>説明</label><input class="hp-cms-input" name="item_description" value="{{ item.description }}"></div></div>
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+    <div class="hp-cms-actions"><button type="button" class="hp-cms-btn" data-add-homepage-item>項目を追加</button></div>
+    {% endif %}
+
+    <div class="hp-cms-actions">
+      <button type="submit" class="hp-cms-btn primary">保存する</button>
+      <button type="submit" form="delete-section-{{ section.id }}" class="hp-cms-btn danger" onclick="return confirm('このセクションを削除しますか？');">このセクションを削除</button>
+    </div>
+  </form>
+  <form id="delete-section-{{ section.id }}" method="post" action="/admin/{{ shop_id }}/website/section/{{ section.id }}/delete" class="hp-cms-hidden"></form>
+  {% endfor %}
+</section>
+
+<script>
+(() => {
+  const templates = {
+    features: `<div class="hp-cms-item" data-homepage-item><div class="hp-cms-item-head"><div class="hp-cms-item-title">特徴</div><button type="button" class="hp-cms-btn danger" data-remove-homepage-item>削除</button></div><div class="hp-cms-grid two"><div class="hp-cms-field"><label>特徴タイトル</label><input class="hp-cms-input" name="item_title" placeholder="例：初回カウンセリング"></div><div class="hp-cms-field"><label>説明</label><input class="hp-cms-input" name="item_description" placeholder="例：悩みに合わせて提案"></div></div></div>`,
+    gallery: `<div class="hp-cms-item" data-homepage-item><div class="hp-cms-item-head"><div class="hp-cms-item-title">画像</div><button type="button" class="hp-cms-btn danger" data-remove-homepage-item>削除</button></div><div class="hp-cms-grid two"><div class="hp-cms-field"><label>写真名</label><input class="hp-cms-input" name="item_label" placeholder="例：店内写真"></div><div class="hp-cms-field"><label>画像URL</label><input class="hp-cms-input" name="item_url" placeholder="https:// または /uploads/..."></div></div></div>`,
+    news: `<div class="hp-cms-item" data-homepage-item><div class="hp-cms-item-head"><div class="hp-cms-item-title">お知らせ</div><button type="button" class="hp-cms-btn danger" data-remove-homepage-item>削除</button></div><div class="hp-cms-grid two"><div class="hp-cms-field"><label>日付</label><input class="hp-cms-input" name="item_date" placeholder="2026.05.13"></div><div class="hp-cms-field"><label>お知らせ内容</label><input class="hp-cms-input" name="item_title" placeholder="例：新メニューを追加しました"></div></div></div>`,
+    menu: `<div class="hp-cms-item" data-homepage-item><div class="hp-cms-item-head"><div class="hp-cms-item-title">メニュー</div><button type="button" class="hp-cms-btn danger" data-remove-homepage-item>削除</button></div><div class="hp-cms-grid three"><div class="hp-cms-field"><label>メニュー名</label><input class="hp-cms-input" name="item_title"></div><div class="hp-cms-field"><label>価格</label><input class="hp-cms-input" name="item_price"></div><div class="hp-cms-field"><label>説明</label><input class="hp-cms-input" name="item_description"></div></div></div>`
+  };
+  const renumber = (form) => {
+    const type = form.dataset.sectionType;
+    const label = type === 'features' ? '特徴' : type === 'gallery' ? '画像' : type === 'news' ? 'お知らせ' : type === 'menu' ? 'メニュー' : '項目';
+    form.querySelectorAll('[data-homepage-item] .hp-cms-item-title').forEach((el, idx) => { el.textContent = `${label} ${idx + 1}`; });
+  };
+  document.addEventListener('click', (event) => {
+    const add = event.target.closest('[data-add-homepage-item]');
+    if (add) {
+      const form = add.closest('[data-homepage-section-form]');
+      const holder = form?.querySelector('[data-homepage-items]');
+      const type = form?.dataset.sectionType;
+      if (holder && templates[type]) {
+        holder.insertAdjacentHTML('beforeend', templates[type]);
+        renumber(form);
+      }
+      return;
+    }
+    const remove = event.target.closest('[data-remove-homepage-item]');
+    if (remove) {
+      const form = remove.closest('[data-homepage-section-form]');
+      remove.closest('[data-homepage-item]')?.remove();
+      if (form) renumber(form);
+    }
+  });
+})();
+</script>
