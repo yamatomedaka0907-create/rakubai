@@ -193,6 +193,8 @@
         if (el.tagName === 'IMG') {
           el.src = url || '';
         } else if (url) {
+          markDirty();
+          await save();
           location.reload();
           return;
         }
@@ -214,7 +216,12 @@
         if (url === null) return;
         sec.image_url = url;
         if (el.tagName === 'IMG') el.src = url || '';
-        else location.reload();
+        else {
+          markDirty();
+          await save();
+          location.reload();
+          return;
+        }
         markDirty();
         showToast('画像を反映しました。');
       } catch (err) {
@@ -306,6 +313,8 @@
           const next = prompt(`${key} を入力`, item[key] || '');
           if (next !== null) item[key] = next.trim();
         });
+        markDirty();
+        await save();
         location.reload();
       }
       if (action === 'image') {
@@ -325,7 +334,7 @@
   });
 
   document.querySelectorAll('[data-add-item]').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       const sec = findSection(btn.closest('[data-section-id]').dataset.sectionId);
       if (!sec) return;
@@ -335,6 +344,8 @@
       else if (sec.section_type === 'news') item = { date: new Date().toISOString().slice(0, 10), title: 'お知らせを入力' };
       else item = { title: 'タイトル', description: '説明を入力' };
       sec.items.push(item);
+      markDirty();
+      await save();
       location.reload();
     });
   });
@@ -382,6 +393,8 @@
           const url = await askImage();
           if (url === null) return;
           sec.image_url = url;
+          markDirty();
+          await save();
           location.reload();
         } catch (err) {
           showToast(err.message, true);
@@ -493,7 +506,7 @@
                 const url = await askImage(); if (url === null) return;
                 state.homepage.logo_image_url = url;
                 const img = document.querySelector('[data-homepage-image="logo_image_url"]');
-                if (img && img.tagName === 'IMG') img.src = url; else location.reload();
+                if (img && img.tagName === 'IMG') img.src = url; else { markDirty(); await save(); location.reload(); return; }
                 markDirty();
                 showToast('ロゴを反映しました。');
               } },
@@ -510,11 +523,11 @@
                 const url = await askImage(); if (url === null) return;
                 state.homepage.hero_image_url = url;
                 const img = document.querySelector('[data-homepage-image="hero_image_url"]');
-                if (img) img.src = url; else location.reload();
+                if (img) img.src = url; else { markDirty(); await save(); location.reload(); return; }
                 markDirty();
                 showToast('ヘッダー画像を反映しました。');
               } },
-            { label: '文字位置を切替', run: () => { state.homepage.hero_align = state.homepage.hero_align === 'center' ? 'left' : 'center'; markDirty(); location.reload(); } },
+            { label: '文字位置を切替', run: async () => { state.homepage.hero_align = state.homepage.hero_align === 'center' ? 'left' : 'center'; markDirty(); await save(); location.reload(); } },
             { label: 'ページ背景色を変更', run: () => openColorPicker(state.homepage.background_color || getStyleValue('--bg', '#f8fafc'), (color) => { state.homepage.background_color = color; applySettings(true); markDirty(); showToast('背景色を反映しました。'); }) },
           ]);
           return;
@@ -530,7 +543,7 @@
             { label: '背景画像を設定', run: () => chooseSectionBackgroundImage(sec) },
             { label: '画像を変更', run: async () => {
                 const url = await askImage(); if (url === null) return;
-                sec.image_url = url; markDirty(); location.reload();
+                sec.image_url = url; markDirty(); await save(); location.reload();
               } },
           ]);
         }

@@ -79,6 +79,11 @@ from app.db import (
     get_shop_homepage_by_public_path,
     upsert_shop_homepage_settings,
     replace_shop_homepage_sections,
+    patch_shop_homepage_settings,
+    create_shop_homepage_section,
+    patch_shop_homepage_section,
+    delete_shop_homepage_section,
+    reorder_shop_homepage_sections,
     create_member,
     authenticate_member,
     create_member_registration_verification,
@@ -7748,15 +7753,10 @@ def admin_chat_send_api(request: Request, shop_id: str, customer_id: int, messag
     return JSONResponse({"ok": True, "messages": messages, "sent_this_month": new_sent_count, "remaining": None if chat_limit is None else max(chat_limit - new_sent_count, 0), "limit": chat_limit})
 
 
-@app.get("/site/{shop_id}", response_class=HTMLResponse)
-def site_page(request: Request, shop_id: str):
-    shop = get_shop(shop_id)
-    if not shop:
-        raise HTTPException(status_code=404, detail="店舗が見つかりません")
-    homepage = get_shop_homepage_settings(shop_id) or {}
-    sections = get_shop_homepage_sections(shop_id)
-    subscription = get_shop_subscription(shop_id) or {}
-    theme = {
+
+
+def _homepage_theme_context(shop: dict, homepage: dict) -> dict:
+    return {
         "primary": homepage.get("primary_color") or shop.get("primary_color") or "#2563eb",
         "background": homepage.get("background_color") or "#f8fafc",
         "surface": homepage.get("surface_color") or "#ffffff",
@@ -7765,32 +7765,212 @@ def site_page(request: Request, shop_id: str):
         "subtext": homepage.get("subtext_color") or "#6b7280",
         "font_family": homepage.get("font_family") or "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
     }
+
+
+def _build_site_home_context(request: Request, shop_id: str, *, edit_mode: bool = False) -> dict:
+    shop = get_shop(shop_id)
+    if not shop:
+        raise HTTPException(status_code=404, detail="店舗が見つかりません")
+    homepage = get_shop_homepage_settings(shop_id) or {}
+    sections = get_shop_homepage_sections(shop_id)
+    subscription = get_shop_subscription(shop_id) or {}
     requested_month = request.query_params.get("calendar_month")
     calendar_year, calendar_month = parse_month_string(requested_month)
     month_start = date(calendar_year, calendar_month, 1)
     prev_year, prev_month = shift_month(calendar_year, calendar_month, -1)
     next_year, next_month = shift_month(calendar_year, calendar_month, 1)
     holiday_weekday = WEEKDAY_MAP.get(shop.get("holiday"))
-    return templates.TemplateResponse(
-        request=request,
-        name="site/home.html",
-        context={
-            "request": request,
-            "shop": shop,
-            "shop_id": shop_id,
-            "homepage": homepage,
-            "sections": sections,
-            "theme": theme,
-            "subscription": subscription,
-            "calendar_days": build_public_calendar_days(calendar_year, calendar_month, holiday_weekday),
-            "calendar_month_label": month_start.strftime("%Y年%m月"),
-            "calendar_month_value": month_start.strftime("%Y-%m"),
-            "calendar_prev_month": f"{prev_year:04d}-{prev_month:02d}",
-            "calendar_next_month": f"{next_year:04d}-{next_month:02d}",
-            "calendar_base_path": request.url.path,
-            "line_official_url": (get_shop_line_settings(shop_id) or {}).get("line_official_url",""),
-        },
+    context = {
+        "request": request,
+        "shop": shop,
+        "shop_id": shop_id,
+        "homepage": homepage,
+        "sections": sections,
+        "theme": _homepage_theme_context(shop, homepage),
+        "subscription": subscription,
+        "calendar_days": build_public_calendar_days(calendar_year, calendar_month, holiday_weekday),
+        "calendar_month_label": month_start.strftime("%Y年%m月"),
+        "calendar_month_value": month_start.strftime("%Y-%m"),
+        "calendar_prev_month": f"{prev_year:04d}-{prev_month:02d}",
+        "calendar_next_month": f"{next_year:04d}-{next_month:02d}",
+        "calendar_base_path": request.url.path,
+        "edit_mode": edit_mode,
+        "section_type_options": ["text", "image_text", "menu", "features", "gallery", "news", "cta", "contact"],
+    }
+    return context
+
+
+def _homepage_items_from_form(section_type: str, form) -> list[dict]:
+    def values(name: str) -> list[str]:
+        return [str(v or '').strip() for v in form.getlist(name)]
+    items: list[dict] = []
+    if section_type == 'menu':
+        titles, prices, descs = values('item_title'), values('item_price'), values('item_description')
+        for idx in range(max(len(titles), len(prices), len(descs))):
+            items.append({'title': titles[idx] if idx < len(titles) else '', 'price': prices[idx] if idx < len(prices) else '', 'description': descs[idx] if idx < len(descs) else ''})
+    elif section_type == 'gallery':
+        labels, urls = values('item_label'), values('item_url')
+        for idx in range(max(len(labels), len(urls))):
+            items.append({'label': labels[idx] if idx < len(labels) else '', 'url': urls[idx] if idx < len(urls) else ''})
+    elif section_type == 'news':
+        dates, titles = values('item_date'), values('item_title')
+        for idx in range(max(len(dates), len(titles))):
+            items.append({'date': dates[idx] if idx < len(dates) else '', 'title': titles[idx] if idx < len(titles) else ''})
+    else:
+        titles, descs = values('item_title'), values('item_description')
+        for idx in range(max(len(titles), len(descs))):
+            items.append({'title': titles[idx] if idx < len(titles) else '', 'description': descs[idx] if idx < len(descs) else ''})
+    return items
+
+@app.get("/admin/{shop_id}/website/editor", response_class=HTMLResponse)
+def admin_website_editor_page(request: Request, shop_id: str):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+    return templates.TemplateResponse(request=request, name="site/home.html", context=_build_site_home_context(request, shop_id, edit_mode=True))
+
+
+@app.post("/admin/{shop_id}/website/editor/save")
+async def admin_website_editor_save(request: Request, shop_id: str):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return JSONResponse({"ok": False, "error": "ログインが必要です。"}, status_code=401)
+    payload = await request.json()
+    homepage = payload.get("homepage") or {}
+    sections = payload.get("sections") or []
+    patch_shop_homepage_settings(
+        shop_id,
+        site_title=str(homepage.get("site_title") or ""),
+        hero_title=str(homepage.get("hero_title") or ""),
+        hero_subtitle=str(homepage.get("hero_subtitle") or ""),
+        access_info=str(homepage.get("access_info") or ""),
+        reserve_button_label=str(homepage.get("reserve_button_label") or ""),
+        reserve_button_url=str(homepage.get("reserve_button_url") or ""),
+        logo_image_url=str(homepage.get("logo_image_url") or ""),
+        hero_image_url=str(homepage.get("hero_image_url") or ""),
+        hero_align=str(homepage.get("hero_align") or "left"),
+        primary_color=str(homepage.get("primary_color") or ""),
+        background_color=str(homepage.get("background_color") or ""),
+        surface_color=str(homepage.get("surface_color") or ""),
+        text_color=str(homepage.get("text_color") or ""),
+        subtext_color=str(homepage.get("subtext_color") or ""),
+        font_family=str(homepage.get("font_family") or ""),
+        custom_css=str(homepage.get("custom_css") or ""),
     )
+    normalized_sections = []
+    for idx, section in enumerate(sections, start=1):
+        if str(section.get("section_type") or "") == "hero":
+            continue
+        normalized_sections.append({
+            "section_type": str(section.get("section_type") or "text"),
+            "title": str(section.get("title") or ""),
+            "subtitle": str(section.get("subtitle") or ""),
+            "body_text": str(section.get("body_text") or ""),
+            "image_url": str(section.get("image_url") or ""),
+            "button_label": str(section.get("button_label") or ""),
+            "button_url": str(section.get("button_url") or ""),
+            "items": section.get("items") or [],
+            "sort_order": int(section.get("sort_order") or idx * 10),
+            "is_visible": int(bool(section.get("is_visible", 1))),
+        })
+    replace_shop_homepage_sections(shop_id, normalized_sections)
+    return JSONResponse({"ok": True})
+
+
+@app.post("/admin/{shop_id}/website/editor/upload")
+async def admin_website_editor_upload(request: Request, shop_id: str, file: UploadFile = File(...), category: str = Form("editor")):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return JSONResponse({"ok": False, "error": "ログインが必要です。"}, status_code=401)
+    suffix = Path(file.filename or "image.jpg").suffix.lower() or ".jpg"
+    if suffix not in {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}:
+        return JSONResponse({"ok": False, "error": "画像ファイルを選択してください。"}, status_code=400)
+    safe_category = re.sub(r"[^a-zA-Z0-9_-]", "", category or "editor") or "editor"
+    filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(4)}{suffix}"
+    upload_dir = Path("data/uploads/shops") / shop_id / "homepage" / safe_category
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    save_path = upload_dir / filename
+    save_path.write_bytes(await file.read())
+    relative = save_path.relative_to(Path("data/uploads"))
+    return JSONResponse({"ok": True, "url": "/uploads/" + str(relative).replace("\\", "/")})
+
+
+@app.post("/admin/{shop_id}/website/editor/section/add")
+async def admin_website_editor_add_section(request: Request, shop_id: str):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return JSONResponse({"ok": False, "error": "ログインが必要です。"}, status_code=401)
+    payload = await request.json()
+    section_type = str(payload.get("section_type") or "text").strip()
+    if section_type not in {"text", "image_text", "menu", "features", "gallery", "news", "cta", "contact", "about"}:
+        return JSONResponse({"ok": False, "error": "セクションタイプが正しくありません。"}, status_code=400)
+    if section_type == "about":
+        section_type = "text"
+    sections = get_shop_homepage_sections(shop_id)
+    create_shop_homepage_section(shop_id, section_type=section_type, title=str(payload.get("title") or "新しいセクション"), sort_order=(len(sections) + 1) * 10, is_visible=1)
+    return JSONResponse({"ok": True})
+
+
+@app.post("/admin/{shop_id}/website/editor/section/{section_id}/delete")
+def admin_website_editor_delete_section(request: Request, shop_id: str, section_id: int):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return JSONResponse({"ok": False, "error": "ログインが必要です。"}, status_code=401)
+    delete_shop_homepage_section(shop_id, section_id)
+    return JSONResponse({"ok": True})
+
+
+@app.post("/admin/{shop_id}/website/section/add")
+async def admin_website_section_add_from_form(request: Request, shop_id: str):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+    form = await request.form()
+    section_type = str(form.get("section_type") or "features").strip()
+    if section_type not in {"features", "gallery", "news", "menu", "text", "image_text"}:
+        section_type = "features"
+    sections = get_shop_homepage_sections(shop_id)
+    title_map = {"features": "特徴", "gallery": "ギャラリー", "news": "お知らせ", "menu": "MENU / SERVICE", "text": "新しいセクション", "image_text": "新しいセクション"}
+    create_shop_homepage_section(shop_id, section_type=section_type, title=title_map.get(section_type, "新しいセクション"), sort_order=(len(sections) + 1) * 10, is_visible=1)
+    return RedirectResponse(f"/admin/{shop_id}/website?saved=セクションを追加しました", status_code=303)
+
+
+@app.post("/admin/{shop_id}/website/section/{section_id}/save")
+async def admin_website_section_save_from_form(request: Request, shop_id: str, section_id: int):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+    form = await request.form()
+    section_type = str(form.get("section_type") or "features").strip()
+    patch_shop_homepage_section(
+        shop_id,
+        section_id,
+        section_type=section_type,
+        title=str(form.get("title") or ""),
+        subtitle=str(form.get("subtitle") or ""),
+        body_text=str(form.get("body_text") or ""),
+        image_url=str(form.get("image_url") or ""),
+        button_label=str(form.get("button_label") or ""),
+        button_url=str(form.get("button_url") or ""),
+        items=_homepage_items_from_form(section_type, form),
+        sort_order=int(str(form.get("sort_order") or "100") or 100),
+        is_visible=1 if str(form.get("is_visible") or "") == "1" else 0,
+    )
+    return RedirectResponse(f"/admin/{shop_id}/website?saved=セクションを保存しました", status_code=303)
+
+
+@app.post("/admin/{shop_id}/website/section/{section_id}/delete")
+def admin_website_section_delete_from_form(request: Request, shop_id: str, section_id: int):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+    delete_shop_homepage_section(shop_id, section_id)
+    return RedirectResponse(f"/admin/{shop_id}/website?saved=セクションを削除しました", status_code=303)
+
+
+@app.get("/site/{shop_id}", response_class=HTMLResponse)
+def site_page(request: Request, shop_id: str):
+    return templates.TemplateResponse(request=request, name="site/home.html", context=_build_site_home_context(request, shop_id, edit_mode=False))
 
 
 @app.get("/p/{public_path}", response_class=HTMLResponse)
