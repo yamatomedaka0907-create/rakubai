@@ -4198,6 +4198,112 @@ def _build_admin_common_context(request: Request, shop_id: str) -> tuple[str, di
     return normalized_shop_id, shop, reservations, customers, admin_users, subscription, available_plans, current_admin_name
 
 
+
+
+def _analysis_period_key(reservation_date: date, period: str) -> tuple[str, str]:
+    if period == "week":
+        week_start = reservation_date - timedelta(days=reservation_date.weekday())
+        return week_start.isoformat(), f"{week_start.strftime('%m/%d')}週"
+    if period == "month":
+        month_start = reservation_date.replace(day=1)
+        return month_start.isoformat(), month_start.strftime("%Y/%m")
+    return reservation_date.isoformat(), reservation_date.strftime("%m/%d")
+
+
+def _build_admin_analysis_context(reservations: list[dict], period: str) -> dict:
+    selected_period = period if period in {"day", "week", "month"} else "day"
+    period_labels = {"day": "日別", "week": "週別", "month": "月別"}
+    active_reservations = [r for r in reservations if str(r.get("status") or "") != "キャンセル"]
+    completed_reservations = [r for r in active_reservations if str(r.get("status") or "") == "来店済み"]
+
+    customer_counts = {}
+    for item in active_reservations:
+        customer_key = str(item.get("customer_id") or item.get("customer_name") or "").strip()
+        if customer_key:
+            customer_counts[customer_key] = customer_counts.get(customer_key, 0) + 1
+    repeat_customers = sum(1 for count in customer_counts.values() if count >= 2)
+    repeat_rate = round((repeat_customers / len(customer_counts) * 100), 1) if customer_counts else 0
+
+    period_map: dict[str, dict] = {}
+    for item in active_reservations:
+        try:
+            reservation_date = datetime.strptime(str(item.get("reservation_date") or ""), "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        key, label = _analysis_period_key(reservation_date, selected_period)
+        bucket = period_map.setdefault(key, {"key": key, "label": label, "count": 0, "sales": 0})
+        bucket["count"] += 1
+        if str(item.get("status") or "") == "来店済み":
+            bucket["sales"] += int(item.get("price") or 0)
+
+    period_summary = sorted(period_map.values(), key=lambda x: x["key"])[-12:]
+    max_count = max([item["count"] for item in period_summary] or [0])
+    max_sales = max([item["sales"] for item in period_summary] or [0])
+    for item in period_summary:
+        item["count_height"] = max(4, round(item["count"] / max_count * 100)) if max_count else 4
+        item["sales_height"] = max(4, round(item["sales"] / max_sales * 100)) if max_sales else 4
+
+    source_labels = {"admin": "管理画面", "web": "Web予約", "line": "LINE予約"}
+    source_map: dict[str, dict] = {}
+    for item in active_reservations:
+        source = str(item.get("source") or "admin").strip().lower() or "admin"
+        label = source_labels.get(source, source)
+        bucket = source_map.setdefault(source, {"label": label, "count": 0, "sales": 0})
+        bucket["count"] += 1
+        if str(item.get("status") or "") == "来店済み":
+            bucket["sales"] += int(item.get("price") or 0)
+
+    total_source_count = sum(item["count"] for item in source_map.values())
+    source_summary = sorted(source_map.values(), key=lambda x: x["count"], reverse=True)
+    for item in source_summary:
+        item["percent"] = round(item["count"] / total_source_count * 100, 1) if total_source_count else 0
+
+    return {
+        "selected_period": selected_period,
+        "selected_period_label": period_labels[selected_period],
+        "analysis_summary": {
+            "reservation_count": len(active_reservations),
+            "total_sales": sum(int(item.get("price") or 0) for item in completed_reservations),
+            "repeat_rate": repeat_rate,
+            "completed_count": len(completed_reservations),
+        },
+        "period_summary": period_summary,
+        "source_summary": source_summary,
+    }
+
+
+@app.get("/admin/{shop_id}/analysis", response_class=HTMLResponse)
+def admin_analysis_page(request: Request, shop_id: str, period: str = "day"):
+    redirect = require_store_login(request, shop_id)
+    if redirect:
+        return redirect
+
+    shop_id, shop, reservations, customers, admin_users, subscription, available_plans, current_admin_name = _build_admin_common_context(request, shop_id)
+    template_name = "admin/tool/analysis.html" if shop.get("admin_ui_mode") == "tool" else "admin/analysis.html"
+    analysis_context = _build_admin_analysis_context(reservations, period)
+
+    return templates.TemplateResponse(
+        request=request,
+        name=template_name,
+        context={
+            "request": request,
+            "shop": shop,
+            "shop_id": shop_id,
+            "customers": customers,
+            "reservations": reservations,
+            "staff_list": shop.get("staff_list", []),
+            "menus": shop.get("menus", []),
+            "admin_users": admin_users,
+            "subscription": subscription,
+            "subscription_status_label": _format_admin_subscription_status_label(subscription),
+            "available_plans": available_plans,
+            "current_admin_name": current_admin_name,
+            "active_page": "analysis",
+            **analysis_context,
+        },
+    )
+
+
 @app.get("/admin/{shop_id}", response_class=HTMLResponse)
 @app.get("/admin/{shop_id}/dashboard", response_class=HTMLResponse)
 def admin_page(request: Request, shop_id: str, error_message: str = ""):
