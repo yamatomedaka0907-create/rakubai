@@ -7800,68 +7800,50 @@ def _build_site_home_context(request: Request, shop_id: str, *, edit_mode: bool 
     return context
 
 
-async def _save_homepage_form_upload(shop_id: str, upload, category: str = "admin") -> str:
-    filename = str(getattr(upload, "filename", "") or "").strip()
-    if not filename:
-        return ""
-    suffix = Path(filename).suffix.lower() or ".jpg"
+async def _save_homepage_form_upload(shop_id: str, upload: UploadFile, category: str = "gallery") -> str:
+    suffix = Path(upload.filename or "image.jpg").suffix.lower() or ".jpg"
     if suffix not in {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}:
         return ""
-    safe_category = re.sub(r"[^a-zA-Z0-9_-]", "", category or "admin") or "admin"
-    stored = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(4)}{suffix}"
+    safe_category = re.sub(r"[^a-zA-Z0-9_-]", "", category or "gallery") or "gallery"
+    filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(4)}{suffix}"
     upload_dir = Path("data/uploads/shops") / shop_id / "homepage" / safe_category
     upload_dir.mkdir(parents=True, exist_ok=True)
-    save_path = upload_dir / stored
-    data = await upload.read()
-    if not data:
+    save_path = upload_dir / filename
+    file_bytes = await upload.read()
+    if not file_bytes:
         return ""
-    save_path.write_bytes(data)
+    save_path.write_bytes(file_bytes)
     relative = save_path.relative_to(Path("data/uploads"))
     return "/uploads/" + str(relative).replace("\\", "/")
 
 
 async def _homepage_items_from_form(shop_id: str, section_type: str, form) -> list[dict]:
     def values(name: str) -> list[str]:
-        return [str(v or '').strip() for v in form.getlist(name) if not hasattr(v, 'filename')]
-
-    delete_indexes = set()
-    for value in form.getlist('item_delete'):
-        try:
-            delete_indexes.add(int(str(value)))
-        except (TypeError, ValueError):
-            pass
-
+        return [str(v or '').strip() for v in form.getlist(name)]
     items: list[dict] = []
     if section_type == 'menu':
         titles, prices, descs = values('item_title'), values('item_price'), values('item_description')
         for idx in range(max(len(titles), len(prices), len(descs))):
-            if idx in delete_indexes:
-                continue
             items.append({'title': titles[idx] if idx < len(titles) else '', 'price': prices[idx] if idx < len(prices) else '', 'description': descs[idx] if idx < len(descs) else ''})
     elif section_type == 'gallery':
         labels, urls = values('item_label'), values('item_url')
         files = form.getlist('item_file')
-        total = max(len(labels), len(urls), len(files))
-        for idx in range(total):
-            if idx in delete_indexes:
-                continue
+        count = max(len(labels), len(urls), len(files))
+        for idx in range(count):
             url = urls[idx] if idx < len(urls) else ''
-            if idx < len(files) and hasattr(files[idx], 'filename'):
-                uploaded_url = await _save_homepage_form_upload(shop_id, files[idx], 'gallery')
+            upload = files[idx] if idx < len(files) else None
+            if hasattr(upload, 'filename') and hasattr(upload, 'read') and (upload.filename or '').strip():
+                uploaded_url = await _save_homepage_form_upload(shop_id, upload, 'gallery')
                 if uploaded_url:
                     url = uploaded_url
             items.append({'label': labels[idx] if idx < len(labels) else '', 'url': url})
     elif section_type == 'news':
         dates, titles = values('item_date'), values('item_title')
         for idx in range(max(len(dates), len(titles))):
-            if idx in delete_indexes:
-                continue
             items.append({'date': dates[idx] if idx < len(dates) else '', 'title': titles[idx] if idx < len(titles) else ''})
     else:
         titles, descs = values('item_title'), values('item_description')
         for idx in range(max(len(titles), len(descs))):
-            if idx in delete_indexes:
-                continue
             items.append({'title': titles[idx] if idx < len(titles) else '', 'description': descs[idx] if idx < len(descs) else ''})
     return items
 
@@ -7992,7 +7974,7 @@ async def admin_website_section_save_from_form(request: Request, shop_id: str, s
         title=str(form.get("title") or ""),
         subtitle=str(form.get("subtitle") or ""),
         body_text=str(form.get("body_text") or ""),
-        image_url=(await _save_homepage_form_upload(shop_id, form.get("section_image_file"), "section")) or str(form.get("image_url") or ""),
+        image_url=str(form.get("image_url") or ""),
         button_label=str(form.get("button_label") or ""),
         button_url=str(form.get("button_url") or ""),
         items=await _homepage_items_from_form(shop_id, section_type, form),
