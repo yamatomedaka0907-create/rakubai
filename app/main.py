@@ -7912,7 +7912,8 @@ def _build_site_home_context(request: Request, shop_id: str, *, edit_mode: bool 
     if not shop:
         raise HTTPException(status_code=404, detail="店舗が見つかりません")
     homepage = get_shop_homepage_settings(shop_id) or {}
-    sections = get_shop_homepage_sections(shop_id)
+    all_sections = get_shop_homepage_sections(shop_id)
+    sections = all_sections if edit_mode else [section for section in all_sections if int(section.get("is_visible") or 0) == 1]
     subscription = get_shop_subscription(shop_id) or {}
     requested_month = request.query_params.get("calendar_month")
     calendar_year, calendar_month = parse_month_string(requested_month)
@@ -7970,7 +7971,7 @@ def _build_site_home_context(request: Request, shop_id: str, *, edit_mode: bool 
 
 def _build_news_detail_context(request: Request, shop_id: str, news_index: int, *, public_path: str | None = None) -> dict:
     context = _build_site_home_context(request, shop_id, edit_mode=False)
-    news_section = next((section for section in context.get("sections", []) if str(section.get("section_type") or "") == "news"), None)
+    news_section = next((section for section in context.get("sections", []) if str(section.get("section_type") or "") == "news" and int(section.get("is_visible") or 0) == 1), None)
     news_items = list((news_section or {}).get("items") or [])
     if news_index < 0 or news_index >= len(news_items):
         raise HTTPException(status_code=404, detail="お知らせが見つかりません")

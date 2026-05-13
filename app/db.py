@@ -1082,11 +1082,13 @@ def _normalize_section_items(section_type: str, items: list[dict[str, Any]]) -> 
         elif section_type == 'gallery':
             normalized.append({'label': item.get('label', ''), 'url': item.get('url', '')})
         elif section_type == 'news':
+            image_url = item.get('image_url') or item.get('url') or ''
             normalized.append({
                 'date': item.get('date', ''),
                 'title': item.get('title', ''),
-                'description': item.get('description', ''),
-                'url': item.get('url', ''),
+                'body': item.get('body') or item.get('description') or '',
+                'image_url': image_url,
+                'url': image_url,
             })
         else:
             normalized.append({'title': item.get('title', ''), 'description': item.get('description', '')})
