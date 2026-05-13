@@ -8147,6 +8147,88 @@ def _merge_items_keep_content(section_type: str, existing_items, sample_items):
     return sample_items or []
 
 
+
+def _sample_content_fingerprints() -> tuple[set[str], set[str]]:
+    """Return text and asset values that come from built-in samples.
+
+    When switching samples, values copied from a previous sample should not be treated
+    as shop-owned content. User-entered text/images remain preserved because they are
+    not part of the built-in sample catalog.
+    """
+    text_values: set[str] = set()
+    asset_values: set[str] = set()
+
+    def add_text(value) -> None:
+        if value is None:
+            return
+        normalized = str(value).strip()
+        if normalized:
+            text_values.add(normalized)
+
+    def walk(value) -> None:
+        if isinstance(value, dict):
+            for child in value.values():
+                walk(child)
+        elif isinstance(value, (list, tuple, set)):
+            for child in value:
+                walk(child)
+        else:
+            add_text(value)
+
+    for sample in get_all_samples():
+        walk(sample.get("copy") or {})
+        add_text(sample.get("name"))
+        add_text(sample.get("summary"))
+        add_text(sample.get("lead"))
+        add_text(sample.get("brand"))
+        add_text(sample.get("thumb_image_alt"))
+        for url in sample.get("assets") or []:
+            url_text = str(url or "").strip()
+            if url_text:
+                asset_values.add(url_text)
+
+    return text_values, asset_values
+
+
+def _is_builtin_sample_value(value, *, image: bool = False) -> bool:
+    normalized = str(value or "").strip()
+    if not normalized:
+        return False
+    sample_texts, sample_assets = _sample_content_fingerprints()
+    if image:
+        return normalized in sample_assets
+    return normalized in sample_texts
+
+
+def _keep_shop_owned_value(existing: dict, key: str, fallback: str = "", *, image: bool = False) -> str:
+    value = str((existing or {}).get(key) or "").strip()
+    if value and not _is_builtin_sample_value(value, image=image):
+        return value
+    return str(fallback or "").strip()
+
+
+def _keep_shop_owned_items(section_type: str, existing_items, sample_items):
+    if not isinstance(existing_items, list) or not existing_items:
+        return sample_items or []
+
+    kept_items: list[dict] = []
+    for raw in existing_items:
+        if not isinstance(raw, dict):
+            continue
+        item = dict(raw)
+        text_parts = []
+        for key in ["title", "description", "price", "label", "date"]:
+            value = str(item.get(key) or "").strip()
+            if value:
+                text_parts.append(value)
+        image_url = str(item.get("url") or "").strip()
+        has_user_text = any(not _is_builtin_sample_value(part) for part in text_parts)
+        has_user_image = bool(image_url and not _is_builtin_sample_value(image_url, image=True))
+        if has_user_text or has_user_image:
+            kept_items.append(item)
+
+    return kept_items if kept_items else (sample_items or [])
+
 def _merge_sample_with_existing_homepage(shop_id: str, sample_settings: dict, sample_sections: list[dict]) -> tuple[dict, list[dict]]:
     existing_homepage = get_shop_homepage_settings(shop_id) or {}
     existing_sections = get_shop_homepage_sections(shop_id)
@@ -8161,7 +8243,12 @@ def _merge_sample_with_existing_homepage(shop_id: str, sample_settings: dict, sa
     merged_settings = dict(sample_settings)
     for key in preserve_setting_keys:
         if key in merged_settings:
-            merged_settings[key] = _keep_existing_value(existing_homepage, key, merged_settings[key])
+            merged_settings[key] = _keep_shop_owned_value(
+                existing_homepage,
+                key,
+                merged_settings[key],
+                image=key in {"logo_image_url", "hero_image_url"},
+            )
 
     selected_layout_key = str(sample_settings.get("sample_layout_key") or "default")
     selected_sample_code = str(sample_settings.get("sample_code") or "")
@@ -8188,9 +8275,12 @@ def _merge_sample_with_existing_homepage(shop_id: str, sample_settings: dict, sa
         rebuilt = dict(sample_section)
 
         if existing:
-            for key in ["title", "subtitle", "body_text", "image_url", "button_label", "button_url"]:
-                rebuilt[key] = _keep_existing_value(existing, key, rebuilt.get(key))
-            rebuilt["items"] = _merge_items_keep_content(section_type, existing.get("items"), rebuilt.get("items"))
+            # Keep only shop-owned text/images. Values that match any built-in sample are
+            # treated as old sample content and replaced by the newly selected sample.
+            for key in ["title", "subtitle", "body_text", "button_label", "button_url"]:
+                rebuilt[key] = _keep_shop_owned_value(existing, key, rebuilt.get(key))
+            rebuilt["image_url"] = _keep_shop_owned_value(existing, "image_url", rebuilt.get("image_url"), image=True)
+            rebuilt["items"] = _keep_shop_owned_items(section_type, existing.get("items"), rebuilt.get("items"))
 
         # The selected sample owns structure, order and visibility.
         rebuilt["sort_order"] = int(sample_section.get("sort_order") or index * 10)
