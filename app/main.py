@@ -8243,12 +8243,9 @@ def _merge_sample_with_existing_homepage(shop_id: str, sample_settings: dict, sa
     merged_settings = dict(sample_settings)
     for key in preserve_setting_keys:
         if key in merged_settings:
-            merged_settings[key] = _keep_shop_owned_value(
-                existing_homepage,
-                key,
-                merged_settings[key],
-                image=key in {"logo_image_url", "hero_image_url"},
-            )
+            # サンプル変更では、店舗側で現在入っている文言・画像・リンクは必ず保持する。
+            # 変更するのは配置・配色・表示構造などの見た目設定だけ。
+            merged_settings[key] = _keep_existing_value(existing_homepage, key, merged_settings[key])
 
     selected_layout_key = str(sample_settings.get("sample_layout_key") or "default")
     selected_sample_code = str(sample_settings.get("sample_code") or "")
@@ -8275,12 +8272,11 @@ def _merge_sample_with_existing_homepage(shop_id: str, sample_settings: dict, sa
         rebuilt = dict(sample_section)
 
         if existing:
-            # Keep only shop-owned text/images. Values that match any built-in sample are
-            # treated as old sample content and replaced by the newly selected sample.
-            for key in ["title", "subtitle", "body_text", "button_label", "button_url"]:
-                rebuilt[key] = _keep_shop_owned_value(existing, key, rebuilt.get(key))
-            rebuilt["image_url"] = _keep_shop_owned_value(existing, "image_url", rebuilt.get("image_url"), image=True)
-            rebuilt["items"] = _keep_shop_owned_items(section_type, existing.get("items"), rebuilt.get("items"))
+            # 文言・画像・ボタン・項目内容は前回入力値を保持する。
+            # ただし sort_order / is_visible / レイアウト種別は選択サンプル側を使う。
+            for key in ["title", "subtitle", "body_text", "button_label", "button_url", "image_url"]:
+                rebuilt[key] = _keep_existing_value(existing, key, rebuilt.get(key))
+            rebuilt["items"] = existing.get("items") if existing.get("items") else rebuilt.get("items")
 
         # The selected sample owns structure, order and visibility.
         rebuilt["sort_order"] = int(sample_section.get("sort_order") or index * 10)
