@@ -58,6 +58,14 @@
     .line-official-title { margin:0 0 8px; font-size:18px; font-weight:900; color:#065f46; line-height:1.5; }
     .line-official-text { margin:0 0 14px; color:var(--subtext); line-height:1.8; font-weight:700; }
     .btn-line-official { background:#06c755; color:#fff; border:1px solid rgba(6,199,85,.18); box-shadow:0 12px 24px rgba(6,199,85,.22); }
+    /* LINE誘導はページ上部を圧迫しないようにコンパクト表示 */
+    @media (min-width: 901px) {
+      .line-official-card { position:fixed; right:18px; bottom:18px; z-index:30; width:300px; margin:0; padding:12px 14px; background:rgba(255,255,255,.96); }
+      .line-official-title { font-size:14px; margin-bottom:6px; }
+      .line-official-text { display:none; }
+      .btn-line-official { width:100%; min-height:40px; }
+    }
+
     .info-list { display:grid; gap:12px; }
     .info-item { border:1px solid var(--line); border-radius:16px; padding:14px 16px; background:#fcfffe; }
     .info-label { font-size:12px; font-weight:700; color:var(--subtext); margin-bottom:6px; }
