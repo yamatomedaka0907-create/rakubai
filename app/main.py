@@ -8111,63 +8111,94 @@ def _keep_existing_value(existing: dict, key: str, sample_value):
     return current if _nonempty(current) else sample_value
 
 
+def _normalize_section_type(section: dict) -> str:
+    return str((section or {}).get("section_type") or "").strip()
+
+
+def _find_existing_section_for_sample(
+    sample_section: dict,
+    existing_sections: list[dict],
+    used_existing_ids: set[int],
+) -> dict | None:
+    """Find only content-compatible existing sections.
+
+    The sample section controls structure, visibility and order. Existing sections are used
+    only as a content source so a previous sample cannot keep dragging its layout forward.
+    """
+    section_type = _normalize_section_type(sample_section)
+    for section in existing_sections:
+        section_id = int(section.get("id") or 0)
+        if section_id in used_existing_ids:
+            continue
+        if _normalize_section_type(section) == section_type:
+            used_existing_ids.add(section_id)
+            return section
+    return None
+
+
+def _merge_items_keep_content(section_type: str, existing_items, sample_items):
+    """Keep the shop's item text/images while letting the sample decide section structure.
+
+    For repeatable business content such as menu, gallery, features and news, the existing
+    items are the shop's actual content. If no existing items are available, use the sample.
+    """
+    if isinstance(existing_items, list) and existing_items:
+        return existing_items
+    return sample_items or []
+
+
 def _merge_sample_with_existing_homepage(shop_id: str, sample_settings: dict, sample_sections: list[dict]) -> tuple[dict, list[dict]]:
     existing_homepage = get_shop_homepage_settings(shop_id) or {}
     existing_sections = get_shop_homepage_sections(shop_id)
 
+    # Keep shop-owned content only. Visual/template fields must always come from the selected sample.
     preserve_setting_keys = [
         "site_title", "hero_title", "hero_subtitle", "about_text", "menu_intro",
         "menu_items", "gallery_images", "feature_items", "news_items", "access_info",
         "reserve_button_label", "reserve_button_url", "public_path", "logo_image_url",
-        "hero_image_url", "hero_align",
+        "hero_image_url",
     ]
     merged_settings = dict(sample_settings)
     for key in preserve_setting_keys:
         if key in merged_settings:
             merged_settings[key] = _keep_existing_value(existing_homepage, key, merged_settings[key])
 
-    # 色・背景・フォントは選んだサンプルに合わせる。ただし独自CSS本文は残し、レイアウト印だけ差し替える。
     selected_layout_key = str(sample_settings.get("sample_layout_key") or "default")
-    merged_settings["custom_css"] = _set_sample_layout_marker(
-        str(existing_homepage.get("custom_css") or ""),
-        selected_layout_key,
-    )
+    selected_sample_code = str(sample_settings.get("sample_code") or "")
+
+    # Do not carry old layout/custom CSS forward. This prevents the previous sample from affecting the new one.
     merged_settings["sample_layout_key"] = selected_layout_key
-    merged_settings["sample_code"] = str(sample_settings.get("sample_code") or "")
+    merged_settings["sample_code"] = selected_sample_code
+    merged_settings["custom_css"] = _set_sample_layout_marker("", selected_layout_key)
 
+    # These are visual/layout controls, so always use the selected sample value.
+    for visual_key in [
+        "hero_align", "primary_color", "background_color", "surface_color",
+        "text_color", "subtext_color", "font_family",
+    ]:
+        if visual_key in sample_settings:
+            merged_settings[visual_key] = sample_settings[visual_key]
+
+    # Rebuild sections from the sample every time. Only copy content fields from compatible old sections.
     used_existing_ids: set[int] = set()
-    merged_sections: list[dict] = []
-    for sample_section in sample_sections:
-        section_type = str(sample_section.get("section_type") or "")
-        existing = next(
-            (
-                section for section in existing_sections
-                if int(section.get("id") or 0) not in used_existing_ids
-                and str(section.get("section_type") or "") == section_type
-            ),
-            None,
-        )
-        if existing:
-            used_existing_ids.add(int(existing.get("id") or 0))
-        merged_section = dict(sample_section)
-        if existing:
-            # 既存店舗の入力内容だけ保持する。
-            # レイアウト・表示状態・並び順はサンプル側を優先。
-            for key in ["title", "subtitle", "body_text", "image_url", "button_label", "button_url", "items"]:
-                merged_section[key] = _keep_existing_value(existing, key, merged_section.get(key))
-        merged_sections.append(merged_section)
+    rebuilt_sections: list[dict] = []
+    for index, sample_section in enumerate(sample_sections, start=1):
+        section_type = _normalize_section_type(sample_section)
+        existing = _find_existing_section_for_sample(sample_section, existing_sections, used_existing_ids)
+        rebuilt = dict(sample_section)
 
-    # ユーザーが追加した独自セクションは末尾に残す。
-    next_sort = (max([int(section.get("sort_order") or 0) for section in merged_sections] or [0]) + 10)
-    for existing in existing_sections:
-        if int(existing.get("id") or 0) in used_existing_ids:
-            continue
-        preserved = {k: existing.get(k) for k in ["section_type", "title", "subtitle", "body_text", "image_url", "button_label", "button_url", "items", "is_visible"]}
-        preserved["sort_order"] = next_sort
-        next_sort += 10
-        merged_sections.append(preserved)
+        if existing:
+            for key in ["title", "subtitle", "body_text", "image_url", "button_label", "button_url"]:
+                rebuilt[key] = _keep_existing_value(existing, key, rebuilt.get(key))
+            rebuilt["items"] = _merge_items_keep_content(section_type, existing.get("items"), rebuilt.get("items"))
 
-    return merged_settings, merged_sections
+        # The selected sample owns structure, order and visibility.
+        rebuilt["sort_order"] = int(sample_section.get("sort_order") or index * 10)
+        rebuilt["is_visible"] = 1 if sample_section.get("is_visible", 1) else 0
+        rebuilt_sections.append(rebuilt)
+
+    return merged_settings, rebuilt_sections
+
 
 def _sample_to_homepage_payload(shop: dict, sample: dict) -> tuple[dict, list[dict]]:
     copy = sample.get("copy") or {}
