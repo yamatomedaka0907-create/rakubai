@@ -173,6 +173,12 @@
             <span class="nav-label">予約管理</span>
           </span>
         </a>
+        <a href="/admin/{{ shop_id }}/analysis" class="{% if active_page == 'analysis' %}active{% endif %}">
+          <span class="nav-link-main">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><rect x="7" y="11" width="3" height="5" rx="1"/><rect x="12" y="8" width="3" height="8" rx="1"/><rect x="17" y="6" width="3" height="10" rx="1"/></svg>
+            <span class="nav-label">解析ツール</span>
+          </span>
+        </a>
         <a href="/admin/{{ shop_id }}/customers" class="{% if active_page == 'customers' %}active{% endif %}">
           <span class="nav-link-main">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 19v-1a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v1"/><circle cx="9.5" cy="8" r="3"/><path d="M20 19v-1a3 3 0 0 0-2.2-2.9"/><path d="M15.5 5.2a3 3 0 0 1 0 5.6"/></svg>

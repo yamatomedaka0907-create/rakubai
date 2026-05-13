@@ -41,19 +41,20 @@
   <div class="tool-panel-body">
 {% if hidden_staff_count %}<div class="tool-alert" style="background:#fff7ed;color:#9a3412;border:1px solid #fdba74;">現在のプラン上限を超えた新しいスタッフ {{ hidden_staff_count }}名は非表示です。</div>{% endif %}
     {% if success_message %}<div class="tool-alert is-success">{{ success_message }}</div>{% endif %}
+    {% if error_message %}<div class="tool-alert" style="background:#fef2f2;color:#991b1b;border:1px solid #fecaca;">{{ error_message }}</div>{% endif %}
     {% if staff_list %}
     <div class="tool-table-wrap tool-staff-table-wrap">
       <table class="tool-table is-dense tool-staff-table">
         <thead><tr><th>名前</th><th>対応メニュー</th><th>休日設定</th><th>設定</th></tr></thead>
         <tbody>
           {% for staff in staff_list %}
-          <tr><td><div style="display:flex; align-items:center; gap:10px;"><img src="{{ staff.avatar_url }}" alt="{{ staff.name }}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid rgba(148,163,184,.28);background:#fff;"><a class="tool-text-link" href="/admin/{{ shop_id }}/staff/{{ staff.id }}">{{ staff.name }}</a></div></td><td>{% if staff.menu_names %}{{ staff.menu_names|join(' / ') }}{% else %}未設定{% endif %}</td><td><a class="tool-btn" href="/admin/{{ shop_id }}/staff-info/{{ staff.id }}/edit">編集</a></td></tr>
+          <tr><td data-label="名前"><div style="display:flex; align-items:center; gap:10px;"><img src="{{ staff.avatar_url }}" alt="{{ staff.name }}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid rgba(148,163,184,.28);background:#fff;"><a class="tool-text-link" href="/admin/{{ shop_id }}/staff/{{ staff.id }}">{{ staff.name }}</a></div></td><td data-label="対応メニュー">{% if staff.menu_names %}{{ staff.menu_names|join(' / ') }}{% else %}未設定{% endif %}</td><td data-label="休日設定">{% if staff.holiday_dates %}{{ staff.holiday_dates|length }}日登録済み{% else %}未設定{% endif %}</td><td data-label="設定"><a class="tool-btn" href="/admin/{{ shop_id }}/staff-info/{{ staff.id }}/edit">編集</a></td></tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
     {% else %}
-    <div class="tool-empty">スタッフがまだ登録されていません。</div>
+    <div class="tool-empty">スタッフがまだ登録されていません。<div style="margin-top:14px;"><a class="tool-btn is-primary" href="/admin/register/{{ shop_id }}">最初のスタッフを登録する</a></div></div>
     {% endif %}
   </div>
 </section>
